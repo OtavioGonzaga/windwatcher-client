@@ -1,7 +1,9 @@
 import { useTranslation } from "react-i18next";
+import { Link } from "react-router";
 
 export function HomePage() {
   const { t: foundation } = useTranslation("foundation");
+  const { t } = useTranslation();
   return (
     <div className="flex min-w-0 max-w-lg flex-col gap-8">
       <img
@@ -15,6 +17,12 @@ export function HomePage() {
         Windwatcher
       </h1>
       <p className="text-secondary">{foundation("description")}</p>
+      <Link
+        to="/connect"
+        className="inline-flex min-h-11 items-center self-start rounded-sm bg-action px-4 text-on-action"
+      >
+        {t("discovery.title")}
+      </Link>
     </div>
   );
 }
