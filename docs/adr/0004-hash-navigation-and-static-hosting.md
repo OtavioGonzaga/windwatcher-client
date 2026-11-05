@@ -21,6 +21,12 @@ entry replaces Home; root Back finishes the Activity using the core exit API.
 Only Android receives listener registration/removal and exit permissions through
 a separate platform-scoped capability. No process/deep-link/OS plugin is added.
 
+The native Android content container handles bar/cutout/IME overlap and zeros
+those inset types before passing updates onward. Installed M134 measurements
+showed clipped shell controls and an unchanged viewport behind the IME. This
+single native strategy preserves the existing dark bar backing and avoids
+double padding/resizing on WebViews which also implement CSS/visual insets.
+
 ## Consequences
 
 URLs contain a fragment. Plain nested pathname URLs are not application routes.

@@ -9,7 +9,7 @@ export function AppShell() {
   const { t } = useTranslation();
   const location = useLocation();
   return (
-    <div className="grid min-h-dvh min-w-0 grid-cols-1 grid-rows-[auto_1fr_auto] bg-background text-foreground md:grid-cols-[14rem_minmax(0,1fr)] md:grid-rows-[auto_1fr]">
+    <div className="shell-viewport grid min-h-dvh min-w-0 grid-cols-1 grid-rows-[auto_1fr_auto] bg-background text-foreground md:grid-cols-[14rem_minmax(0,1fr)] md:grid-rows-[auto_1fr]">
       <a
         href="#main-content"
         className="skip-link"

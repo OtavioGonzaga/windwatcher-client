@@ -1,6 +1,35 @@
 import { expect, test } from "@playwright/test";
 import { AxeBuilder } from "@axe-core/playwright";
 
+test("shell fixture keeps text focus across resize and restores scroll on history", async ({
+  page,
+}) => {
+  await page.goto("http://127.0.0.1:4177/tests/shell/index.html#/preferences");
+  const field = page.getByRole("textbox");
+  await field.fill("local keyboard smoke");
+  await page.setViewportSize({ width: 800, height: 360 });
+  await expect(field).toBeFocused();
+  await page.setViewportSize({ width: 320, height: 500 });
+  await expect(field).toBeFocused();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.getByRole("link", { name: "Home", exact: true }).click();
+  await page.goBack();
+  await expect(page.getByRole("link", { name: "Home", exact: true })).toBeFocused();
+  expect(await page.evaluate(() => scrollY)).toBeGreaterThan(0);
+});
+
+test("short landscape supports touch or mouse navigation without overflow", async ({
+  page,
+}, info) => {
+  await page.setViewportSize({ width: 640, height: 320 });
+  await page.goto("/");
+  const preferences = page.getByRole("link", { name: "Preferences", exact: true });
+  if (info.project.use.hasTouch) await preferences.tap();
+  else await preferences.click();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Preferences");
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
+
 test("browser navigation never loads Android adapter or writes preferences", async ({ page }) => {
   const requests: string[] = [];
   page.on("request", (r) => requests.push(r.url()));

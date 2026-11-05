@@ -6,6 +6,10 @@
 @import "@fontsource/ibm-plex-mono/latin-400.css";
 
 @layer components {
+  .shell-viewport {
+    padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px)
+      env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
+  }
   .skip-link {
     @apply sr-only;
   }

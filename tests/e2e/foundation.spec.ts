@@ -160,5 +160,6 @@ test("fonts and assets load locally and production output excludes fixture entry
     .join("\n");
   expect(js).not.toContain("data-foundation-showcase");
   expect(js).not.toContain("networkProbe");
+  expect(js).not.toContain("data-shell-keyboard-fixture");
   expect(readdirSync("dist")).not.toContain("tests");
 });
