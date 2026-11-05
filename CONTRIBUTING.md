@@ -27,8 +27,9 @@ additional runtime shipped inside Tauri.
 - Do not introduce ESLint/Prettier, suppress warnings without justification or
   weaken types to bypass validation.
 - Add small, concrete boundaries when needed, not speculative features/modules.
-- Keep native operations out of shared UI features; the current shell deliberately
-  exposes no custom commands, plugins or privileged frontend capabilities.
+- Keep native operations out of shared API/UI features. Use the injected network
+  boundary; the host grants only scoped HTTP(S), without custom commands or
+  unrelated filesystem/shell capabilities.
 - Do not add server-side administration or UI suggesting unsupported protocol features.
 - Introduce localized end-user strings with the four-locale foundation; the
   bootstrap only displays the proper name and supplied artwork.
@@ -47,7 +48,11 @@ bun run test:e2e
 ```
 
 `check` runs format checking, lint, TypeScript, unit/component tests and the
-production build. It never rewrites files. Use `bun run format` and
+production build, plus offline API type drift checking. It never rewrites files.
+Use `bun run api:generate` only when deliberately regenerating pinned-contract
+types; see [contract provenance](docs/api-contract.md). The application checker
+remains TypeScript 7 (`typescript-checker`); TypeScript 5 provides the generator's
+JavaScript compiler API. Use `bun run format` and
 `bun run lint:fix` deliberately when making corrections. Editor settings for
 VS Code and Zed use Oxc; install the appropriate extensions/language servers and
 workspace dependencies rather than assuming globally installed project tools.
@@ -77,6 +82,8 @@ GitHub setting.
 A separate manually dispatched workflow builds an Android ARM64 debug APK.
 Neither workflow publishes a release, signs a release APK, or produces installers.
 See the development guide for the distinction between compile and launch evidence.
+The Android workflow additionally compares merged debug/release HTTP policy;
+native runtime smoke remains a separate [procedure](docs/network-transport.md).
 
 ## Changes and review
 

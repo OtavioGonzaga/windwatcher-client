@@ -15,8 +15,8 @@ describe("platform network selection", () => {
     expect(await platformHttp()).toBe(browserHttp);
     expect(fetch).not.toHaveBeenCalled();
   });
-  it("selects native HTTP from the installed-host marker", async () => {
-    vi.stubGlobal("__TAURI_INTERNALS__", {});
+  it("selects native HTTP from the installed-host flag", async () => {
+    vi.stubGlobal("isTauri", true);
     expect(await platformHttp()).toBe(tauriHttp);
   });
   it("disables native redirects and does not expose TLS or proxy overrides", async () => {

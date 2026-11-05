@@ -45,6 +45,9 @@ export class ApiClient {
   request<T>(options: JsonRequest<T>): Promise<T>;
   request(options: EmptyRequest): Promise<void>;
   async request<T>(options: JsonRequest<T> | EmptyRequest): Promise<T | void> {
+    const signal = options.signal;
+    const expectsEmpty = "response" in options;
+    const decode = "decode" in options ? options.decode : undefined;
     const timeout = options.timeoutMs ?? 15000;
     if (!Number.isInteger(timeout) || timeout <= 0 || timeout > 2147483647) {
       throw new TypeError("Request timeout must be a positive 32-bit millisecond duration.");
@@ -82,9 +85,9 @@ export class ApiClient {
       controller.abort();
     };
     const onAbort = () => abort("cancelled");
-    options.signal?.addEventListener("abort", onAbort, { once: true });
+    signal?.addEventListener("abort", onAbort, { once: true });
     const timer = setTimeout(() => abort("timeout"), timeout);
-    if (options.signal?.aborted) onAbort();
+    if (signal?.aborted) onAbort();
     let metadata: FailureMetadata = {};
 
     try {
@@ -111,7 +114,7 @@ export class ApiClient {
             throw new ApiError("redirect", metadata);
           }
           if (response.status === 204) {
-            if ("response" in options) return undefined;
+            if (expectsEmpty) return undefined;
             throw new ApiError("invalid-response", metadata);
           }
           // The deadline includes body consumption, not only response headers.
@@ -136,11 +139,11 @@ export class ApiClient {
               requestId: metadata.requestId ?? problem.request_id,
             });
           }
-          if (media === "application/problem+json" || "response" in options) {
+          if (media === "application/problem+json" || expectsEmpty || !decode) {
             throw new ApiError("invalid-response", metadata);
           }
           try {
-            return options.decode(value);
+            return decode(value);
           } catch {
             throw new ApiError("invalid-response", metadata);
           }
@@ -153,7 +156,7 @@ export class ApiClient {
       throw new ApiError("transport", metadata);
     } finally {
       clearTimeout(timer);
-      options.signal?.removeEventListener("abort", onAbort);
+      signal?.removeEventListener("abort", onAbort);
       // Release pending native streams as well as requests on every path.
       controller.abort();
     }

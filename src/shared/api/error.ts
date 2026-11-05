@@ -41,6 +41,30 @@ export function retryAfterMs(value: string | null, now = Date.now()): number | u
     )
   )
     return undefined;
-  const instant = Date.parse(text);
-  return Number.isFinite(instant) ? Math.max(0, instant - now) : undefined;
+  let parseable = text;
+  const rfc850 = /^([A-Z][a-z]+), (\d{2})-([A-Z][a-z]{2})-(\d{2}) (\d{2}:\d{2}:\d{2}) GMT$/.exec(
+    text,
+  );
+  if (rfc850) {
+    // HTTP's two-digit year is relative to receipt, not Date.parse's fixed
+    // 1950/2050 pivot. A date >50 years ahead denotes the preceding century.
+    const currentYear = new Date(now).getUTCFullYear();
+    let year = currentYear + ((Number(rfc850[4]) - (currentYear % 100) + 100) % 100);
+    if (year > currentYear + 50) year -= 100;
+    parseable = `${rfc850[1]?.slice(0, 3)}, ${rfc850[2]} ${rfc850[3]} ${year} ${rfc850[5]} GMT`;
+  }
+  // asctime-form is also GMT per HTTP, not the machine's local timezone.
+  const instant = Date.parse(parseable.endsWith("GMT") ? parseable : `${parseable} GMT`);
+  if (!Number.isFinite(instant)) return undefined;
+  const date = new Date(instant);
+  const canonical = date.toUTCString();
+  const [weekday, day, month, year, time] = canonical.split(" ");
+  const longDay = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][
+    date.getUTCDay()
+  ];
+  const obsolete = `${longDay}, ${day}-${month}-${year?.slice(-2)} ${time} GMT`;
+  const asctime = `${weekday?.slice(0, 3)} ${month} ${String(date.getUTCDate()).padStart(2, " ")} ${time} ${year}`;
+  // Reject impossible calendar dates and weekday mismatches normalized by Date.parse.
+  if (![canonical, obsolete, asctime].includes(text)) return undefined;
+  return Math.max(0, instant - now);
 }

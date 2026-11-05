@@ -29,6 +29,14 @@ describe("pinned server contract", () => {
     >().toEqualTypeOf<"windwatcher">();
     expectTypeOf<components["schemas"]["ProblemDetails"]["code"]>().toBeString();
     expectTypeOf<components["schemas"]["SessionGrantResponse"]>().not.toBeNever();
+    expectTypeOf<components["schemas"]["SessionGrantResponse"]["access_token"]>().toBeString();
+    expectTypeOf<components["schemas"]["SessionGrantResponse"]["refresh_token"]>().toBeString();
+    expectTypeOf<components["schemas"]["MessageResponse"]["content"]>().toEqualTypeOf<
+      string | null | undefined
+    >();
+    expectTypeOf<
+      components["schemas"]["PageResponse_MessageResponse"]["items"][number]
+    >().toEqualTypeOf<components["schemas"]["MessageResponse"]>();
     expectTypeOf<components["schemas"]["PageResponse_MessageResponse"]>().not.toBeNever();
     expectTypeOf<components["schemas"]["MessageResponse"]>().not.toBeNever();
     for (const name of [

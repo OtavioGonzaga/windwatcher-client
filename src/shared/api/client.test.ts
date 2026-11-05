@@ -12,6 +12,89 @@ function setup(response: () => Response | Promise<Response>) {
 afterEach(() => vi.useRealTimers());
 
 describe("typed JSON client", () => {
+  it.each([0, -1, NaN, Infinity, 2147483648])(
+    "rejects invalid deadline %s before I/O",
+    async (timeoutMs) => {
+      const { client, transport } = setup(() => Response.json(instance));
+      await expect(client.getInstance({ timeoutMs })).rejects.toBeInstanceOf(TypeError);
+      expect(transport).not.toHaveBeenCalled();
+    },
+  );
+
+  it("rejects invalid bodies/bearers without retaining their contents", async () => {
+    const { client, transport } = setup(() => Response.json(instance));
+    await expect(
+      client.request({
+        method: "GET",
+        path: ["fixture"],
+        body: { secret: "password" },
+        decode: decodeInstance,
+      }),
+    ).rejects.toThrow("GET requests cannot contain a body");
+    await expect(
+      client.request({ method: "POST", path: ["fixture"], body: 1n, decode: decodeInstance }),
+    ).rejects.toThrow("not JSON serializable");
+    await expect(
+      client.request({
+        method: "GET",
+        path: ["fixture"],
+        accessToken: "secret\r\nCookie: injected",
+        decode: decodeInstance,
+      }),
+    ).rejects.toThrow("Invalid bearer token syntax");
+    expect(transport).not.toHaveBeenCalled();
+  });
+
+  it("cleans listeners and does not decode cancelled late work despite caller mutation", async () => {
+    let finish: (response: Response) => void = () => {};
+    const { client } = setup(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        }),
+    );
+    const original = new AbortController();
+    const remove = vi.spyOn(original.signal, "removeEventListener");
+    const decode = vi.fn(decodeInstance);
+    const replacement = vi.fn(decodeInstance);
+    const options = { method: "GET" as const, path: ["fixture"], signal: original.signal, decode };
+    const pending = client.request(options);
+    options.signal = new AbortController().signal;
+    options.decode = replacement;
+    original.abort();
+    await expect(pending).rejects.toMatchObject({ category: "cancelled" });
+    finish(Response.json(instance));
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(remove).toHaveBeenCalledWith("abort", expect.any(Function));
+    expect(decode).not.toHaveBeenCalled();
+    expect(replacement).not.toHaveBeenCalled();
+  });
+
+  it("cleans the deadline after success and preserves HTTP metadata for foreign errors", async () => {
+    vi.useFakeTimers();
+    await setup(() => Response.json(instance)).client.getInstance();
+    expect(vi.getTimerCount()).toBe(0);
+    const { client } = setup(
+      () =>
+        new Response("<html>untrusted secret</html>", {
+          status: 404,
+          headers: {
+            "Content-Type": "text/html",
+            "X-Request-Id": requestId,
+            "Retry-After": "invalid",
+          },
+        }),
+    );
+    const error = await client.getInstance().catch((caught: unknown) => caught);
+    expect(error).toMatchObject({
+      category: "invalid-response",
+      metadata: { status: 404, requestId },
+    });
+    expect(error).not.toHaveProperty("metadata.code");
+    expect(error).not.toHaveProperty("metadata.retryAfterMs");
+    expect(JSON.stringify(error)).not.toContain("secret");
+  });
   it("keeps instance requests public even for untyped extra caller fields", async () => {
     const { client, transport } = setup(() => Response.json({ ...instance, extension: true }));
     const options = { accessToken: "must-not-leak", timeoutMs: 1000 };

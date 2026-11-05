@@ -20,7 +20,7 @@ require a decoder, rather than asserting arbitrary JSON as a caller's type.
 
 Browser requests use fetch with omitted credentials and manual redirects. Native
 requests use the official Tauri HTTP plugin 2.8.3, lazily selected by the same
-injected IPC marker as Tauri's `isTauri()`, with zero redirects. The Rust plugin
+injected host flag as Tauri's `isTauri()`, with zero redirects. The Rust plugin
 disables default features: only Rustls public-root TLS and HTTP/2 are enabled.
 Cookies, dangerous TLS settings, unsafe headers and request tracing are absent.
 The host exposes no custom HTTP command.
