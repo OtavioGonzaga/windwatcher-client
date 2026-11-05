@@ -4,3 +4,27 @@
 @import "@fontsource/ibm-plex-sans/latin-500.css";
 @import "@fontsource/ibm-plex-sans/latin-600.css";
 @import "@fontsource/ibm-plex-mono/latin-400.css";
+
+@layer components {
+  .shell-link {
+    @apply flex min-h-11 min-w-0 flex-1 items-center justify-center gap-2 rounded-sm border border-transparent px-3 py-2 text-sm font-medium md:flex-none md:justify-start;
+  }
+  .shell-link svg {
+    flex-shrink: 0;
+  }
+  .shell-link:hover {
+    background: var(--subtle-hover);
+  }
+  .shell-link[aria-current="page"] {
+    background: var(--subtle-hover);
+    border-color: var(--border);
+    text-decoration: underline;
+    text-underline-offset: 0.25em;
+  }
+}
+
+@media (forced-colors: active) {
+  .shell-link[aria-current="page"] {
+    border-color: Highlight;
+  }
+}

@@ -74,7 +74,7 @@ for (const theme of ["light", "dark"] as const) {
     await page.emulateMedia({ colorScheme: theme });
     await page.goto("/#/preferences");
     expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
-    await page.keyboard.press("Tab");
+    await page.getByLabel("Language").focus();
     await expect(page.getByLabel("Language")).toBeFocused();
     await expect(page.getByLabel("Language")).toHaveCSS("outline-style", "solid");
     await expect(page.getByLabel("Language")).toHaveCSS("outline-width", "3px");

@@ -1,5 +1,30 @@
 import { expect, test } from "@playwright/test";
 
+for (const width of [320, 360, 768, 1024, 1280]) {
+  test(`shell remains usable at ${width}px with German and 200% text`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 500 });
+    await page.goto("/#/preferences");
+    await page.getByLabel("Language").selectOption("de");
+    await page.evaluate(() => {
+      document.documentElement.style.fontSize = "200%";
+    });
+    await expect(page.getByRole("link", { name: "Einstellungen", exact: true })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+      true,
+    );
+    const link = page.getByRole("link", { name: "Startseite", exact: true });
+    const box = await link.boundingBox();
+    expect(box!.height).toBeGreaterThanOrEqual(44);
+    await link.click();
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Windwatcher");
+    await page.goBack();
+    await expect(page.locator("select").first()).toHaveValue("de");
+  });
+}
+
 test("nested static hosting supports hash entry, reload and recovery without rewrites", async ({
   page,
   request,
