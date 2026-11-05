@@ -7,6 +7,7 @@ const networkHarness = process.env.WINDWATCHER_NETWORK_HARNESS === "1";
 const foundationHarness = process.env.WINDWATCHER_FOUNDATION_HARNESS === "1";
 
 export default defineConfig({
+  base: "./",
   plugins: [
     react(),
     tailwindcss(),

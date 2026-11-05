@@ -1,5 +1,15 @@
 {
   "common": {
+    "navigation": {
+      "home": "Inicio",
+      "preferences": "Preferencias",
+      "label": "Navegación principal",
+      "skip": "Saltar al contenido",
+      "notFound": "Página no encontrada",
+      "notFoundHint": "Esta página no está disponible. Vuelve al inicio.",
+      "error": "No se ha podido mostrar esta página.",
+      "backHome": "Volver al inicio"
+    },
     "language": "Idioma",
     "appearance": "Apariencia",
     "system": "Sistema",

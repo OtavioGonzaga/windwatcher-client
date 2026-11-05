@@ -17,6 +17,6 @@ test("production frontend boots with intact artwork and no runtime errors", asyn
   expect(await page.locator("body").evaluate((body) => body.scrollWidth <= window.innerWidth)).toBe(
     true,
   );
-  await expect(page.getByRole("main")).toHaveCSS("background-color", "rgb(251, 241, 199)");
+  await expect(page.locator("html")).toHaveCSS("background-color", "rgb(251, 241, 199)");
   expect(errors).toEqual([]);
 });
