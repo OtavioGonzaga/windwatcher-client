@@ -2,8 +2,19 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import capability from "../../../src-tauri/capabilities/main.json";
 import config from "../../../src-tauri/tauri.conf.json";
+import androidNavigation from "../../../src-tauri/capabilities/android-navigation.json";
 
 describe("native security configuration", () => {
+  it("limits Back lifecycle and exit permissions to Android", () => {
+    expect(androidNavigation.platforms).toEqual(["android"]);
+    expect(androidNavigation.windows).toEqual(["main"]);
+    expect(androidNavigation.permissions).toEqual([
+      "core:app:allow-register-listener",
+      "core:app:allow-remove-listener",
+      "core:app:allow-exit",
+    ]);
+    expect(androidNavigation).not.toHaveProperty("remote");
+  });
   it("grants only scoped HTTP to the local main window", () => {
     expect(capability.windows).toEqual(["main"]);
     expect(capability.permissions).toEqual([

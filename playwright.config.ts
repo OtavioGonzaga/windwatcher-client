@@ -13,10 +13,25 @@ export default defineConfig({
     },
     {
       name: "mobile-chromium",
-      use: { browserName: "chromium", viewport: { width: 360, height: 800 } },
+      use: {
+        browserName: "chromium",
+        viewport: { width: 360, height: 800 },
+        isMobile: true,
+        hasTouch: true,
+      },
     },
   ],
   webServer: [
+    {
+      command: "bun --bun vite preview --outDir dist-shell --port 4177",
+      url: "http://127.0.0.1:4177/",
+      reuseExistingServer: false,
+    },
+    {
+      command: "bun tests/static-server.ts",
+      url: "http://127.0.0.1:4176/client/",
+      reuseExistingServer: false,
+    },
     {
       command: "bun --bun vite preview --outDir dist-foundation --port 4175",
       url: "http://127.0.0.1:4175/tests/foundation/index.html",

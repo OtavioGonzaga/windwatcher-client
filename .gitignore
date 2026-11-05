@@ -3,6 +3,7 @@
 /dist/
 /dist-network/
 /dist-foundation/
+/dist-shell/
 /coverage/
 /playwright-report/
 /test-results/

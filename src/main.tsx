@@ -1,4 +1,5 @@
 import { StrictMode } from "react";
+import { HashRouter } from "react-router";
 import { createRoot } from "react-dom/client";
 import { App } from "./app/App";
 import { Providers } from "./app/Providers";
@@ -14,7 +15,9 @@ const i18n = createI18n();
 createRoot(root).render(
   <StrictMode>
     <Providers i18n={i18n}>
-      <App />
+      <HashRouter>
+        <App />
+      </HashRouter>
     </Providers>
   </StrictMode>,
 );

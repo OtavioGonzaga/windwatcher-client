@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Shared responsive navigation between Home and presentation preferences, hash
+  URLs supporting static hosting prefixes, accessible focus/skip links and
+  localized not-found/render recovery in all four languages.
+- Android hardware/gesture Back with direct-entry recovery and Activity finish;
+  safe native content bounds for system bars, cutouts and the soft keyboard.
 - Accessible warm light/dark/system presentation, locally bundled IBM Plex fonts,
   semantic tokens and focused native-HTML controls with an isolated test fixture.
 - English, Brazilian Portuguese, Spanish and German catalogs with working language

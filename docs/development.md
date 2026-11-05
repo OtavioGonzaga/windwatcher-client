@@ -76,9 +76,10 @@ than copying the POSIX environment assignment. The executables are
 `src-tauri/target/debug/windwatcher-client.exe` on Windows. A no-bundle build does
 not generate installers or imply tested installation support.
 
-The web build currently assumes a root-mounted static host. Base-path routing
-and deep links will be decided with navigation; there are no feature routes yet.
-The image URL already respects Vite's base URL. Static hosting alone will not
+The web build uses relative assets and hash routes, supporting root or nested
+static directories without rewrites. Open `/client/#/preferences`, not
+`/client/preferences`. See [navigation and hosting](navigation-shell.md).
+Static hosting alone will not
 bypass a future server's CORS or browser mixed-content policy.
 
 ## Android
@@ -138,8 +139,9 @@ installed-adapter evidence; a debug build alone is still not release validation.
 
 The [visual foundation](visual-foundation.md) documents theme/locale APIs, font
 licenses, contrast tests and the optional component fixture at port 4175.
-`test:e2e` builds that fixture separately from production and the network harness;
-it checks 320/360/768px/desktop widths, German expansion, keyboard/axe, local
+`test:e2e` builds that fixture separately from production, the network harness
+and the shell/IME fixture; it also tests a static prefix without SPA rewrites.
+It checks 320/360/768px/desktop widths, German expansion, keyboard/axe, local
 fonts and theme/locale behavior. Theme/language choices are intentionally not
 persisted; restart/reload restores system/browser preferences.
 
@@ -234,6 +236,64 @@ without reviewing the corresponding Tauri template and verifying the build again
 Screenshots and diagnostic outputs were kept outside the checkout. The native
 smoke does not certify release signing, distribution rights, all older Android
 versions, Windows interaction or a completed keyboard-safe application shell.
+
+### Navigation validation record (2026-11-05)
+
+- `bun run check`: 235 unit/component/contract tests, formatting, lint, TypeScript,
+  API drift and production build passed. `bun run test:e2e`: 68 tests passed on
+  desktop Chromium and touch-enabled mobile Chromium. Coverage includes actual
+  routes/axe, four locales, history/focus, 320/360/768/1024/1280px, short landscape,
+  200% text, prefix deployment without rewrites and all isolated fixtures.
+- Rust fmt/check/clippy (warnings denied), dependency audit and a locked normal
+  Linux build passed. The compiled WebKitGTK 2.52.6 host was launched, navigated
+  through accessibility actions, changed to German/dark and resized to 320px.
+  Its narrow Preferences view was visually inspected without clipped controls.
+- An x86_64 APK and separate shell/IME fixture were installed on Android 16/API
+  36, WebView 134.0.6998.135. Initial shell controls were visibly clipped under
+  the protected system bars. Native bar/cutout inset handling reduced the usable
+  portrait viewport from 914 to 866 CSS pixels and protected header/navigation.
+- The fixture then reproduced an IME failure: the viewport stayed at 866px and
+  the focused field was behind the keyboard. Handling IME through the same
+  native content rectangle reduced the viewport to about 554px; the typed field
+  and focus outline were visible above the keyboard. First native Back dismissed
+  the IME, preserved the field text and route, and restored 866px; the next Back
+  reached Home. No manifest override or custom Back command was needed.
+- Android direct child entry/reload recovered to Home, normal navigation went
+  back once, and Back at Home finished the Activity. Edge-swipe gestures also
+  navigated to Home and finished at root in gestural-navigation mode. Four locale
+  changes updated route titles; German/dark rendering had no document overflow
+  at 320/360px-equivalent portrait and 640x272 landscape.
+- Fresh built Linux and Android network harnesses each passed all 12 checks,
+  with two observed request cancellations and zero foreign-origin or invalid-TLS
+  HTTP hits. Release manifest processing and debug/release HTTP policy comparison
+  passed without changing the manifest, network scope or TLS behavior.
+- Normal Linux, Android x86_64 and ARM64-target debug artifacts were rebuilt
+  without fixture configs. The normal APK excluded fixture markup; simulated
+  tall-cutout portrait/landscape bounds and system-driven dark mode were checked
+  on the installed x86_64 app. ARM64 is compilation evidence, not device runtime.
+  Vite development HTML/modules still loaded at the unchanged port 1420.
+- The Linux host was also resized wide/narrow/wide and navigated through its
+  visible links. WebKitGTK did not bind Alt+Left to browser history in this host;
+  no desktop accelerator is claimed. Browser Back/Forward and Android native
+  Back were exercised separately as described above.
+- Pre-PR review reproduced a broken banner in the shell fixture's Home page:
+  its nested HTML entry resolved public assets under the wrong directory. The
+  fixture now builds a root document like production, with explicit repository
+  Tailwind source discovery. Browser regressions check the rendered banner and
+  control styles, not just route text. Route scroll restoration is explicitly
+  manual (restoring the browser setting on unmount), and recovery links retain
+  a minimum 44px target. The full frontend suite passed after these corrections.
+  The rebuilt Android shell fixture also loaded the original 543px-wide banner
+  at its root asset URL, retained 44px styled fields, and repeated the visible
+  IME-field/Back-dismiss check on the installed WebView.
+- Windows interactive WebView2, physical ARM64 devices and a newer WebView were
+  unavailable locally. These checks do not certify those runtimes, TalkBack or
+  a predictive-Back animation contract. Fresh remote frontend/Linux/Windows CI
+  is required on the eventual PR head; prior PR CI is not this branch's evidence.
+
+Diagnostic captures and logs live outside the repository. The shell/IME fixture
+is opt-in and excluded from ordinary production output/APKs. See
+[navigation-shell.md](navigation-shell.md) for exact procedures and boundaries.
 
 ## Troubleshooting
 

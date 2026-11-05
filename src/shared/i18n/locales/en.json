@@ -1,5 +1,16 @@
 {
   "common": {
+    "navigation": {
+      "nativeBackError": "System back navigation is unavailable. Use the navigation links.",
+      "home": "Home",
+      "preferences": "Preferences",
+      "label": "Main navigation",
+      "skip": "Skip to content",
+      "notFound": "Page not found",
+      "notFoundHint": "This page is not available. Return to Home.",
+      "error": "This page could not be displayed.",
+      "backHome": "Return to Home"
+    },
     "language": "Language",
     "appearance": "Appearance",
     "system": "System",

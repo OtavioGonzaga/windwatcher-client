@@ -18,7 +18,8 @@
     "api:check": "bun scripts/api-generate.ts --check",
     "test": "bun --bun vitest run",
     "test:watch": "bun --bun vitest",
-    "test:e2e": "bun run build:network-test && bun run build:foundation-test && bun --bun playwright test",
+    "test:e2e": "bun run build:network-test && bun run build:foundation-test && bun run build:shell-test && bun --bun playwright test",
+    "build:shell-test": "bun scripts/build-shell-test.ts",
     "build:foundation-test": "bun scripts/build-foundation-test.ts",
     "build:network-test": "bun scripts/build-network-test.ts",
     "test:native:report": "bun scripts/check-native-report.ts",
@@ -34,7 +35,8 @@
     "lucide-react": "1.69.0",
     "react": "19.3.1",
     "react-dom": "19.3.1",
-    "react-i18next": "17.1.13"
+    "react-i18next": "17.1.13",
+    "react-router": "8.5.1"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.14.0",

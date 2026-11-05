@@ -1,5 +1,16 @@
 {
   "common": {
+    "navigation": {
+      "nativeBackError": "Die Zurück-Navigation des Systems ist nicht verfügbar. Verwende die Navigationslinks.",
+      "home": "Startseite",
+      "preferences": "Einstellungen",
+      "label": "Hauptnavigation",
+      "skip": "Zum Inhalt springen",
+      "notFound": "Seite nicht gefunden",
+      "notFoundHint": "Diese Seite ist nicht verfügbar. Kehre zur Startseite zurück.",
+      "error": "Diese Seite konnte nicht angezeigt werden.",
+      "backHome": "Zur Startseite"
+    },
     "language": "Sprache",
     "appearance": "Erscheinungsbild",
     "system": "System",

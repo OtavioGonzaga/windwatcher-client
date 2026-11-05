@@ -34,6 +34,9 @@ additional runtime shipped inside Tauri.
 - Introduce localized end-user strings with the four-locale foundation; the
   [visual foundation guide](docs/visual-foundation.md) documents typed keys,
   catalog parity, semantic color pairs and the isolated component fixture.
+- Follow the [navigation contract](docs/navigation-shell.md) for routes, focus,
+  static-prefix hosting and Android Back/IME. Shell keyboard fixtures are opt-in,
+  never production routes. Keep platform capabilities narrowly scoped.
 
 See [architecture](docs/architecture.md). Add an ADR alongside a significant
 implemented architectural change, using [the policy](docs/adr/README.md).

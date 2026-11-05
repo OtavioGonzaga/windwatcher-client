@@ -1,0 +1,14 @@
+{
+  "build": { "beforeBuildCommand": "bun run build:shell-test", "frontendDist": "../dist-shell" },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "Windwatcher shell smoke",
+        "url": "index.html#/preferences",
+        "width": 800,
+        "height": 600
+      }
+    ]
+  }
+}

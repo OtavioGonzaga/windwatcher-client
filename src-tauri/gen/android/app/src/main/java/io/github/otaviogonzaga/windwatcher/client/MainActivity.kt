@@ -12,6 +12,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.core.graphics.Insets
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.ViewCompat
 
 class MainActivity : TauriActivity() {
   override fun onCreate(savedInstanceState: Bundle?) {
@@ -21,6 +22,20 @@ class MainActivity : TauriActivity() {
       navigationBarStyle = SystemBarStyle.dark(Color.rgb(29, 32, 33)),
     )
     super.onCreate(savedInstanceState)
+    // M134 does not forward safe-area CSS insets. Give the WebView a safe native
+    // rectangle on every version, then zero only the insets already handled here.
+    // M134 also leaves the visual viewport unchanged behind the IME. Resize the
+    // same content rectangle for IME and forward zeroed handled types, not a
+    // consumed object; this avoids double resizing on newer WebViews.
+    val content = findViewById<View>(android.R.id.content)
+    ViewCompat.setOnApplyWindowInsetsListener(content) { view, insets ->
+      val types = WindowInsetsCompat.Type.systemBars() or
+        WindowInsetsCompat.Type.displayCutout() or WindowInsetsCompat.Type.ime()
+      val safe = insets.getInsets(types)
+      view.setPadding(safe.left, safe.top, safe.right, safe.bottom)
+      WindowInsetsCompat.Builder(insets).setInsets(types, Insets.NONE).build()
+    }
+    ViewCompat.requestApplyInsets(content)
     WindowCompat.getInsetsController(window, window.decorView).apply {
       isAppearanceLightStatusBars = false
       isAppearanceLightNavigationBars = false

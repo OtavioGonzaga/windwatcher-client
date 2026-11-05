@@ -29,7 +29,7 @@ const labels = {
 };
 
 test("all four languages switch without reload, requests or durable storage", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/#/preferences");
   await page.evaluate(() => {
     document.documentElement.dataset.testMarker = "same-document";
   });
@@ -38,7 +38,6 @@ test("all four languages switch without reload, requests or durable storage", as
   for (const locale of ["pt-BR", "es", "de", "en"] as const) {
     await page.locator("select").first().selectOption(locale);
     await expect(page.locator("html")).toHaveAttribute("lang", locale);
-    await expect(page.getByText(labels[locale].description, { exact: true })).toBeVisible();
     await expect(page.getByLabel(labels[locale].language)).toHaveValue(locale);
     await expect(page.getByLabel(labels[locale].appearance)).toBeVisible();
   }
@@ -51,7 +50,7 @@ test("system theme follows OS changes, explicit mode overrides, and reload reset
   page,
 }) => {
   await page.emulateMedia({ colorScheme: "dark" });
-  await page.goto("/");
+  await page.goto("/#/preferences");
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
   await expect(page.locator("html")).toHaveCSS("color-scheme", "dark");
   await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute("content", "#1d2021");
@@ -73,9 +72,9 @@ for (const theme of ["light", "dark"] as const) {
     page,
   }) => {
     await page.emulateMedia({ colorScheme: theme });
-    await page.goto("/");
+    await page.goto("/#/preferences");
     expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
-    await page.keyboard.press("Tab");
+    await page.getByLabel("Language").focus();
     await expect(page.getByLabel("Language")).toBeFocused();
     await expect(page.getByLabel("Language")).toHaveCSS("outline-style", "solid");
     await expect(page.getByLabel("Language")).toHaveCSS("outline-width", "3px");
@@ -104,7 +103,7 @@ for (const theme of ["light", "dark"] as const) {
 for (const width of [320, 360, 768, 1280]) {
   test(`German controls wrap at ${width}px and 200% text size`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
-    for (const url of ["/", showcase]) {
+    for (const url of ["/#/preferences", showcase]) {
       await page.goto(url);
       await page.locator("select").first().selectOption("de");
       // Test-only CSS, not application inline styles or a production CSP exception.
@@ -161,5 +160,6 @@ test("fonts and assets load locally and production output excludes fixture entry
     .join("\n");
   expect(js).not.toContain("data-foundation-showcase");
   expect(js).not.toContain("networkProbe");
+  expect(js).not.toContain("data-shell-keyboard-fixture");
   expect(readdirSync("dist")).not.toContain("tests");
 });
