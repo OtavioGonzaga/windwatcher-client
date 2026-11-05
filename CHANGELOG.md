@@ -22,5 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Validate the exact success status declared by each HTTP operation rather than
+  treating arbitrary 2xx JSON responses as completed operations.
 - Release native HTTP response resources for no-content statuses through a
   reproducible patch of the pinned plugin wrapper, with regression coverage.

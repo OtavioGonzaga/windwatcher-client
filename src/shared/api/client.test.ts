@@ -12,6 +12,52 @@ function setup(response: () => Response | Promise<Response>) {
 afterEach(() => vi.useRealTimers());
 
 describe("typed JSON client", () => {
+  it.each([201, 202, 203, 205, 206, 207, 208, 226])(
+    "rejects unexpected HTTP %s for getInstance without reading or decoding it",
+    async (status) => {
+      const cancel = vi.fn();
+      const response = new Response(
+        new ReadableStream({
+          start(controller) {
+            controller.enqueue(new TextEncoder().encode(JSON.stringify(instance)));
+          },
+          cancel,
+        }),
+        { status, headers: { "Content-Type": "application/json", "X-Request-Id": requestId } },
+      );
+      const { client } = setup(() => response);
+      await expect(client.getInstance()).rejects.toMatchObject({
+        category: "invalid-response",
+        metadata: { status, requestId },
+      });
+      expect(cancel).toHaveBeenCalledOnce();
+      expect(response.bodyUsed).toBe(true);
+    },
+  );
+
+  it.each([200, 202, 206])(
+    "rejects HTTP %s when a write explicitly expects 201",
+    async (status) => {
+      const decode = vi.fn(decodeInstance);
+      const { client, transport } = setup(() => Response.json(instance, { status }));
+      await expect(
+        client.request({ method: "POST", path: ["fixture"], expectedStatus: 201, decode }),
+      ).rejects.toMatchObject({ category: "invalid-response", metadata: { status } });
+      expect(decode).not.toHaveBeenCalled();
+      expect(transport).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it.each([200, 201])("does not equate JSON %s with a declared empty 204", async (status) => {
+    await expect(
+      setup(() => Response.json(instance, { status })).client.request({
+        method: "DELETE",
+        path: ["fixture"],
+        expectedStatus: 204,
+        response: "empty",
+      }),
+    ).rejects.toMatchObject({ category: "invalid-response", metadata: { status } });
+  });
   it.each([0, -1, NaN, Infinity, 2147483648])(
     "rejects invalid deadline %s before I/O",
     async (timeoutMs) => {
@@ -26,17 +72,25 @@ describe("typed JSON client", () => {
     await expect(
       client.request({
         method: "GET",
+        expectedStatus: 200,
         path: ["fixture"],
         body: { secret: "password" },
         decode: decodeInstance,
       }),
     ).rejects.toThrow("GET requests cannot contain a body");
     await expect(
-      client.request({ method: "POST", path: ["fixture"], body: 1n, decode: decodeInstance }),
+      client.request({
+        method: "POST",
+        expectedStatus: 201,
+        path: ["fixture"],
+        body: 1n,
+        decode: decodeInstance,
+      }),
     ).rejects.toThrow("not JSON serializable");
     await expect(
       client.request({
         method: "GET",
+        expectedStatus: 200,
         path: ["fixture"],
         accessToken: "secret\r\nCookie: injected",
         decode: decodeInstance,
@@ -57,7 +111,13 @@ describe("typed JSON client", () => {
     const remove = vi.spyOn(original.signal, "removeEventListener");
     const decode = vi.fn(decodeInstance);
     const replacement = vi.fn(decodeInstance);
-    const options = { method: "GET" as const, path: ["fixture"], signal: original.signal, decode };
+    const options = {
+      method: "GET" as const,
+      expectedStatus: 200 as const,
+      path: ["fixture"],
+      signal: original.signal,
+      decode,
+    };
     const pending = client.request(options);
     options.signal = new AbortController().signal;
     options.decode = replacement;
@@ -113,6 +173,7 @@ describe("typed JSON client", () => {
       const { client, transport } = setup(() => Response.json(instance, { status: 201 }));
       await client.request({
         method,
+        expectedStatus: 201,
         path: ["fixture"],
         body: { value: true },
         accessToken: "token-123",
@@ -129,7 +190,12 @@ describe("typed JSON client", () => {
   it("handles no-content only when the caller expects it", async () => {
     const { client } = setup(() => new Response(null, { status: 204 }));
     await expect(
-      client.request({ method: "DELETE", path: ["fixture"], response: "empty" }),
+      client.request({
+        method: "DELETE",
+        expectedStatus: 204,
+        path: ["fixture"],
+        response: "empty",
+      }),
     ).resolves.toBeUndefined();
     await expect(client.getInstance()).rejects.toMatchObject({
       category: "invalid-response",
@@ -264,6 +330,7 @@ describe("typed JSON client", () => {
     const controller = new AbortController();
     const request = first.client.request({
       method: "GET",
+      expectedStatus: 200,
       path: ["fixture"],
       accessToken: "first",
       signal: controller.signal,
@@ -273,6 +340,7 @@ describe("typed JSON client", () => {
     await expect(request).rejects.toMatchObject({ category: "cancelled" });
     await other.request({
       method: "GET",
+      expectedStatus: 200,
       path: ["fixture"],
       accessToken: "second",
       decode: decodeInstance,

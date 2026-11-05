@@ -22,9 +22,11 @@ workflow. The returned instance is validated protocol metadata, not authenticate
 server identity or onboarding approval. There is no legacy 404/empty fallback.
 See [contract provenance and generation](api-contract.md).
 
-`request()` supports GET/POST/PATCH/PUT/DELETE. Supply a runtime `decode(unknown)`
-for JSON results, or `response: "empty"` for a 204 result. JSON 200/201 responses
-are decoded; an unexpected 204 for `getInstance()` is an invalid response, never
+`request()` supports GET/POST/PATCH/PUT/DELETE. Declare `expectedStatus: 200` or
+`201` with a runtime `decode(unknown)`, or `expectedStatus: 204` with
+`response: "empty"`. Only the declared success is accepted: for example,
+`getInstance()` always expects 200 and rejects 201/202/206 as well as 204, without
+reading or decoding the unexpected body. An unexpected 2xx is an invalid response, never
 an assertion that a server exists. Other endpoint methods/decoders belong with
 their consuming features, not a generated service layer.
 

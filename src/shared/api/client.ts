@@ -17,8 +17,11 @@ interface RequestOptions extends RequestLifetime {
   readonly accessToken?: string;
   readonly body?: unknown;
 }
-type JsonRequest<T> = RequestOptions & { readonly decode: (value: unknown) => T };
-type EmptyRequest = RequestOptions & { readonly response: "empty" };
+type JsonRequest<T> = RequestOptions & {
+  readonly expectedStatus: 200 | 201;
+  readonly decode: (value: unknown) => T;
+};
+type EmptyRequest = RequestOptions & { readonly expectedStatus: 204; readonly response: "empty" };
 
 /** A server-bound client; credentials and request lifetime are never global. */
 export class ApiClient {
@@ -35,6 +38,7 @@ export class ApiClient {
     // authorization, even from an untyped JS caller supplying extra properties.
     return this.request({
       method: "GET",
+      expectedStatus: 200,
       path: ["instance"],
       decode: decodeInstance,
       signal: options.signal,
@@ -48,6 +52,10 @@ export class ApiClient {
     const signal = options.signal;
     const expectsEmpty = "response" in options;
     const decode = "decode" in options ? options.decode : undefined;
+    const expectedStatus = options.expectedStatus;
+    if (expectsEmpty ? expectedStatus !== 204 : expectedStatus !== 200 && expectedStatus !== 201) {
+      throw new TypeError("Declare the operation's expected JSON (200/201) or empty (204) status.");
+    }
     const timeout = options.timeoutMs ?? 15000;
     if (!Number.isInteger(timeout) || timeout <= 0 || timeout > 2147483647) {
       throw new TypeError("Request timeout must be a positive 32-bit millisecond duration.");
@@ -113,10 +121,11 @@ export class ApiClient {
             void response.body?.cancel().catch(() => {});
             throw new ApiError("redirect", metadata);
           }
-          if (response.status === 204) {
-            if (expectsEmpty) return undefined;
+          if (response.ok && response.status !== expectedStatus) {
+            void response.body?.cancel().catch(() => {});
             throw new ApiError("invalid-response", metadata);
           }
+          if (response.status === 204) return undefined;
           // The deadline includes body consumption, not only response headers.
           const text = await response.text();
           if (controller.signal.aborted) throw new ApiError("cancelled");
