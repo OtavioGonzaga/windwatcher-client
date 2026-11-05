@@ -1,10 +1,15 @@
 import { ApiError, retryAfterMs } from "./error";
-import { DEFAULT_MAX_RESPONSE_BYTES, MAX_METADATA_RESPONSE_BYTES, readBoundedText } from "./body";
+import { DEFAULT_MAX_RESPONSE_BYTES, MAX_METADATA_RESPONSE_BYTES, readBoundedBody } from "./body";
 import type { FailureMetadata } from "./error";
 import type { HttpMethod, HttpTransport } from "./transport";
 import { apiUrl, ServerUrl } from "./url";
-import { decodeInstance, isRequestId, parseProblem } from "./validation";
-import type { Instance } from "./validation";
+import {
+  decodeInstance,
+  decodeInstanceAdvertisement,
+  isRequestId,
+  parseProblem,
+} from "./validation";
+import type { Instance, InstanceAdvertisement } from "./validation";
 
 export interface RequestLifetime {
   readonly signal?: AbortSignal | undefined;
@@ -27,6 +32,7 @@ type EmptyRequest = RequestOptions & {
   readonly expectedStatuses: readonly [204];
   readonly response: "empty";
 };
+type Inspection = { kind: "absent" } | { kind: "metadata"; metadata: InstanceAdvertisement };
 
 /** A server-bound client; credentials and request lifetime are never global. */
 export class ApiClient {
@@ -52,9 +58,47 @@ export class ApiClient {
     });
   }
 
+  /** Discovery-only absence handling; generic requests remain strict. */
+  async inspectInstance(options: RequestLifetime = {}): Promise<Inspection> {
+    try {
+      return await this.#request(
+        {
+          method: "GET",
+          expectedStatuses: [200],
+          path: ["instance"],
+          maxResponseBytes: MAX_METADATA_RESPONSE_BYTES,
+          decode: (value) => ({
+            kind: "metadata" as const,
+            metadata: decodeInstanceAdvertisement(value),
+          }),
+          signal: options.signal,
+          timeoutMs: options.timeoutMs,
+        },
+        true,
+      );
+    } catch (error) {
+      if (
+        error instanceof ApiError &&
+        error.metadata.status === 404 &&
+        (error.category === "http" || error.category === "invalid-response")
+      )
+        return { kind: "absent" };
+      throw error;
+    }
+  }
+
   request<T>(options: JsonRequest<T>): Promise<T>;
   request(options: EmptyRequest): Promise<void>;
   async request<T>(options: JsonRequest<T> | EmptyRequest): Promise<T | void> {
+    return this.#request(options, false);
+  }
+
+  #request(options: JsonRequest<Inspection>, inspection: true): Promise<Inspection>;
+  #request<T>(options: JsonRequest<T> | EmptyRequest, inspection: false): Promise<T | void>;
+  async #request<T>(
+    options: JsonRequest<T> | EmptyRequest,
+    inspection: boolean,
+  ): Promise<T | void | Inspection> {
     const signal = options.signal;
     const expectsEmpty = "response" in options;
     const decode = "decode" in options ? options.decode : undefined;
@@ -138,18 +182,22 @@ export class ApiClient {
             void response.body?.cancel().catch(() => {});
             throw new ApiError("redirect", metadata);
           }
+          if (inspection && response.status === 204) {
+            void response.body?.cancel().catch(() => {});
+            return { kind: "absent" as const };
+          }
           if (response.ok && !expectedStatuses.includes(response.status)) {
             void response.body?.cancel().catch(() => {});
             throw new ApiError("invalid-response", metadata);
           }
           if (response.status === 204) return undefined;
           const media = response.headers.get("Content-Type")?.split(";")[0]?.trim().toLowerCase();
-          if (media !== "application/json" && media !== "application/problem+json") {
+          if (!inspection && media !== "application/json" && media !== "application/problem+json") {
             void response.body?.cancel().catch(() => {});
             throw new ApiError("invalid-response", metadata);
           }
           // The deadline includes bounded body consumption, not only headers.
-          const text = await readBoundedText(
+          const { text, bytes } = await readBoundedBody(
             response,
             response.ok
               ? maxResponseBytes
@@ -158,6 +206,10 @@ export class ApiClient {
             metadata,
           );
           if (controller.signal.aborted) throw new ApiError("cancelled");
+          if (inspection && response.status === 200 && bytes === 0)
+            return { kind: "absent" as const };
+          if (media !== "application/json" && media !== "application/problem+json")
+            throw new ApiError("invalid-response", metadata);
           let value: unknown;
           try {
             value = JSON.parse(text);

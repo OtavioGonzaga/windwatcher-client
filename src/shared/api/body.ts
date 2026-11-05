@@ -13,6 +13,16 @@ export async function readBoundedText(
   signal: AbortSignal,
   metadata: FailureMetadata,
 ): Promise<string> {
+  return (await readBoundedBody(response, maxBytes, signal, metadata)).text;
+}
+
+/** Preserve the delivered byte count even when UTF-8 decoding removes a BOM. */
+export async function readBoundedBody(
+  response: Response,
+  maxBytes: number,
+  signal: AbortSignal,
+  metadata: FailureMetadata,
+): Promise<{ text: string; bytes: number }> {
   const length = response.headers.get("Content-Length");
   const encoding = response.headers.get("Content-Encoding")?.trim().toLowerCase();
   // A compressed Content-Length is not the decoded stream size. Never rely on
@@ -26,7 +36,7 @@ export async function readBoundedText(
     void response.body?.cancel().catch(() => {});
     throw new ApiError("response-too-large", metadata);
   }
-  if (!response.body) return "";
+  if (!response.body) return { text: "", bytes: 0 };
   const reader = response.body.getReader();
   const onAbort = () => {
     void reader.cancel().catch(() => {});
@@ -61,7 +71,7 @@ export async function readBoundedText(
     } catch {
       throw new ApiError("invalid-response", metadata);
     }
-    return text.join("");
+    return { text: text.join(""), bytes: received };
   } finally {
     signal.removeEventListener("abort", onAbort);
     if (!completed) void reader.cancel().catch(() => {});

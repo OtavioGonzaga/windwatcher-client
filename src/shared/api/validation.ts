@@ -19,10 +19,17 @@ function stringList(value: unknown): value is string[] {
 }
 
 /** Known instance fields plus opaque capability advertisements, not onboarding policy. */
-export function decodeInstance(value: unknown): Instance {
+export interface InstanceAdvertisement {
+  service: string;
+  api_versions: string[];
+  auth_methods: string[];
+  registration: "open" | "closed";
+}
+
+export function decodeInstanceAdvertisement(value: unknown): InstanceAdvertisement {
   if (
     !record(value) ||
-    value.service !== "windwatcher" ||
+    typeof value.service !== "string" ||
     !stringList(value.api_versions) ||
     !stringList(value.auth_methods) ||
     (value.registration !== "open" && value.registration !== "closed")
@@ -34,6 +41,12 @@ export function decodeInstance(value: unknown): Instance {
     auth_methods: [...value.auth_methods],
     registration: value.registration,
   };
+}
+
+export function decodeInstance(value: unknown): Instance {
+  const result = decodeInstanceAdvertisement(value);
+  if (result.service !== "windwatcher") throw new TypeError("Invalid instance metadata.");
+  return { ...result, service: "windwatcher" };
 }
 
 export function parseProblem(value: unknown, status: number): Problem | undefined {
