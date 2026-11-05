@@ -4,6 +4,7 @@ import { defineConfig } from "vitest/config";
 
 const host = process.env.TAURI_DEV_HOST;
 const networkHarness = process.env.WINDWATCHER_NETWORK_HARNESS === "1";
+const foundationHarness = process.env.WINDWATCHER_FOUNDATION_HARNESS === "1";
 
 export default defineConfig({
   plugins: [
@@ -28,12 +29,14 @@ export default defineConfig({
     },
   ],
   clearScreen: false,
-  build: networkHarness
-    ? {
-        outDir: "dist-network",
-        rollupOptions: { input: { main: "index.html", network: "tests/network/index.html" } },
-      }
-    : {},
+  build: foundationHarness
+    ? { outDir: "dist-foundation", rollupOptions: { input: "tests/foundation/index.html" } }
+    : networkHarness
+      ? {
+          outDir: "dist-network",
+          rollupOptions: { input: { main: "index.html", network: "tests/network/index.html" } },
+        }
+      : {},
   server: {
     port: 1420,
     strictPort: true,

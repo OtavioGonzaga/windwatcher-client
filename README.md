@@ -7,7 +7,8 @@ One React application targets the web and Tauri 2 on Linux, Windows and Android.
 ## Status
 
 This repository contains the shared toolchain, a typed HTTP foundation and a
-static branded screen. Server-selection UI, accounts and messaging are **not implemented yet**.
+branded screen with accessible visual tokens and working language/appearance
+choices. Server-selection UI, accounts and messaging are **not implemented yet**.
 There are no published client releases or supported installation packages.
 `0.0.1-dev.0` in build manifests is an unpublished development placeholder, not a release.
 
@@ -46,9 +47,11 @@ documented in the [development guide](docs/development.md).
 
 Read [CONTRIBUTING.md](CONTRIBUTING.md), the [documentation index](docs/README.md)
 and [changelog](CHANGELOG.md). Code and developer documentation are in English;
-the upcoming interface foundation will support `en`, `pt-BR`, `es` and `de`.
+the [interface foundation](docs/visual-foundation.md) supports `en`, `pt-BR`,
+`es` and `de`. Appearance and language choices are not persisted yet.
 
 ## License
 
-The software is [MIT licensed](LICENSE). See the [brand asset inventory](public/brand/README.md)
+The software is [MIT licensed](LICENSE); bundled IBM Plex fonts retain their
+[SIL OFL license](public/licenses/ibm-plex-OFL.txt). See the [brand asset inventory](public/brand/README.md)
 for supplied artwork and outstanding provenance/distribution verification.

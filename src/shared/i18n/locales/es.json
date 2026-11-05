@@ -1,0 +1,36 @@
+{
+  "common": {
+    "language": "Idioma",
+    "appearance": "Apariencia",
+    "system": "Sistema",
+    "light": "Clara",
+    "dark": "Oscura",
+    "languages": {
+      "en": "English",
+      "pt-BR": "Português (Brasil)",
+      "es": "Español",
+      "de": "Deutsch"
+    },
+    "reset": "Restablecer ejemplo",
+    "clear": "Vaciar el campo de ejemplo"
+  },
+  "foundation": {
+    "description": "Un cliente de mensajería para servidores propios.",
+    "preferences": "Presentación",
+    "temporary": "El idioma y la apariencia se mantienen solo hasta que cierres o recargues la aplicación.",
+    "showcase": "Base de componentes",
+    "showcaseHint": "Solo ejemplos locales. No se contacta con ningún servidor ni se guarda nada.",
+    "serverLabel": "Ejemplo de URL del servidor",
+    "serverHint": "Incluye https:// y, si es necesario, la ruta del proxy inverso.",
+    "serverError": "Validación de ejemplo: introduce la dirección completa del servidor, incluidos el protocolo y el nombre del host.",
+    "serverPlaceholder": "https://example.org/windwatcher/",
+    "info": "Información: las opciones de presentación están disponibles sin una cuenta.",
+    "warning": "Advertencia: estos ejemplos no establecen una conexión con el servidor.",
+    "error": "Ejemplo de error: la dirección del servidor está incompleta. Revisa el campo e inténtalo de nuevo.",
+    "success": "Éxito: el campo de ejemplo se ha restablecido localmente.",
+    "sample": "Metadatos técnicos",
+    "greeting": "Te damos la bienvenida, {{name}}.",
+    "examples_one": "{{count}} ejemplo local",
+    "examples_other": "{{count}} ejemplos locales"
+  }
+}

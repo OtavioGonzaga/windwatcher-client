@@ -18,6 +18,11 @@ export default defineConfig({
   ],
   webServer: [
     {
+      command: "bun --bun vite preview --outDir dist-foundation --port 4175",
+      url: "http://127.0.0.1:4175/tests/foundation/index.html",
+      reuseExistingServer: false,
+    },
+    {
       command: "bun run preview",
       url: "http://127.0.0.1:4173",
       reuseExistingServer: false,

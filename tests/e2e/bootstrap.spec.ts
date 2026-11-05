@@ -12,10 +12,11 @@ test("production frontend boots with intact artwork and no runtime errors", asyn
   await expect(page.getByRole("heading", { name: "Windwatcher", level: 1 })).toBeAttached();
   const image = page.locator("main img");
   await expect(image).toBeVisible();
+  await expect(image).toHaveCSS("background-color", "rgb(29, 32, 33)");
   expect(await image.evaluate((element: HTMLImageElement) => element.naturalWidth)).toBe(543);
   expect(await page.locator("body").evaluate((body) => body.scrollWidth <= window.innerWidth)).toBe(
     true,
   );
-  await expect(page.getByRole("main")).toHaveCSS("background-color", "rgb(29, 32, 33)");
+  await expect(page.getByRole("main")).toHaveCSS("background-color", "rgb(251, 241, 199)");
   expect(errors).toEqual([]);
 });

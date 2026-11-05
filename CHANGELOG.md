@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Accessible warm light/dark/system presentation, locally bundled IBM Plex fonts,
+  semantic tokens and focused native-HTML controls with an isolated test fixture.
+- English, Brazilian Portuguese, Spanish and German catalogs with working language
+  selection, regional fallback, typed keys and locale-aware formatting. Language
+  and appearance selections remain in memory until reload/restart.
 - Shared React, TypeScript and Tailwind bootstrap screen for web and Tauri 2.
 - Minimal Linux/Windows native host and Android host project for the shared frontend.
 - Bun-managed tooling, Oxc formatting/linting, component/browser smoke tests,

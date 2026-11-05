@@ -32,7 +32,8 @@ additional runtime shipped inside Tauri.
   unrelated filesystem/shell capabilities.
 - Do not add server-side administration or UI suggesting unsupported protocol features.
 - Introduce localized end-user strings with the four-locale foundation; the
-  bootstrap only displays the proper name and supplied artwork.
+  [visual foundation guide](docs/visual-foundation.md) documents typed keys,
+  catalog parity, semantic color pairs and the isolated component fixture.
 
 See [architecture](docs/architecture.md). Add an ADR alongside a significant
 implemented architectural change, using [the policy](docs/adr/README.md).

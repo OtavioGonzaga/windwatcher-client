@@ -1,0 +1,36 @@
+{
+  "common": {
+    "language": "Idioma",
+    "appearance": "Aparência",
+    "system": "Sistema",
+    "light": "Clara",
+    "dark": "Escura",
+    "languages": {
+      "en": "English",
+      "pt-BR": "Português (Brasil)",
+      "es": "Español",
+      "de": "Deutsch"
+    },
+    "reset": "Redefinir exemplo",
+    "clear": "Limpar campo de exemplo"
+  },
+  "foundation": {
+    "description": "Um cliente de mensagens para servidores próprios.",
+    "preferences": "Apresentação",
+    "temporary": "O idioma e a aparência são mantidos somente até você fechar ou recarregar o aplicativo.",
+    "showcase": "Base de componentes",
+    "showcaseHint": "Apenas exemplos locais. Nenhum servidor é contatado e nada é salvo.",
+    "serverLabel": "Exemplo de URL do servidor",
+    "serverHint": "Inclua https:// e, se necessário, o caminho do proxy reverso.",
+    "serverError": "Validação de exemplo: informe o endereço completo do servidor, incluindo o protocolo e o nome do host.",
+    "serverPlaceholder": "https://example.org/windwatcher/",
+    "info": "Informação: as opções de apresentação estão disponíveis sem uma conta.",
+    "warning": "Atenção: estes exemplos não estabelecem uma conexão com o servidor.",
+    "error": "Exemplo de erro: o endereço do servidor está incompleto. Revise o campo e tente novamente.",
+    "success": "Sucesso: o campo de exemplo foi redefinido localmente.",
+    "sample": "Metadados técnicos",
+    "greeting": "Boas-vindas, {{name}}.",
+    "examples_one": "{{count}} exemplo local",
+    "examples_other": "{{count}} exemplos locais"
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "common": {
+    "language": "Language",
+    "appearance": "Appearance",
+    "system": "System",
+    "light": "Light",
+    "dark": "Dark",
+    "languages": {
+      "en": "English",
+      "pt-BR": "Português (Brasil)",
+      "es": "Español",
+      "de": "Deutsch"
+    },
+    "reset": "Reset example",
+    "clear": "Clear example input"
+  },
+  "foundation": {
+    "description": "A client for self-hosted messaging.",
+    "preferences": "Presentation",
+    "temporary": "Language and appearance apply only until you close or reload the app.",
+    "showcase": "Component foundation",
+    "showcaseHint": "Local examples only. No server is contacted and nothing is saved.",
+    "serverLabel": "Server URL example",
+    "serverHint": "Include https:// and an optional reverse-proxy path.",
+    "serverError": "Example validation: enter a complete server address, including the protocol and host name.",
+    "serverPlaceholder": "https://example.org/windwatcher/",
+    "info": "Information: presentation choices are available without an account.",
+    "warning": "Warning: these examples do not establish a server connection.",
+    "error": "Error example: the server address is incomplete. Review the field and try again.",
+    "success": "Success: the example input was reset locally.",
+    "sample": "Technical metadata",
+    "greeting": "Welcome, {{name}}.",
+    "examples_one": "{{count}} local example",
+    "examples_other": "{{count}} local examples"
+  }
+}
