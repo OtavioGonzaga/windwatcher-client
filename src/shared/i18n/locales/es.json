@@ -55,7 +55,14 @@
       "legacyRecognized": "Faltan los metadatos de descubrimiento. Una respuesta sin autenticar sugiere una API v1 antigua, pero no verifica su identidad.",
       "legacyUnknown": "Faltan los metadatos de descubrimiento. No se puede confirmar la compatibilidad con Windwatcher.",
       "acknowledge": "Entiendo que este servidor no está verificado.",
-      "legacySummary": "Puede haber inicio de sesión y registro, pero la compatibilidad y la política de registro son desconocidas. No se guardó ningún servidor ni se creó ninguna cuenta."
+      "legacySummary": "Puede haber inicio de sesión y registro, pero la compatibilidad y la política de registro son desconocidas. No se guardó ningún servidor ni se creó ninguna cuenta.",
+      "urlError": {
+        "scheme": "Incluye http:// o https:// y un host.",
+        "credentials": "Elimina las credenciales de la dirección.",
+        "queryFragment": "Elimina la consulta y el fragmento de la dirección.",
+        "apiRoot": "Introduce la raíz del servidor, sin el /v1 final.",
+        "invalid": "Introduce una raíz válida sin espacios, controles ni rutas de navegación."
+      }
     }
   },
   "foundation": {

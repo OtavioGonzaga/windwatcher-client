@@ -55,7 +55,14 @@
       "legacyRecognized": "Discovery-Metadaten fehlen. Eine nicht authentifizierte Antwort deutet auf eine ältere v1-API hin, bestätigt aber keine Identität.",
       "legacyUnknown": "Discovery-Metadaten fehlen. Die Kompatibilität mit Windwatcher lässt sich nicht bestätigen.",
       "acknowledge": "Ich verstehe, dass dieser Server nicht verifiziert ist.",
-      "legacySummary": "Anmeldung und Registrierung könnten verfügbar sein, aber Kompatibilität und Registrierungsrichtlinie sind unbekannt. Es wurde kein Server gespeichert und kein Konto erstellt."
+      "legacySummary": "Anmeldung und Registrierung könnten verfügbar sein, aber Kompatibilität und Registrierungsrichtlinie sind unbekannt. Es wurde kein Server gespeichert und kein Konto erstellt.",
+      "urlError": {
+        "scheme": "Gib http:// oder https:// und einen Host an.",
+        "credentials": "Entferne Zugangsdaten aus der Adresse.",
+        "queryFragment": "Entferne Abfrage und Fragment aus der Adresse.",
+        "apiRoot": "Gib die Serveradresse ohne abschließendes /v1 ein.",
+        "invalid": "Gib eine gültige Serveradresse ohne Leerzeichen, Steuerzeichen oder Pfadumgehung ein."
+      }
     }
   },
   "foundation": {

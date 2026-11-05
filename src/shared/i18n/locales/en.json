@@ -55,7 +55,14 @@
       "legacyRecognized": "Discovery metadata is absent. An unauthenticated response suggests a legacy v1 API, but does not verify identity.",
       "legacyUnknown": "Discovery metadata is absent. Compatibility with Windwatcher cannot be confirmed.",
       "acknowledge": "I understand this server is unverified.",
-      "legacySummary": "Login and registration may be available, but compatibility and registration policy are unknown. No server was saved or account created."
+      "legacySummary": "Login and registration may be available, but compatibility and registration policy are unknown. No server was saved or account created.",
+      "urlError": {
+        "scheme": "Include http:// or https:// and a host.",
+        "credentials": "Remove credentials from the address.",
+        "queryFragment": "Remove the query and fragment from the address.",
+        "apiRoot": "Enter the server root, without the final /v1.",
+        "invalid": "Enter a valid server root without spaces, controls or traversal."
+      }
     }
   },
   "foundation": {

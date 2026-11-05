@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ApiError } from "../../shared/api/error";
-import { apiUrl, ServerUrl } from "../../shared/api/url";
+import { apiUrl, ServerUrl, ServerUrlError } from "../../shared/api/url";
 import { Button } from "../../shared/components/Button";
 import { TextField } from "../../shared/components/TextField";
 import { platformHttp } from "../../shared/platform/http";
@@ -18,10 +18,11 @@ export function AddServerPage() {
   const [acknowledged, setAcknowledged] = useState(false);
   const attempt = useRef<AbortController | null>(null);
   let base: ServerUrl | undefined;
+  let reason: ServerUrlError["reason"] = "invalid";
   try {
     base = ServerUrl.parse(input);
-  } catch {
-    /* Input is validated on submission. */
+  } catch (error) {
+    if (error instanceof ServerUrlError) reason = error.reason;
   }
   const cancel = () => {
     const active = attempt.current;
@@ -107,7 +108,7 @@ export function AddServerPage() {
           id="server-url"
           label={t("discovery.url")}
           hint={t("discovery.hint")}
-          {...(invalid ? { error: t("discovery.invalidUrl") } : {})}
+          {...(invalid ? { error: t(`discovery.urlError.${reason}`) } : {})}
           value={input}
           onChange={(event) => {
             cancel();

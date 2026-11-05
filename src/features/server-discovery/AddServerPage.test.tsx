@@ -27,7 +27,7 @@ describe("manual inspection lifecycle", () => {
       target: { value: "https://example.org/v1" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Check server" }));
-    expect(screen.getByText(/valid HTTP\(S\) server root/)).toBeVisible();
+    expect(screen.getByText(/without the final \/v1/)).toBeVisible();
     expect(mock.discover).not.toHaveBeenCalled();
   });
   it("invalidates a late result after the input changes", async () => {
@@ -71,5 +71,43 @@ describe("manual inspection lifecycle", () => {
     expect(screen.queryByText(/Login and registration may be available/)).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("checkbox"));
     expect(screen.getByText(/Login and registration may be available/)).toBeVisible();
+  });
+
+  it("aborts on cancel and ignores a late failure", async () => {
+    mock.discover.mockReset();
+    let reject: (error: unknown) => void = () => {};
+    mock.discover.mockImplementation(
+      () =>
+        new Promise((_, fail) => {
+          reject = fail;
+        }),
+    );
+    mount();
+    fireEvent.change(screen.getByLabelText("Server URL"), {
+      target: { value: "https://example.org" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Check server" }));
+    await waitFor(() => expect(mock.discover).toHaveBeenCalledOnce());
+    const signal = mock.discover.mock.calls[0]?.[2];
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(signal.aborted).toBe(true);
+    await act(async () => {
+      reject(new Error("late private detail"));
+    });
+    expect(screen.queryByText(/request failed/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/late private detail/)).not.toBeInTheDocument();
+  });
+
+  it("aborts pending work when the page unmounts", async () => {
+    mock.discover.mockReset().mockImplementation(() => new Promise(() => {}));
+    const view = mount();
+    fireEvent.change(screen.getByLabelText("Server URL"), {
+      target: { value: "https://example.org" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Check server" }));
+    await waitFor(() => expect(mock.discover).toHaveBeenCalledOnce());
+    const signal = mock.discover.mock.calls[0]?.[2];
+    view.unmount();
+    expect(signal.aborted).toBe(true);
   });
 });

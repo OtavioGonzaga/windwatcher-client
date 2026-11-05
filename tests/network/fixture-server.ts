@@ -27,6 +27,11 @@ const server = Bun.serve({
     const path = new URL(request.url).pathname;
     if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
     if (path === "/ready") return new Response("ready");
+    if (path === "/pr5-allowed/v1/instance")
+      return Response.json(instance, {
+        headers: { "Access-Control-Allow-Origin": "http://127.0.0.1:4173" },
+      });
+    if (path === "/pr5-denied/v1/instance") return Response.json(instance);
     if (path === "/accepted/v1/instance")
       return Response.json(instance, { status: 202, headers: cors });
     if (path === "/future/v1/instance")

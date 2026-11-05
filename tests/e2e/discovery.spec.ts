@@ -59,3 +59,15 @@ test("nested static hosting supports direct connect route", async ({ page }) => 
   await page.reload();
   await expect(page.getByRole("textbox", { name: "Server URL" })).toBeVisible();
 });
+
+test("browser enforces real cross-origin CORS responses", async ({ page }) => {
+  await page.goto("/#/connect");
+  const input = page.getByRole("textbox", { name: "Server URL" });
+  await input.fill("http://127.0.0.1:4318/pr5-allowed");
+  await page.getByRole("button", { name: "Check server" }).click();
+  await expect(page.getByText(/Self-registration is closed/)).toBeVisible();
+  await input.fill("http://127.0.0.1:4318/pr5-denied");
+  await page.getByRole("button", { name: "Check server" }).click();
+  await expect(page.getByText(/The request failed/)).toBeVisible();
+  await expect(page.getByText(/Self-registration is closed/)).not.toBeVisible();
+});

@@ -1,3 +1,18 @@
+export type ServerUrlErrorReason =
+  | "scheme"
+  | "credentials"
+  | "queryFragment"
+  | "apiRoot"
+  | "invalid";
+
+export class ServerUrlError extends TypeError {
+  constructor(readonly reason: ServerUrlErrorReason) {
+    super(
+      "Invalid server URL; supply an HTTP(S) server root without /v1, credentials, query or fragment.",
+    );
+  }
+}
+
 /** A validated server root, including any reverse-proxy prefix (never /v1). */
 export class ServerUrl {
   readonly #href: string;
@@ -7,15 +22,14 @@ export class ServerUrl {
   }
 
   static parse(input: string): ServerUrl {
-    const invalid = () =>
-      new TypeError(
-        "Invalid server URL; supply an HTTP(S) server root without /v1, credentials, query or fragment.",
-      );
+    const invalid = () => new ServerUrlError("invalid");
     // Inspect before WHATWG URL normalization erases dot segments/backslashes.
     const parts = /^(https?):\/\/([^/?#]+)(\/[^?#]*)?$/i.exec(input);
-    if (!parts || /[\s\\]/u.test(input) || hasControl(input) || parts[2]?.includes("@")) {
-      throw invalid();
-    }
+    if (/[\s\\]/u.test(input) || hasControl(input)) throw invalid();
+    if (!/^https?:\/\//i.test(input)) throw new ServerUrlError("scheme");
+    if (/[?#]/.test(input)) throw new ServerUrlError("queryFragment");
+    if (parts?.[2]?.includes("@")) throw new ServerUrlError("credentials");
+    if (!parts) throw invalid();
     const path = parts[3] ?? "/";
     const segments = path.split("/").slice(1);
     if (segments.at(-1) === "") segments.pop();
@@ -33,11 +47,11 @@ export class ServerUrl {
           segment === ".." ||
           /[/%\\]/u.test(segment) ||
           hasControl(segment),
-      ) ||
-      decoded.at(-1) === "v1"
+      )
     ) {
       throw invalid();
     }
+    if (decoded.at(-1) === "v1") throw new ServerUrlError("apiRoot");
     let url: URL;
     try {
       url = new URL(input);

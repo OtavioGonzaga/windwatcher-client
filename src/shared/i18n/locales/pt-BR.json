@@ -55,7 +55,14 @@
       "legacyRecognized": "Os metadados de descoberta estão ausentes. Uma resposta sem autenticação sugere API v1 legada, mas não verifica a identidade.",
       "legacyUnknown": "Os metadados de descoberta estão ausentes. Não é possível confirmar compatibilidade com Windwatcher.",
       "acknowledge": "Entendo que este servidor não foi verificado.",
-      "legacySummary": "Entrada e cadastro podem estar disponíveis, mas a compatibilidade e a política de cadastro são desconhecidas. Nenhum servidor foi salvo ou conta criada."
+      "legacySummary": "Entrada e cadastro podem estar disponíveis, mas a compatibilidade e a política de cadastro são desconhecidas. Nenhum servidor foi salvo ou conta criada.",
+      "urlError": {
+        "scheme": "Inclua http:// ou https:// e um host.",
+        "credentials": "Remova as credenciais do endereço.",
+        "queryFragment": "Remova a consulta e o fragmento do endereço.",
+        "apiRoot": "Informe a raiz do servidor, sem o /v1 final.",
+        "invalid": "Informe uma raiz válida, sem espaços, controles ou caminhos de navegação."
+      }
     }
   },
   "foundation": {
