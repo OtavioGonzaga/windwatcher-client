@@ -27,6 +27,7 @@ const server = Bun.serve({
     const path = new URL(request.url).pathname;
     if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
     if (path === "/ready") return new Response("ready");
+    if (path === "/empty/v1/fixture") return new Response(null, { status: 204 });
     if (path === "/results") {
       if (request.method === "DELETE") {
         report = null;

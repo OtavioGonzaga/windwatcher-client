@@ -123,7 +123,7 @@ CARGO_BUILD_JOBS=4 bun run tauri build --debug --no-bundle --ci \
 On Windows use PowerShell environment assignments for fixture paths and
 `$env:CARGO_BUILD_JOBS = '4'`, then launch the corresponding `.exe`. Choose
 temporary paths available on that machine; `/tmp/opencode` is the local Linux
-example. The built window runs seven controlled checks and an optional eighth
+example. The built window runs eight controlled checks and an optional ninth
 public HTTPS check (`https://example.com/`). Remove `public-https=1` from a local
 test config to omit that Internet-dependent check; ordinary CI never depends on it.
 
@@ -169,16 +169,20 @@ using an ordinary artifact.
 ## PR 2 validation evidence (2026-11-05)
 
 - `bun run check`: offline type drift, Oxfmt, Oxlint, native TypeScript 7 checker,
-  95 component/unit/contract tests and production build passed. Twelve production
+  98 component/unit/contract tests and production build passed. Twelve production
   Playwright tests passed; `bun audit` reported no vulnerabilities. A deliberate
   stale-generated-file probe failed in check mode without changing the file.
 - Locked Rust check/clippy (warnings denied), formatting and the built Linux host
   passed. Cargo's resolved plugin feature graph contains only `http2` and
   `rustls-tls`, not the plugin's cookie/dangerous-settings/tracing features.
-- Linux x86_64 built Tauri host and Android 16/API 36.1 x86_64 emulator: all eight
+- Linux x86_64 built Tauri host and Android 16/API 36.1 x86_64 emulator: all nine
   native checks passed, including valid public HTTPS and rejected self-signed TLS.
   Each fixture run observed exactly two cancelled requests and zero foreign-origin
   or invalid-TLS HTTP hits. No mock/native-dev-browser substitution was used.
+- Review additionally covered native 204 handling and a reproducible Bun patch
+  releasing the pinned plugin's null-body response resources. The three wrapper
+  regression tests reproduce the bug without replacing the actual plugin module;
+  only its IPC calls are mocked. See [patch rationale](api-contract.md#pinned-plugin-resource-lifecycle-patch).
 - Android debug APK's cleartext attribute and both merged debug/release manifests
   were inspected; the common explicit policy matched, without an overriding NSC.
   A release APK itself and ARM64 physical-device runtime were not tested.

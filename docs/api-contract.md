@@ -58,6 +58,20 @@ These are source/API feasibility findings, **not runtime validation evidence**.
 No custom Rust HTTP command is warranted unless integration exposes a concrete
 blocking limitation. Native imports belong exclusively in the platform adapter.
 
+### Pinned plugin resource-lifecycle patch
+
+Review exposed a bug in the 2.8.3 JavaScript wrapper: `fetch_send` allocates a
+native response resource even for a null-body status, but that branch has no
+stream to consume/cancel the resource. `patches/@tauri-apps%2Fplugin-http@2.8.3.patch`
+adds an awaited call to the existing `dropBody()` for those statuses, in both
+ESM and CommonJS builds. Bun applies this small version-bound patch on install;
+no custom Rust command, dependency fork or additional permission is introduced.
+
+`native-resource.test.ts` runs the actual plugin wrapper with mocked IPC and
+asserts resource release for 204/205/304; it failed before applying the patch.
+The native harness also exercises a real 204. Reassess/remove the patch when an
+upstream version incorporates the fix, retaining the regression tests.
+
 ## Validation constraints
 
 Use controlled local fixtures for cross-origin redirects, cookies, cancellation,

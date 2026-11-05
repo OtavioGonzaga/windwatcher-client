@@ -40,8 +40,8 @@ per-call inputs. Only `getInstance()` has an endpoint-specific method today.
 The static screen does not instantiate a client or make network requests.
 
 `src/shared/platform` supplies browser fetch and lazily loaded Tauri HTTP adapters.
-Shared API code imports neither Tauri nor platform detection. The installed-host
-host flag (`isTauri`) selects native transport, not the dev URL, OS/user-agent or CORS errors.
+Shared API code imports neither Tauri nor platform detection. The injected host
+flag (`isTauri`) selects native transport, not the dev URL, OS/user-agent or CORS errors.
 The browser never falls back to a native transport after a failed fetch.
 
 `contracts/` pins the released server 0.1.1 schema and its provenance. Generation

@@ -1,0 +1,32 @@
+diff --git a/dist-js/index.cjs b/dist-js/index.cjs
+index b64701ce998c3fa590af90024c79dfcc55e9f2f1..5f47e8fa3fbda1472506d0c4e2f05bda9614797b 100644
+--- a/dist-js/index.cjs
++++ b/dist-js/index.cjs
+@@ -158,7 +158,10 @@ async function fetch(input, init) {
+     };
+     // no body for 101, 103, 204, 205 and 304
+     // see https://fetch.spec.whatwg.org/#null-body-status
+-    const body = [101, 103, 204, 205, 304].includes(status)
++    const nullBody = [101, 103, 204, 205, 304].includes(status);
++    if (nullBody)
++        await dropBody();
++    const body = nullBody
+         ? null
+         : new ReadableStream({
+             start: (controller) => {
+diff --git a/dist-js/index.js b/dist-js/index.js
+index 12e51ed1f386583d99759b83c70f504a3e0890b6..640b8cc566af686cd14493f57dd00b26ba8e5386 100644
+--- a/dist-js/index.js
++++ b/dist-js/index.js
+@@ -156,7 +156,10 @@ async function fetch(input, init) {
+     };
+     // no body for 101, 103, 204, 205 and 304
+     // see https://fetch.spec.whatwg.org/#null-body-status
+-    const body = [101, 103, 204, 205, 304].includes(status)
++    const nullBody = [101, 103, 204, 205, 304].includes(status);
++    if (nullBody)
++        await dropBody();
++    const body = nullBody
+         ? null
+         : new ReadableStream({
+             start: (controller) => {

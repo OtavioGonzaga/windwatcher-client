@@ -19,6 +19,15 @@ export async function nativeSmoke() {
   const client = (prefix: string) =>
     new ApiClient({ baseUrl: `http://127.0.0.1:4318/${prefix}/`, transport });
   await check(
+    "native-no-content",
+    async () =>
+      (await client("empty").request({
+        method: "DELETE",
+        path: ["fixture"],
+        response: "empty",
+      })) === undefined,
+  );
+  await check(
     "native-http-without-cors",
     async () => (await client("denied").getInstance()).service === "windwatcher",
   );

@@ -19,3 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   redirect refusal, cancellation/deadlines and structured response failures.
 - Android HTTP policy shared by debug/release, plus isolated browser/native
   network integration harnesses without adding connection/account UI.
+
+### Fixed
+
+- Release native HTTP response resources for no-content statuses through a
+  reproducible patch of the pinned plugin wrapper, with regression coverage.
