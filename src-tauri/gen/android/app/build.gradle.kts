@@ -20,7 +20,6 @@ android {
     ndkVersion = "27.1.12297006"
     namespace = "io.github.otaviogonzaga.windwatcher.client"
     defaultConfig {
-        manifestPlaceholders["usesCleartextTraffic"] = "false"
         applicationId = "io.github.otaviogonzaga.windwatcher.client"
         minSdk = 24
         targetSdk = 36
@@ -29,7 +28,6 @@ android {
     }
     buildTypes {
         getByName("debug") {
-            manifestPlaceholders["usesCleartextTraffic"] = "true"
             isDebuggable = true
             isJniDebuggable = true
             isMinifyEnabled = false

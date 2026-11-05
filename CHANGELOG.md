@@ -10,7 +10,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Shared React, TypeScript and Tailwind bootstrap screen for web and Tauri 2.
-- Minimal Linux/Windows native host and Android host project, without server
-  integration or privileged frontend commands.
+- Minimal Linux/Windows native host and Android host project for the shared frontend.
 - Bun-managed tooling, Oxc formatting/linting, component/browser smoke tests,
   incremental CI and development documentation.
+- Pinned server 0.1.1 OpenAPI contract, reproducible generated types, validated
+  server-bound JSON client and public instance metadata operation.
+- Browser and scoped native HTTP transports with explicit bearer credentials,
+  redirect refusal, cancellation/deadlines and structured response failures.
+- Android HTTP policy shared by debug/release, plus isolated browser/native
+  network integration harnesses without adding connection/account UI.
+- Incremental response byte budgets, with tighter instance/problem limits and
+  explicit per-operation adjustment for legitimate large JSON responses.
+
+### Fixed
+
+- Preserve future instance API/auth advertisements as strings while retaining
+  validation of known fields and the unchanged generated v1 DTO contract.
+- Validate the success statuses declared by each HTTP operation rather than
+  treating arbitrary 2xx JSON responses as completed operations.
+- Release native HTTP response resources for no-content statuses through a
+  reproducible patch of the pinned plugin wrapper, with regression coverage.

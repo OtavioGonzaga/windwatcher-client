@@ -2,17 +2,18 @@
 
 ## Toolchain baseline
 
-| Tool/target             | Baseline                                                                  |
-| ----------------------- | ------------------------------------------------------------------------- |
-| Bun                     | 1.4.4, pinned in `.bun-version` and `package.json`                        |
-| Rust                    | 1.99.1, with rustfmt and clippy (`rust-toolchain.toml`)                   |
-| React / Vite / Tailwind | Exact direct versions in `package.json`; `bun.lock` is authoritative      |
-| Tauri                   | CLI 2.12.4, Rust host 2.12.5 and build helper 2.7.4, independently pinned |
-| Linux development       | GTK 3 and WebKitGTK 4.1 development libraries                             |
-| Windows development     | MSVC C++ Build Tools, Windows SDK and WebView2                            |
-| Android                 | Java 21, SDK/target 36, Build Tools 36.0.0, NDK 27.1.12297006             |
-| Android minimum         | API 24 (template baseline, not a tested device-support claim)             |
-| Initial compile targets | Linux/Windows x86_64 and Android ARM64                                    |
+| Tool/target             | Baseline                                                                                    |
+| ----------------------- | ------------------------------------------------------------------------------------------- |
+| Bun                     | 1.4.4, pinned in `.bun-version` and `package.json`                                          |
+| Rust                    | 1.99.1, with rustfmt and clippy (`rust-toolchain.toml`)                                     |
+| React / Vite / Tailwind | Exact direct versions in `package.json`; `bun.lock` is authoritative                        |
+| TypeScript              | Native checker 7.0.2 (`typescript-checker`); generator JS compiler API 5.9.3 (`typescript`) |
+| Tauri                   | CLI 2.12.4, Rust host 2.12.5 and build helper 2.7.4, independently pinned                   |
+| Linux development       | GTK 3 and WebKitGTK 4.1 development libraries                                               |
+| Windows development     | MSVC C++ Build Tools, Windows SDK and WebView2                                              |
+| Android                 | Java 21, SDK/target 36, Build Tools 36.0.0, NDK 27.1.12297006                               |
+| Android minimum         | API 24 (template baseline, not a tested device-support claim)                               |
+| Initial compile targets | Linux/Windows x86_64 and Android ARM64                                                      |
 
 No client release exists. `0.0.1-dev.0` is an unpublished build placeholder;
 Tauri requires at least `0.0.1` for Android packaging and rejects `0.0.0`.
@@ -123,13 +124,15 @@ adb shell am start -n io.github.otaviogonzaga.windwatcher.client/.MainActivity
 Use an ARM64 device/emulator for that APK. An x86_64 emulator requires a separate
 Rust target and `--target x86_64`; that is not the initial ARM64 artifact.
 Debug signing is local/disposable, not the future release signing process.
-There is no push, credential storage or native HTTP plugin in this baseline.
+There is no push or credential storage. Native HTTP uses the official scoped,
+cookie-free plugin; see the [transport guide](network-transport.md).
 
 `bun run tauri android dev` is an optional interactive workflow with a connected
 device/emulator. Tauri supplies `TAURI_DEV_HOST` so Vite can bind a reachable
 interface and use the matching HMR host. Use a trusted development network only.
-The debug manifest permits cleartext for development. A debug build does not
-prove the future production HTTP/HTTPS server policy; test that with transport.
+The common main manifest explicitly permits cleartext in both debug and release,
+not via a debug-only override. See the transport guide for merged-manifest and
+installed-adapter evidence; a debug build alone is still not release validation.
 
 ## Validation and manual smoke
 
@@ -137,6 +140,12 @@ See [contribution checks](../CONTRIBUTING.md#validation). Browser tests run agai
 the production build at desktop and narrow-mobile widths, checking rendering,
 artwork, Tailwind output, runtime/CSP errors and horizontal overflow. They do not
 replace native WebView or physical-device tests.
+
+The HTTP foundation additionally pins a released OpenAPI snapshot and checks
+type drift offline in `bun run check`. `bun run test:e2e` builds a separate
+network harness and runs controlled cross-origin fixtures, alongside the static
+screen tests. See [contract generation](api-contract.md) and the complete
+[native network smoke procedure/evidence](network-transport.md).
 
 For each native launch:
 

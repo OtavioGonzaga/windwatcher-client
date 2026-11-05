@@ -40,6 +40,11 @@ jobs:
           echo "NDK_HOME=$ANDROID_HOME/ndk/$NDK_VERSION" >> "$GITHUB_ENV"
       - run: bun install --frozen-lockfile
       - run: bun run tauri android build --debug --apk --target aarch64 --ci -- --locked
+      - name: Merge release manifest without building or signing a release APK
+        working-directory: src-tauri/gen/android
+        run: ./gradlew :app:processUniversalReleaseMainManifest --offline --max-workers=4
+      - name: Verify matching debug and release HTTP policy
+        run: bun scripts/check-android-network-policy.ts
       - name: Retain debug APK for manual installation (not a release)
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
