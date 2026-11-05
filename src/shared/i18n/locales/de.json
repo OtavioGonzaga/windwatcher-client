@@ -1,6 +1,7 @@
 {
   "common": {
     "navigation": {
+      "nativeBackError": "Die Zurück-Navigation des Systems ist nicht verfügbar. Verwende die Navigationslinks.",
       "home": "Startseite",
       "preferences": "Einstellungen",
       "label": "Hauptnavigation",

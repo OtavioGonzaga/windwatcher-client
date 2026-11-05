@@ -1,6 +1,7 @@
 {
   "common": {
     "navigation": {
+      "nativeBackError": "A navegação de voltar do sistema está indisponível. Use os links de navegação.",
       "home": "Início",
       "preferences": "Preferências",
       "label": "Navegação principal",

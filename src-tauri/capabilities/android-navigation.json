@@ -1,0 +1,12 @@
+{
+  "$schema": "../gen/schemas/mobile-schema.json",
+  "identifier": "android-navigation",
+  "description": "Android-only hardware back listener and Activity finish.",
+  "platforms": ["android"],
+  "windows": ["main"],
+  "permissions": [
+    "core:app:allow-register-listener",
+    "core:app:allow-remove-listener",
+    "core:app:allow-exit"
+  ]
+}

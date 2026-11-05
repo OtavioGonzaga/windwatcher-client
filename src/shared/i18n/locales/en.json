@@ -1,6 +1,7 @@
 {
   "common": {
     "navigation": {
+      "nativeBackError": "System back navigation is unavailable. Use the navigation links.",
       "home": "Home",
       "preferences": "Preferences",
       "label": "Main navigation",

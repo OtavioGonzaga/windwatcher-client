@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { NavLink, Outlet, useLocation } from "react-router";
 import { RouteEffects } from "./navigation/RouteEffects";
 import { RouteErrorBoundary } from "./RouteErrorBoundary";
+import { AndroidBack } from "./navigation/AndroidBack";
 
 export function AppShell() {
   const { t } = useTranslation();
@@ -43,6 +44,7 @@ export function AppShell() {
         className="row-start-2 min-w-0 px-5 py-8 md:col-start-2 md:p-10"
       >
         <div className="mx-auto w-full max-w-2xl">
+          <AndroidBack />
           <RouteErrorBoundary key={location.key}>
             <Outlet />
           </RouteErrorBoundary>

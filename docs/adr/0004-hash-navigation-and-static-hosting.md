@@ -15,6 +15,12 @@ Keep presentation providers outside the router's page tree. Build with relative
 Vite assets so hash entry/reload works under a static directory without rewrites.
 Unknown routes render localized recovery. Do not register future product routes.
 
+Android lazily loads the official app Back API. A session-only ledger of observed
+router entries prevents returning to unrelated WebView history. Direct child
+entry replaces Home; root Back finishes the Activity using the core exit API.
+Only Android receives listener registration/removal and exit permissions through
+a separate platform-scoped capability. No process/deep-link/OS plugin is added.
+
 ## Consequences
 
 URLs contain a fragment. Plain nested pathname URLs are not application routes.

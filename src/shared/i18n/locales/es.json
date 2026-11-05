@@ -1,6 +1,7 @@
 {
   "common": {
     "navigation": {
+      "nativeBackError": "La navegación atrás del sistema no está disponible. Usa los enlaces de navegación.",
       "home": "Inicio",
       "preferences": "Preferencias",
       "label": "Navegación principal",

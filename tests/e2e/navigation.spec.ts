@@ -1,6 +1,18 @@
 import { expect, test } from "@playwright/test";
 import { AxeBuilder } from "@axe-core/playwright";
 
+test("browser navigation never loads Android adapter or writes preferences", async ({ page }) => {
+  const requests: string[] = [];
+  page.on("request", (r) => requests.push(r.url()));
+  await page.goto("/");
+  await page.getByRole("link", { name: "Preferences", exact: true }).click();
+  await page.getByLabel("Appearance").selectOption("dark");
+  await page.getByRole("link", { name: "Home", exact: true }).click();
+  expect(requests.every((url) => new URL(url).origin === "http://127.0.0.1:4173")).toBe(true);
+  expect(requests.some((url) => url.includes("android-back"))).toBe(false);
+  expect(await page.evaluate(() => [localStorage.length, sessionStorage.length])).toEqual([0, 0]);
+});
+
 test("skip link, route focus, history and presentation state remain coherent", async ({ page }) => {
   await page.goto("/");
   await expect(page.locator("body")).toBeFocused();
