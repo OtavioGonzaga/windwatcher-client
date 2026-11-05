@@ -11,7 +11,9 @@ export function HomePage() {
         height={181}
         className="h-auto w-full rounded-md bg-brand-backdrop p-4"
       />
-      <h1 className="text-lg font-semibold">Windwatcher</h1>
+      <h1 id="route-heading" tabIndex={-1} className="text-lg font-semibold">
+        Windwatcher
+      </h1>
       <p className="text-secondary">{foundation("description")}</p>
     </div>
   );
