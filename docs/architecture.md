@@ -20,7 +20,8 @@ backend. See [ADR 0001](adr/0001-shared-react-and-tauri-application.md).
 
 The Home route displays supplied artwork and a truthful product description;
 Preferences offers real language/appearance controls. Both share responsive
-navigation. There is no connection, authentication or conversation UI. New boundaries
+navigation. A Home CTA opens manual server inspection; no server is saved and
+there is no authentication or conversation UI. New boundaries
 should be introduced only when used.
 
 ## Presentation and localization
@@ -64,8 +65,9 @@ second React application.
 `src/shared/api` owns generated wire types, URL parsing, runtime validation,
 structured failures and `ApiClient`. Each client binds an immutable server root
 and an injected transport; bearer credentials and request lifetimes are explicit
-per-call inputs. Only `getInstance()` has an endpoint-specific method today.
-The static screen does not instantiate a client or make network requests.
+per-call inputs. The manual discovery feature instantiates an ephemeral client
+after user action. `getInstance()` remains strict; a bounded inspection operation
+distinguishes explicit absence without weakening generic requests.
 
 `src/shared/platform` supplies browser fetch and lazily loaded Tauri HTTP adapters.
 Shared API code imports neither Tauri nor platform detection. The injected host

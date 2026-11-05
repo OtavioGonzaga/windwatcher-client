@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Manual, in-memory server inspection with HTTP warnings, capability summaries
+  and explicitly unverified legacy discovery; no account or server is saved.
 - Shared responsive navigation between Home and presentation preferences, hash
   URLs supporting static hosting prefixes, accessible focus/skip links and
   localized not-found/render recovery in all four languages.

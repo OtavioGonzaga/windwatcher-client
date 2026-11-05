@@ -297,6 +297,17 @@ is opt-in and excluded from ordinary production output/APKs. See
 
 ## Troubleshooting
 
+### Manual discovery validation
+
+The server contract and error codes were checked against the pinned 0.1.1 source.
+Automated tests exercise bounded discovery, capability interpretation, stale
+requests and explicit legacy acknowledgment; browser tests cover Home navigation,
+modern open/closed metadata, legacy absence and nested static entry. Mocked
+responses are not evidence of interoperability with a historical legacy server.
+Live disposable 0.1.1 open/closed instances and native interactive onboarding have
+not yet been exercised for this change; Android, Windows and Linux runtime
+validation and fresh CI remain required before claiming full platform coverage.
+
 - Missing `gtk+-3.0` or `webkit2gtk-4.1` in pkg-config: install development
   packages, not just runtime libraries. `libxdo-dev` does not expose an `xdo.pc`
   file on Ubuntu; check package installation rather than treating that as failure.

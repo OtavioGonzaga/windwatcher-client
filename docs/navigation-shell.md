@@ -1,8 +1,8 @@
 # Navigation and responsive shell
 
 Windwatcher has one React root, one declarative React Router HashRouter and the
-same shell on web, Linux, Windows and Android. There are no server/account APIs,
-authentication guards, fictional conversations or persisted settings here.
+same shell on web, Linux, Windows and Android. Manual server inspection is public
+and in-memory; there are no accounts or persisted settings here.
 
 ## Routes and deployment
 
@@ -10,6 +10,7 @@ authentication guards, fictional conversations or persisted settings here.
 | --------------- | ------------------------------------------------- |
 | `#/`            | Supplied artwork and truthful product description |
 | `#/preferences` | Working language and appearance controls          |
+| `#/connect`     | Manual server inspection                          |
 | Any other route | Localized not-found message and Home recovery     |
 
 Providers wrap the router, so navigation does not reset appearance/language.
@@ -26,9 +27,8 @@ Image URLs follow `import.meta.env.BASE_URL`; built CSS/fonts/chunks resolve
 relative to their emitted files. CSP is unchanged and permits no remote scripts
 or fonts. Tests serve the production output under `/client/` without rewrites.
 
-The real server-connection page can be added to App's existing route tree in PR 5.
-No `/connect` placeholder exists now. Authenticated routes and list/detail
-composition should be introduced only alongside their real consumers.
+The Home CTA opens manual inspection. No server is saved and no authentication
+is performed. Authenticated routes should be introduced with their real consumers.
 
 ## Layout and accessibility
 

@@ -71,12 +71,14 @@ export function AddServerPage() {
     }
   };
   const failureKey =
-    failure?.category === "http" && failure.metadata.status === 429
+    (failure?.category === "http" || failure?.category === "invalid-response") &&
+    failure.metadata.status === 429
       ? "rateLimit"
-      : failure?.category === "http" &&
+      : (failure?.category === "http" || failure?.category === "invalid-response") &&
           (failure.metadata.status === 401 || failure.metadata.status === 403)
         ? "access"
-        : failure?.category === "http"
+        : failure?.category === "http" ||
+            (failure?.category === "invalid-response" && (failure.metadata.status ?? 0) >= 500)
           ? "serverError"
           : failure?.category === "timeout"
             ? "timeout"

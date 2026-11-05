@@ -2,7 +2,7 @@
 
 ## Consumer boundary
 
-The screen remains static. Features can explicitly construct a server-bound
+Manual discovery explicitly constructs a server-bound
 client without introducing global server/account state:
 
 ```ts
@@ -19,7 +19,11 @@ const metadata = await client.getInstance({ signal: controller.signal });
 
 The caller owns the controller and client. This is not a server-selection
 workflow. The returned instance is validated protocol metadata, not authenticated
-server identity or onboarding approval. There is no legacy 404/empty fallback.
+server identity or onboarding approval. `inspectInstance()` additionally supports
+explicit discovery absence (404, 204 or a genuinely zero-byte 200), without
+changing strict `getInstance()`. After absence, one unauthenticated
+`GET /v1/users/me` may provide a protocol clue, never proof of identity. Legacy
+registration is unknown; acknowledgment is required and no profile is saved.
 See [contract provenance and generation](api-contract.md).
 
 `request()` supports GET/POST/PATCH/PUT/DELETE. Declare nonempty
@@ -63,7 +67,7 @@ advertisements. Compatible extra object fields are ignored. `Instance` derives
 the known fields from the generated DTO but deliberately widens `api_versions`
 and `auth_methods` to `string[]`, preserving e.g. `v2`/`passkey` without asserting
 them as the generated v1 enums. The pinned snapshot/generated DTO are unchanged.
-Checking for supported `v1`/`password` capabilities is onboarding policy (PR 5),
+Checking for supported `v1`/`password` capabilities is onboarding policy,
 not JSON-shape validation: empty or future-only string lists remain metadata here.
 
 `ApiError.category` is one of `http`, `invalid-response`, `timeout`, `cancelled`,
