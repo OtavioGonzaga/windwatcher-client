@@ -1,7 +1,12 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "main",
-  "description": "The bootstrap window has no frontend-accessible native commands.",
+  "description": "HTTP(S) to arbitrary user-directed servers; no filesystem or shell grants.",
   "windows": ["main"],
-  "permissions": []
+  "permissions": [
+    {
+      "identifier": "http:default",
+      "allow": [{ "url": "http://*:*/*" }, { "url": "https://*:*/*" }]
+    }
+  ]
 }

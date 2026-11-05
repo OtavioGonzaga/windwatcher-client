@@ -1,0 +1,17 @@
+{
+  "build": {
+    "beforeBuildCommand": "bun run build:network-test",
+    "frontendDist": "../dist-network"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "Windwatcher network smoke",
+        "url": "tests/network/index.html?native-smoke=1&public-https=1",
+        "width": 800,
+        "height": 600
+      }
+    ]
+  }
+}

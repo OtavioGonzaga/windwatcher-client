@@ -1,10 +1,10 @@
 import { ApiClient } from "../../src/shared/api/client";
 import { ApiError } from "../../src/shared/api/error";
-import { browserHttp } from "../../src/shared/platform/browser-http";
+import { platformHttp } from "../../src/shared/platform/http";
 
 // This entry is explicitly built only for integration tests, never normal dist/.
 export async function probe(baseUrl: string, accessToken?: string) {
-  const client = new ApiClient({ baseUrl, transport: browserHttp });
+  const client = new ApiClient({ baseUrl, transport: await platformHttp() });
   try {
     const data = accessToken
       ? await client.request({
@@ -26,3 +26,11 @@ declare global {
   }
 }
 window.networkProbe = probe;
+
+if (new URL(location.href).searchParams.has("native-smoke")) {
+  void import("./native-smoke")
+    .then(({ nativeSmoke }) => nativeSmoke())
+    .catch(() => {
+      document.body.textContent = "Native network smoke could not run.";
+    });
+}

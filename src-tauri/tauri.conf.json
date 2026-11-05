@@ -26,6 +26,7 @@
       "devCsp": "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self'; connect-src ipc: http://ipc.localhost ws:; object-src 'none'; base-uri 'none'; form-action 'none'"
     }
   },
+  "plugins": { "http": { "scopeRedirects": true } },
   "bundle": {
     "active": false,
     "icon": ["icons/icon.png", "icons/icon.ico"]

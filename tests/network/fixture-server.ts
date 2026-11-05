@@ -1,5 +1,9 @@
 import { instance } from "../fixtures/instance";
 
+let report: unknown = null;
+let cancelled = 0;
+let invalidTlsHits = 0;
+
 const foreign = Bun.serve({
   hostname: "127.0.0.1",
   port: 4319,
@@ -19,10 +23,46 @@ const cors = {
 const server = Bun.serve({
   hostname: "127.0.0.1",
   port: 4318,
-  fetch(request) {
+  async fetch(request) {
     const path = new URL(request.url).pathname;
     if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
     if (path === "/ready") return new Response("ready");
+    if (path === "/results") {
+      if (request.method === "DELETE") {
+        report = null;
+        cancelled = 0;
+        foreignHits = 0;
+        invalidTlsHits = 0;
+      }
+      if (request.method === "POST") report = await request.json();
+      return Response.json(
+        {
+          report,
+          cancelled,
+          foreignHits,
+          invalidTlsHits,
+          tlsEnabled: Boolean(
+            process.env.WINDWATCHER_TEST_TLS_CERT && process.env.WINDWATCHER_TEST_TLS_KEY,
+          ),
+        },
+        { headers: cors },
+      );
+    }
+    if (path === "/set-cookie")
+      return new Response("cookie fixture", {
+        headers: { "Set-Cookie": "native-ambient=must-not-leak; Path=/" },
+      });
+    if (path === "/slow/v1/instance") {
+      request.signal.addEventListener(
+        "abort",
+        () => {
+          cancelled++;
+        },
+        { once: true },
+      );
+      await Bun.sleep(3000);
+      return Response.json(instance);
+    }
     if (path === "/redirect/v1/instance")
       return new Response(null, {
         status: 302,
@@ -41,4 +81,18 @@ const server = Bun.serve({
     return new Response("not found", { status: 404 });
   },
 });
+if (process.env.WINDWATCHER_TEST_TLS_CERT && process.env.WINDWATCHER_TEST_TLS_KEY) {
+  Bun.serve({
+    hostname: "127.0.0.1",
+    port: 4320,
+    tls: {
+      cert: Bun.file(process.env.WINDWATCHER_TEST_TLS_CERT),
+      key: Bun.file(process.env.WINDWATCHER_TEST_TLS_KEY),
+    },
+    fetch() {
+      invalidTlsHits++;
+      return Response.json(instance);
+    },
+  });
+}
 console.log(`Network fixtures listening on ${server.port} and ${foreign.port}.`);
