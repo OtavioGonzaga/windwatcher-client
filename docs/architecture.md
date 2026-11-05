@@ -18,9 +18,9 @@ The native Rust library starts Tauri with the scoped HTTP plugin; the desktop
 executable and Android activity enter the same host. There is no server dependency or embedded
 backend. See [ADR 0001](adr/0001-shared-react-and-tauri-application.md).
 
-The current screen displays supplied artwork, the accessible proper name
-Windwatcher and real language/appearance controls. It does not implement
-connection, authentication, conversations or navigation. New feature boundaries
+The Home route displays supplied artwork and a truthful product description;
+Preferences offers real language/appearance controls. Both share responsive
+navigation. There is no connection, authentication or conversation UI. New boundaries
 should be introduced only when used.
 
 ## Presentation and localization
@@ -33,6 +33,23 @@ with OFL notices. No native font/localization plugin or API consumer is added.
 Native HTML primitives have isolated component/browser fixtures, not production
 routes. See [the visual foundation](visual-foundation.md) and
 [ADR 0003](adr/0003-shared-presentation-and-localization.md).
+
+## Navigation and shell
+
+One declarative HashRouter renders Home, Preferences and localized not-found
+recovery inside AppShell. Providers remain above page navigation. Relative Vite
+assets support arbitrary static directory prefixes without SPA rewrites. A single
+navigation region adapts to side/bottom placement using CSS, with route focus,
+skip-link and bounded in-memory scroll restoration. Synchronous pages have a
+render error boundary, not artificial loading UI.
+
+Android alone lazily loads the official core app Back API. A session-only router
+ledger distinguishes known internal history from direct entry. A platform-scoped
+capability grants only registration/removal and Activity exit; HTTP scopes and
+CSP remain unchanged. The native content rectangle handles bars/cutouts/IME and
+zeros those dimensions before forwarding insets, preserving the dark bar backing
+without double padding. See [navigation](navigation-shell.md) and
+[ADR 0004](adr/0004-hash-navigation-and-static-hosting.md).
 
 ## Tooling boundaries
 

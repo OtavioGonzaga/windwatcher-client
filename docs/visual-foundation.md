@@ -1,9 +1,10 @@
 # Visual and localization foundation
 
 Windwatcher uses one presentation foundation on web, Linux, Windows and Android.
-The production entry screen displays the supplied banner and working appearance
-and language controls. It does not connect to a server, render navigation or
-simulate accounts, presence, channels or conversations.
+The production Home page displays the supplied banner; Preferences has working
+appearance/language controls within the [responsive shell](navigation-shell.md).
+Neither page connects to a server or simulates accounts, presence, channels or
+conversations.
 
 ## Identity and tokens
 
@@ -103,8 +104,8 @@ Android keeps light system-bar icons on a fixed dark backing, independent of
 the in-memory web theme. API 35+ enforces transparent bars, so a noninteractive,
 accessibility-hidden native view paints **only** system-bar insets. It does not
 consume touches/insets, resize the WebView or handle IME/back/navigation. This
-narrow contrast protection adds no plugin or capability; shell/keyboard-safe
-layout and full inset composition remain PR 4 work.
+narrow contrast protection remains separate from the native content bounds now
+implemented by the [navigation shell](navigation-shell.md) for bars/cutouts/IME.
 
 Both appearance and language selections are **in memory only**. Closing or
 reloading resets them to system/browser preferences. Persistence is PR 7.
@@ -124,13 +125,13 @@ as ordinary props; native HTML props and keyboard behavior are retained.
 - `InlineNotice`: paired tones and explicit textual meaning. Static guidance
   has no alert role. `announce="polite"` is reserved for an actual update;
   consumers should keep the live region mounted before updating it.
-- `PresentationControls`: real native selects, shared by the entry screen and
+- `PresentationControls`: real native selects, shared by the Preferences route and
   fixture. Language names are autonyms with language attributes.
 
 The URL input, reset/clear actions, notices and metadata examples exist only in
 the opt-in fixture. They do not validate/connect a server or create production
-onboarding. Dialogs, menus, tabs, tooltips and navigation await concrete later
-consumers.
+onboarding. Dialogs, menus, tabs and tooltips await concrete later consumers;
+the shell now supplies real Home/Preferences navigation without these primitives.
 
 ## Localization
 

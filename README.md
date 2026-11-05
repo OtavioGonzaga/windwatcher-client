@@ -7,8 +7,9 @@ One React application targets the web and Tauri 2 on Linux, Windows and Android.
 ## Status
 
 This repository contains the shared toolchain, a typed HTTP foundation and a
-branded screen with accessible visual tokens and working language/appearance
-choices. Server-selection UI, accounts and messaging are **not implemented yet**.
+responsive shell with Home and Preferences routes, accessible visual tokens and
+working language/appearance choices. Server-selection UI, accounts and messaging
+are **not implemented yet**.
 There are no published client releases or supported installation packages.
 `0.0.1-dev.0` in build manifests is an unpublished development placeholder, not a release.
 
