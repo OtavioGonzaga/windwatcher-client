@@ -17,8 +17,26 @@ CARGO_BUILD_JOBS=4 cargo run --locked -p windwatcher-server --example export_ope
 ```
 
 Run this only in a dedicated upstream checkout, not over someone else's work.
-Snapshot canonicalization, checksum and offline client generation are documented
-alongside the committed contract. Ordinary client CI must not fetch upstream.
+Canonicalize the exporter output with `JSON.stringify(JSON.parse(text), null, 2)`
+plus one final newline into `contracts/windwatcher-v1.openapi.json`. Its SHA-256
+is `c83a7136a4e95a4ac2255ce292c17f1988772ebe8e85c29ebdeb73991e3ca1b0`,
+also recorded with provenance in `contracts/provenance.json`. This canonical
+snapshot is excluded from Oxfmt so formatting cannot silently change its hash.
+
+`bun run api:generate` reads only that snapshot and writes
+`src/shared/api/schema.generated.ts`. `bun run api:check` regenerates in memory
+and compares bytes without rewriting files; both reject remote references and
+checksum/version mismatches. Ordinary client CI must not fetch upstream.
+
+The pinned `openapi-typescript` 7.13.0 requires the TypeScript **5** JavaScript
+compiler API, which native TypeScript 7 does not supply. The generation script
+resolves that compiler import to the pinned `typescript` 5.9.3 package.
+Application checking still explicitly invokes native TypeScript 7.0.2 through
+the pinned `typescript-checker` alias; generated output is checked by it. The
+explicit script avoids ambiguity between the two packages' `tsc` binaries.
+Neither compiler API nor
+OpenAPI generator is imported into application runtime bundles. Oxfmt formats
+the generated text in memory before comparison, keeping both checks consistent.
 
 ## Native HTTP feasibility review
 

@@ -1,0 +1,8 @@
+{
+  "repository": "https://github.com/OtavioGonzaga/windwatcher",
+  "tag": "windwatcher-server-v0.1.1",
+  "commit": "d83d5d9210ccd35b0c29f03ad678b42644c1d196",
+  "exporter": "crates/windwatcher-server/examples/export_openapi.rs",
+  "canonicalization": "JSON.stringify(JSON.parse(exportedText), null, 2) + newline",
+  "sha256": "c83a7136a4e95a4ac2255ce292c17f1988772ebe8e85c29ebdeb73991e3ca1b0"
+}
