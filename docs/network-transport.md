@@ -55,10 +55,13 @@ authentication, retry, refresh or secret persistence.
 ## Results and failures
 
 Only `application/json` and `application/problem+json` (with optional parameters)
-are accepted. Instance decoding checks service, registration and the pinned
-array/enumeration shapes. Compatible extra object fields are ignored. Array
-contents outside the pinned contract are not silently asserted as generated types;
-empty contract-valid arrays do not trigger onboarding policy here.
+are accepted. Instance decoding checks service, registration and string-array
+advertisements. Compatible extra object fields are ignored. `Instance` derives
+the known fields from the generated DTO but deliberately widens `api_versions`
+and `auth_methods` to `string[]`, preserving e.g. `v2`/`passkey` without asserting
+them as the generated v1 enums. The pinned snapshot/generated DTO are unchanged.
+Checking for supported `v1`/`password` capabilities is onboarding policy (PR 5),
+not JSON-shape validation: empty or future-only string lists remain metadata here.
 
 `ApiError.category` is one of `http`, `invalid-response`, `timeout`, `cancelled`,
 `transport` or `redirect`. Its frozen metadata may include HTTP `status`, problem

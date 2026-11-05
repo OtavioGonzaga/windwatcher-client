@@ -48,6 +48,9 @@ The browser never falls back to a native transport after a failed fetch.
 and stale-type detection are offline build-time operations; generated types do
 not validate untrusted JSON by themselves. There is no separate SDK package or
 generated endpoint service implementation.
+Instance advertisements use a derived runtime metadata type with open-ended
+string lists, preserving unknown API/auth capabilities without mutating the
+pinned generated enum types or deciding onboarding support.
 
 No storage, local discovery or account-adapter scaffolding is introduced. Those
 boundaries will be implemented only when their feature consumers exist. See

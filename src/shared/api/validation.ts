@@ -1,23 +1,30 @@
 import type { components } from "./schema.generated";
 
-export type Instance = components["schemas"]["InstanceResponse"];
+/** Preserve open-ended advertisements without widening the pinned generated DTO. */
+export interface Instance extends Omit<
+  components["schemas"]["InstanceResponse"],
+  "api_versions" | "auth_methods"
+> {
+  api_versions: string[];
+  auth_methods: string[];
+}
 type Problem = components["schemas"]["ProblemDetails"];
 
 function record(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
-function listOf<T extends string>(value: unknown, literal: T): value is T[] {
-  return Array.isArray(value) && value.every((item) => item === literal);
+function stringList(value: unknown): value is string[] {
+  return Array.isArray(value) && Array.from(value).every((item) => typeof item === "string");
 }
 
-/** Pinned v1 wire shape, not onboarding policy or proof of server identity. */
+/** Known instance fields plus opaque capability advertisements, not onboarding policy. */
 export function decodeInstance(value: unknown): Instance {
   if (
     !record(value) ||
     value.service !== "windwatcher" ||
-    !listOf(value.api_versions, "v1") ||
-    !listOf(value.auth_methods, "password") ||
+    !stringList(value.api_versions) ||
+    !stringList(value.auth_methods) ||
     (value.registration !== "open" && value.registration !== "closed")
   )
     throw new TypeError("Invalid instance metadata.");

@@ -22,6 +22,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Preserve future instance API/auth advertisements as strings while retaining
+  validation of known fields and the unchanged generated v1 DTO contract.
 - Validate the exact success status declared by each HTTP operation rather than
   treating arbitrary 2xx JSON responses as completed operations.
 - Release native HTTP response resources for no-content statuses through a
