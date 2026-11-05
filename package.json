@@ -18,7 +18,8 @@
     "api:check": "bun scripts/api-generate.ts --check",
     "test": "bun --bun vitest run",
     "test:watch": "bun --bun vitest",
-    "test:e2e": "bun --bun playwright test",
+    "test:e2e": "bun run build:network-test && bun --bun playwright test",
+    "build:network-test": "bun scripts/build-network-test.ts",
     "check": "bun run api:check && bun run format:check && bun run lint && bun run typecheck && bun run test && bun run build",
     "tauri": "bun node_modules/@tauri-apps/cli/tauri.js"
   },

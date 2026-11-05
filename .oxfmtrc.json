@@ -9,6 +9,7 @@
     "**/Cargo.lock",
     "contracts/windwatcher-v1.openapi.json",
     "dist/**",
+    "dist-network/**",
     "node_modules/**",
     "target/**",
     "src-tauri/target/**",

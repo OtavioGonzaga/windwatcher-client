@@ -16,9 +16,21 @@ export default defineConfig({
       use: { browserName: "chromium", viewport: { width: 360, height: 800 } },
     },
   ],
-  webServer: {
-    command: "bun run preview",
-    url: "http://127.0.0.1:4173",
-    reuseExistingServer: false,
-  },
+  webServer: [
+    {
+      command: "bun run preview",
+      url: "http://127.0.0.1:4173",
+      reuseExistingServer: false,
+    },
+    {
+      command: "bun --bun vite preview --outDir dist-network --port 4174",
+      url: "http://127.0.0.1:4174/tests/network/index.html",
+      reuseExistingServer: false,
+    },
+    {
+      command: "bun tests/network/fixture-server.ts",
+      url: "http://127.0.0.1:4318/ready",
+      reuseExistingServer: false,
+    },
+  ],
 });

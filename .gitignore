@@ -1,6 +1,7 @@
 /target/
 /node_modules/
 /dist/
+/dist-network/
 /coverage/
 /playwright-report/
 /test-results/

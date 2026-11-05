@@ -21,6 +21,7 @@
   },
   "ignorePatterns": [
     "dist/**",
+    "dist-network/**",
     "node_modules/**",
     "target/**",
     "src-tauri/target/**",

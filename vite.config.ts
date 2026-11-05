@@ -3,6 +3,7 @@ import react from "@vitejs/plugin-react";
 import { defineConfig } from "vitest/config";
 
 const host = process.env.TAURI_DEV_HOST;
+const networkHarness = process.env.WINDWATCHER_NETWORK_HARNESS === "1";
 
 export default defineConfig({
   plugins: [
@@ -18,7 +19,7 @@ export default defineConfig({
             attrs: {
               "http-equiv": "Content-Security-Policy",
               content:
-                "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'",
+                "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'self' http: https:; object-src 'none'; base-uri 'none'; form-action 'none'",
             },
             injectTo: "head-prepend",
           },
@@ -27,6 +28,12 @@ export default defineConfig({
     },
   ],
   clearScreen: false,
+  build: networkHarness
+    ? {
+        outDir: "dist-network",
+        rollupOptions: { input: { main: "index.html", network: "tests/network/index.html" } },
+      }
+    : {},
   server: {
     port: 1420,
     strictPort: true,
