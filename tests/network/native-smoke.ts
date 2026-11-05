@@ -18,6 +18,34 @@ export async function nativeSmoke() {
   };
   const client = (prefix: string) =>
     new ApiClient({ baseUrl: `http://127.0.0.1:4318/${prefix}/`, transport });
+  await check("unexpected-success-refused", async () => {
+    try {
+      await client("accepted").getInstance();
+    } catch (error) {
+      return (
+        error instanceof ApiError &&
+        error.category === "invalid-response" &&
+        error.metadata.status === 202
+      );
+    }
+    return false;
+  });
+  await check("future-capabilities-preserved", async () => {
+    const metadata = await client("future").getInstance();
+    return metadata.api_versions.includes("v2") && metadata.auth_methods.includes("passkey");
+  });
+  await check("oversized-instance-refused", async () => {
+    try {
+      await client("oversized").getInstance();
+    } catch (error) {
+      return (
+        error instanceof ApiError &&
+        error.category === "response-too-large" &&
+        error.metadata.status === 200
+      );
+    }
+    return false;
+  });
   await check(
     "native-no-content",
     async () =>

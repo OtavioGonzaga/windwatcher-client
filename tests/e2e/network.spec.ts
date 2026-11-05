@@ -5,6 +5,26 @@ test.beforeEach(async ({ page }) => {
   await page.waitForFunction(() => typeof window.networkProbe === "function");
 });
 
+test("instance rejects asynchronous acceptance and bounded chunked-body overflow", async ({
+  page,
+}) => {
+  expect(
+    await page.evaluate(() => window.networkProbe("http://127.0.0.1:4318/accepted/")),
+  ).toMatchObject({ ok: false, category: "invalid-response", metadata: { status: 202 } });
+  expect(
+    await page.evaluate(() => window.networkProbe("http://127.0.0.1:4318/oversized/")),
+  ).toMatchObject({ ok: false, category: "response-too-large", metadata: { status: 200 } });
+});
+
+test("instance retains compatible future capability advertisements", async ({ page }) => {
+  expect(
+    await page.evaluate(() => window.networkProbe("http://127.0.0.1:4318/future/")),
+  ).toMatchObject({
+    ok: true,
+    data: { api_versions: ["v1", "v2"], auth_methods: ["password", "passkey"] },
+  });
+});
+
 test("production CSP permits controlled CORS requests through the browser adapter", async ({
   page,
 }) => {

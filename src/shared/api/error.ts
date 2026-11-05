@@ -1,6 +1,7 @@
 export type FailureCategory =
   | "http"
   | "invalid-response"
+  | "response-too-large"
   | "timeout"
   | "cancelled"
   | "transport"

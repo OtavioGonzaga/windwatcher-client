@@ -4,6 +4,7 @@ import { ApiClient } from "./client";
 import { ApiError } from "./error";
 import type { HttpTransport } from "./transport";
 import { decodeInstance } from "./validation";
+import { MAX_METADATA_RESPONSE_BYTES } from "./body";
 
 function setup(response: () => Response | Promise<Response>) {
   const transport = vi.fn<HttpTransport>(async () => response());
@@ -12,6 +13,78 @@ function setup(response: () => Response | Promise<Response>) {
 afterEach(() => vi.useRealTimers());
 
 describe("typed JSON client", () => {
+  it.each([0, -1, 1.5, NaN, Infinity, Number.MAX_SAFE_INTEGER + 1])(
+    "rejects invalid byte budget %s before I/O",
+    async (maxResponseBytes) => {
+      const { client, transport } = setup(() => Response.json(instance));
+      await expect(
+        client.request({
+          method: "GET",
+          path: ["fixture"],
+          expectedStatus: 200,
+          maxResponseBytes,
+          decode: decodeInstance,
+        }),
+      ).rejects.toThrow("Response byte budget");
+      expect(transport).not.toHaveBeenCalled();
+    },
+  );
+
+  it("uses a smaller fixed instance budget before decoding untrusted metadata", async () => {
+    const cancel = vi.fn();
+    const { client, transport } = setup(
+      () =>
+        new Response(
+          new ReadableStream({
+            start(controller) {
+              controller.enqueue(new Uint8Array(MAX_METADATA_RESPONSE_BYTES + 1));
+            },
+            cancel,
+          }),
+          { headers: { "Content-Type": "application/json", "X-Request-Id": requestId } },
+        ),
+    );
+    await expect(client.getInstance()).rejects.toMatchObject({
+      category: "response-too-large",
+      metadata: { status: 200, requestId },
+    });
+    expect(cancel).toHaveBeenCalledOnce();
+    expect(transport.mock.calls[0]![1].signal.aborted).toBe(true);
+  });
+
+  it("bounds problem bodies even if the generic success budget is larger", async () => {
+    const { client } = setup(() =>
+      Response.json(
+        { ...problem(500), detail: "x".repeat(MAX_METADATA_RESPONSE_BYTES) },
+        { status: 500 },
+      ),
+    );
+    await expect(
+      client.request({
+        method: "GET",
+        path: ["fixture"],
+        expectedStatus: 200,
+        maxResponseBytes: 2 * MAX_METADATA_RESPONSE_BYTES,
+        decode: decodeInstance,
+      }),
+    ).rejects.toMatchObject({
+      category: "response-too-large",
+      metadata: { status: 500 },
+    });
+  });
+
+  it("accepts a legitimate response larger than instance metadata with an explicit bounded budget", async () => {
+    const content = "x".repeat(MAX_METADATA_RESPONSE_BYTES * 2);
+    const { client } = setup(() => Response.json({ content }));
+    const result = await client.request({
+      method: "GET",
+      path: ["fixture"],
+      expectedStatus: 200,
+      maxResponseBytes: MAX_METADATA_RESPONSE_BYTES * 3,
+      decode: (value) => value,
+    });
+    expect(result).toEqual({ content });
+  });
   it.each([201, 202, 203, 205, 206, 207, 208, 226])(
     "rejects unexpected HTTP %s for getInstance without reading or decoding it",
     async (status) => {

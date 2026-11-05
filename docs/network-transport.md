@@ -64,7 +64,7 @@ Checking for supported `v1`/`password` capabilities is onboarding policy (PR 5),
 not JSON-shape validation: empty or future-only string lists remain metadata here.
 
 `ApiError.category` is one of `http`, `invalid-response`, `timeout`, `cancelled`,
-`transport` or `redirect`. Its frozen metadata may include HTTP `status`, problem
+`transport`, `redirect` or `response-too-large`. Its frozen metadata may include HTTP `status`, problem
 `code`, UUID `requestId` and `retryAfterMs`. Native redirects expose HTTP status;
 browser opaque redirects do not. Malformed/foreign problems retain available
 HTTP metadata but never invent a Windwatcher code. All six required server
@@ -82,6 +82,30 @@ supply a positive millisecond duration and/or an AbortSignal. The first abort
 cause wins, I/O is aborted, timers/listeners are removed, and late results cannot
 run a decoder or update another request context. Cancelling a write does **not**
 prove the server did not execute it; there is deliberately no automatic retry.
+
+### Response byte budgets
+
+Bodies are read incrementally, counting delivered bytes before UTF-8 decoding
+and JSON parsing. Oversized bodies are cancelled with `response-too-large`,
+preserving available HTTP metadata without retaining their content. Malformed
+UTF-8 is invalid response data. A declared identity Content-Length can reject
+early, but missing/understated/encoded lengths never bypass the stream counter.
+Abort/deadline cancellation also cancels a pending reader and releases its lock.
+
+Instance metadata has a fixed **64 KiB** budget; error/problem bodies are limited
+to the smaller of **64 KiB** and the operation's budget. Generic JSON requests
+default to **160 MiB**, optionally changed by trusted operation code through a
+positive `maxResponseBytes`. These are client safety policies, not wire-contract
+limits or guarantees about peak process memory (decoded strings/JSON also allocate).
+
+The generic default allows the released server's maximum 100-item page with
+default-policy 128 KiB messages **and full shallow reply content**, including
+six-byte JSON escapes: `100 × 2 × 131072 × 6 = 150 MiB` before metadata, with
+10 MiB headroom. See the pinned source's `docs/pagination.md` and `docs/messages.md`.
+Operator-configured larger texts and historical messages have no universal
+protocol response maximum. Future message consumers must choose a smaller page
+or deliberately sized finite budget for those deployments; no finite default
+can cover every configuration. No pagination feature is introduced here.
 
 Browser failures are opaque: CORS, mixed content, certificate validation, DNS and
 connectivity are possible causes, not reliably distinguishable categories. The
@@ -128,7 +152,7 @@ CARGO_BUILD_JOBS=4 bun run tauri build --debug --no-bundle --ci \
 On Windows use PowerShell environment assignments for fixture paths and
 `$env:CARGO_BUILD_JOBS = '4'`, then launch the corresponding `.exe`. Choose
 temporary paths available on that machine; `/tmp/opencode` is the local Linux
-example. The built window runs eight controlled checks and an optional ninth
+example. The built window runs eleven controlled checks and an optional twelfth
 public HTTPS check (`https://example.com/`). Remove `public-https=1` from a local
 test config to omit that Internet-dependent check; ordinary CI never depends on it.
 
@@ -174,16 +198,18 @@ using an ordinary artifact.
 ## PR 2 validation evidence (2026-11-05)
 
 - `bun run check`: offline type drift, Oxfmt, Oxlint, native TypeScript 7 checker,
-  98 component/unit/contract tests and production build passed. Twelve production
+  140 component/unit/contract tests and production build passed. Sixteen production
   Playwright tests passed; `bun audit` reported no vulnerabilities. A deliberate
   stale-generated-file probe failed in check mode without changing the file.
 - Locked Rust check/clippy (warnings denied), formatting and the built Linux host
   passed. Cargo's resolved plugin feature graph contains only `http2` and
   `rustls-tls`, not the plugin's cookie/dangerous-settings/tracing features.
-- Linux x86_64 built Tauri host and Android 16/API 36.1 x86_64 emulator: all nine
+- Linux x86_64 built Tauri host and Android 16/API 36.1 x86_64 emulator: all twelve
   native checks passed, including valid public HTTPS and rejected self-signed TLS.
   Each fixture run observed exactly two cancelled requests and zero foreign-origin
   or invalid-TLS HTTP hits. No mock/native-dev-browser substitution was used.
+  Follow-up coverage includes refusal of 202, preservation of future capability
+  strings and rejection of an oversized chunked instance body.
 - Review additionally covered native 204 handling and a reproducible Bun patch
   releasing the pinned plugin's null-body response resources. The three wrapper
   regression tests reproduce the bug without replacing the actual plugin module;
@@ -198,6 +224,7 @@ using an ordinary artifact.
   `d83d5d9` passed, with temporary SQLite/config/key files and default closed
   registration. This interoperability check used Bun fetch, not a browser CORS
   test or a claim of direct real-server native execution.
-- Windows CI definitions are retained, but this change set's remote Windows
-  compilation/runtime are not locally verified. Run the branch's frontend/Linux/
-  Windows CI before accepting the PR; prior PR 1 successes do not prove PR 2.
+- The PR's frontend, Linux, Windows compile and aggregate CI jobs passed at
+  `8d1383c`. Follow-up changes must pass fresh CI before acceptance. Interactive
+  Windows runtime is still unverified locally; prior green compilation does not
+  replace that manual smoke.

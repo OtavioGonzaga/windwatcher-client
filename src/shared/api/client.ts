@@ -1,4 +1,5 @@
 import { ApiError, retryAfterMs } from "./error";
+import { DEFAULT_MAX_RESPONSE_BYTES, MAX_METADATA_RESPONSE_BYTES, readBoundedText } from "./body";
 import type { FailureMetadata } from "./error";
 import type { HttpMethod, HttpTransport } from "./transport";
 import { apiUrl, ServerUrl } from "./url";
@@ -11,6 +12,7 @@ export interface RequestLifetime {
 }
 
 interface RequestOptions extends RequestLifetime {
+  readonly maxResponseBytes?: number;
   readonly method: HttpMethod;
   readonly path: readonly string[];
   readonly query?: Readonly<Record<string, string>>;
@@ -39,6 +41,7 @@ export class ApiClient {
     return this.request({
       method: "GET",
       expectedStatus: 200,
+      maxResponseBytes: MAX_METADATA_RESPONSE_BYTES,
       path: ["instance"],
       decode: decodeInstance,
       signal: options.signal,
@@ -53,6 +56,10 @@ export class ApiClient {
     const expectsEmpty = "response" in options;
     const decode = "decode" in options ? options.decode : undefined;
     const expectedStatus = options.expectedStatus;
+    const maxResponseBytes = options.maxResponseBytes ?? DEFAULT_MAX_RESPONSE_BYTES;
+    if (!Number.isSafeInteger(maxResponseBytes) || maxResponseBytes <= 0) {
+      throw new TypeError("Response byte budget must be a positive safe integer.");
+    }
     if (expectsEmpty ? expectedStatus !== 204 : expectedStatus !== 200 && expectedStatus !== 201) {
       throw new TypeError("Declare the operation's expected JSON (200/201) or empty (204) status.");
     }
@@ -126,13 +133,21 @@ export class ApiClient {
             throw new ApiError("invalid-response", metadata);
           }
           if (response.status === 204) return undefined;
-          // The deadline includes body consumption, not only response headers.
-          const text = await response.text();
-          if (controller.signal.aborted) throw new ApiError("cancelled");
           const media = response.headers.get("Content-Type")?.split(";")[0]?.trim().toLowerCase();
           if (media !== "application/json" && media !== "application/problem+json") {
+            void response.body?.cancel().catch(() => {});
             throw new ApiError("invalid-response", metadata);
           }
+          // The deadline includes bounded body consumption, not only headers.
+          const text = await readBoundedText(
+            response,
+            response.ok
+              ? maxResponseBytes
+              : Math.min(maxResponseBytes, MAX_METADATA_RESPONSE_BYTES),
+            controller.signal,
+            metadata,
+          );
+          if (controller.signal.aborted) throw new ApiError("cancelled");
           let value: unknown;
           try {
             value = JSON.parse(text);

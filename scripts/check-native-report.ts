@@ -3,6 +3,9 @@ import process from "node:process";
 /* oxlint-disable no-await-in-loop -- Poll a single fixture report in order, not concurrent independent work. */
 
 const required = [
+  "unexpected-success-refused",
+  "future-capabilities-preserved",
+  "oversized-instance-refused",
   "native-no-content",
   "native-http-without-cors",
   "reverse-proxy-prefix",

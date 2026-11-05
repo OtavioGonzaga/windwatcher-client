@@ -19,6 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   redirect refusal, cancellation/deadlines and structured response failures.
 - Android HTTP policy shared by debug/release, plus isolated browser/native
   network integration harnesses without adding connection/account UI.
+- Incremental response byte budgets, with tighter instance/problem limits and
+  explicit per-operation adjustment for legitimate large JSON responses.
 
 ### Fixed
 

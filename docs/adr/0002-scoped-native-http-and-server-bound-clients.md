@@ -15,8 +15,19 @@ The released server's wire types are not runtime validation of untrusted JSON.
 Use a small injected `HttpTransport` and immutable server root in `ApiClient`.
 Shared API code imports no native APIs. Tokens and cancellation are per request;
 `getInstance()` always constructs a public request. Runtime decoders validate
-the pinned instance shape and server Problem Details; generic JSON operations
+known instance fields, open-ended string capability advertisements and server Problem Details; generic JSON operations
 require a decoder, rather than asserting arbitrary JSON as a caller's type.
+The runtime instance type derives known fields from generated DTOs but widens
+the advertised lists without changing the pinned schema. Capability support
+checks are deferred to onboarding, not inferred from structural decoding.
+
+Operations must declare their exact success status; a 202/206 is not accepted
+merely because its body passes a decoder. Read delivered bytes incrementally
+before UTF-8/JSON decoding, with finite per-operation budgets and tighter
+metadata/problem budgets. The generic default accounts for maximum-size default
+message pages and full reply text, including JSON escaping; configurable server
+policies/history cannot have one universal finite maximum. See the transport
+guide for the limits and rationale.
 
 Browser requests use fetch with omitted credentials and manual redirects. Native
 requests use the official Tauri HTTP plugin 2.8.3, lazily selected by the same

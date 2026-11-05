@@ -27,6 +27,32 @@ const server = Bun.serve({
     const path = new URL(request.url).pathname;
     if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
     if (path === "/ready") return new Response("ready");
+    if (path === "/accepted/v1/instance")
+      return Response.json(instance, { status: 202, headers: cors });
+    if (path === "/future/v1/instance")
+      return Response.json(
+        {
+          ...instance,
+          api_versions: ["v1", "v2"],
+          auth_methods: ["password", "passkey"],
+        },
+        { headers: cors },
+      );
+    if (path === "/oversized/v1/instance") {
+      const bytes = new TextEncoder().encode(
+        JSON.stringify({ ...instance, extension: "x".repeat(70000) }),
+      );
+      return new Response(
+        new ReadableStream({
+          start(controller) {
+            controller.enqueue(bytes.slice(0, 50000));
+            controller.enqueue(bytes.slice(50000));
+            controller.close();
+          },
+        }),
+        { headers: { ...cors, "Content-Type": "application/json" } },
+      );
+    }
     if (path === "/empty/v1/fixture") return new Response(null, { status: 204 });
     if (path === "/results") {
       if (request.method === "DELETE") {

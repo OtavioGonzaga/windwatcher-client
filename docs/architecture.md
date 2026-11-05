@@ -51,6 +51,9 @@ generated endpoint service implementation.
 Instance advertisements use a derived runtime metadata type with open-ended
 string lists, preserving unknown API/auth capabilities without mutating the
 pinned generated enum types or deciding onboarding support.
+Each operation declares its exact success status. Body consumption has a finite
+byte budget before UTF-8/JSON decoding, with tighter instance/problem limits;
+see the transport guide for the page-size calculation and configurable-server caveats.
 
 No storage, local discovery or account-adapter scaffolding is introduced. Those
 boundaries will be implemented only when their feature consumers exist. See
