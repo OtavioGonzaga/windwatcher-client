@@ -167,6 +167,10 @@ export function AddServerPage() {
             {result.kind === "wrong-service" && <p>{t("discovery.wrongService")}</p>}
             {result.kind === "unsupported-api" && <p>{t("discovery.unsupportedApi")}</p>}
             {result.kind === "unsupported-auth" && <p>{t("discovery.unsupportedAuth")}</p>}
+            {(result.kind === "unsupported-api" || result.kind === "unsupported-auth") &&
+              result.advertised.length > 0 && (
+                <p className="break-all">{result.advertised.join(", ")}</p>
+              )}
             {result.kind === "legacy" && (
               <>
                 <p>

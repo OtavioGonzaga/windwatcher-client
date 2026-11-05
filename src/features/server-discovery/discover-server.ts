@@ -5,7 +5,8 @@ import type { InstanceAdvertisement } from "../../shared/api/validation";
 
 export type DiscoveryResult =
   | { kind: "supported"; root: string; metadata: InstanceAdvertisement }
-  | { kind: "wrong-service" | "unsupported-api" | "unsupported-auth"; root: string }
+  | { kind: "wrong-service"; root: string }
+  | { kind: "unsupported-api" | "unsupported-auth"; root: string; advertised: readonly string[] }
   | { kind: "legacy"; root: string; recognized: boolean };
 
 /** One explicit user-directed inspection. No credentials, retries, or writes. */
@@ -20,8 +21,10 @@ export async function discoverServer(
   if (inspected.kind === "metadata") {
     const metadata = inspected.metadata;
     if (metadata.service !== "windwatcher") return { kind: "wrong-service", root };
-    if (!metadata.api_versions.includes("v1")) return { kind: "unsupported-api", root };
-    if (!metadata.auth_methods.includes("password")) return { kind: "unsupported-auth", root };
+    if (!metadata.api_versions.includes("v1"))
+      return { kind: "unsupported-api", root, advertised: metadata.api_versions };
+    if (!metadata.auth_methods.includes("password"))
+      return { kind: "unsupported-auth", root, advertised: metadata.auth_methods };
     return { kind: "supported", root, metadata };
   }
   const remaining = deadline - Date.now();
