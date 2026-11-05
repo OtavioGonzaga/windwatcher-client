@@ -24,7 +24,7 @@ export default defineConfig({
   webServer: [
     {
       command: "bun --bun vite preview --outDir dist-shell --port 4177",
-      url: "http://127.0.0.1:4177/tests/shell/index.html",
+      url: "http://127.0.0.1:4177/",
       reuseExistingServer: false,
     },
     {

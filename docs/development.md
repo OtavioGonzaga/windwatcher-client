@@ -276,6 +276,16 @@ versions, Windows interaction or a completed keyboard-safe application shell.
   visible links. WebKitGTK did not bind Alt+Left to browser history in this host;
   no desktop accelerator is claimed. Browser Back/Forward and Android native
   Back were exercised separately as described above.
+- Pre-PR review reproduced a broken banner in the shell fixture's Home page:
+  its nested HTML entry resolved public assets under the wrong directory. The
+  fixture now builds a root document like production, with explicit repository
+  Tailwind source discovery. Browser regressions check the rendered banner and
+  control styles, not just route text. Route scroll restoration is explicitly
+  manual (restoring the browser setting on unmount), and recovery links retain
+  a minimum 44px target. The full frontend suite passed after these corrections.
+  The rebuilt Android shell fixture also loaded the original 543px-wide banner
+  at its root asset URL, retained 44px styled fields, and repeated the visible
+  IME-field/Back-dismiss check on the installed WebView.
 - Windows interactive WebView2, physical ARM64 devices and a newer WebView were
   unavailable locally. These checks do not certify those runtimes, TalkBack or
   a predictive-Back animation contract. Fresh remote frontend/Linux/Windows CI

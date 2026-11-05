@@ -25,7 +25,7 @@ export function RouteErrorBoundary({ children }: { children: ReactNode }) {
           <h1 id="route-heading" tabIndex={-1} className="text-lg font-semibold">
             {t("navigation.error")}
           </h1>
-          <Link to="/" className="underline">
+          <Link to="/" className="inline-flex min-h-11 items-center self-start underline">
             {t("navigation.backHome")}
           </Link>
         </div>

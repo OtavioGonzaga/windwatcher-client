@@ -54,6 +54,10 @@ Focus policy:
 - Language/theme/viewport changes do not move focus. No duplicate live route
   announcement is added on top of the heading focus.
 
+While mounted, the shell uses manual browser scroll restoration so native
+history restoration does not compete with the route policy. It restores the
+previous browser setting on unmount.
+
 Unknown routes render localized recovery. A per-navigation render boundary
 displays a generic translated message and a working Home link; exception text
 and stack traces are never included in the UI. Synchronous pages have no fake
@@ -119,7 +123,7 @@ bun run build:shell-test
 bun --bun vite preview --outDir dist-shell --port 4177
 ```
 
-Open `/tests/shell/index.html#/preferences` on port 4177. It mounts the real
+Open `/#/preferences` on port 4177. It mounts the real
 shell/providers/pages with a clearly labeled test-only TextField below the fold.
 Its data never reaches a server or storage. The production build excludes this
 entry and diagnostic markup. The network and foundation fixtures stay separate.

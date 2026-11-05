@@ -12,6 +12,14 @@ export function RouteEffects() {
   const previous = useRef(location.key);
   const positions = useRef(new Map<string, Position>());
   useLayoutEffect(() => {
+    if (!("scrollRestoration" in window.history)) return undefined;
+    const restoration = window.history.scrollRestoration;
+    window.history.scrollRestoration = "manual";
+    return () => {
+      window.history.scrollRestoration = restoration;
+    };
+  }, []);
+  useLayoutEffect(() => {
     const heading = document.getElementById("route-heading");
     if (previous.current !== location.key) {
       const saved = action === NavigationType.Pop ? positions.current.get(location.key) : undefined;

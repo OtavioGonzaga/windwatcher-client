@@ -9,6 +9,7 @@ const shellHarness = process.env.WINDWATCHER_SHELL_HARNESS === "1";
 
 export default defineConfig({
   base: "./",
+  ...(shellHarness ? { root: "tests/shell", publicDir: "../../public" } : {}),
   plugins: [
     react(),
     tailwindcss(),
@@ -32,7 +33,7 @@ export default defineConfig({
   ],
   clearScreen: false,
   build: shellHarness
-    ? { outDir: "dist-shell", rollupOptions: { input: "tests/shell/index.html" } }
+    ? { outDir: "../../dist-shell", emptyOutDir: true }
     : foundationHarness
       ? { outDir: "dist-foundation", rollupOptions: { input: "tests/foundation/index.html" } }
       : networkHarness

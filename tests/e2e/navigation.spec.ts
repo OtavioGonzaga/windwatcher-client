@@ -4,8 +4,10 @@ import { AxeBuilder } from "@axe-core/playwright";
 test("shell fixture keeps text focus across resize and restores scroll on history", async ({
   page,
 }) => {
-  await page.goto("http://127.0.0.1:4177/tests/shell/index.html#/preferences");
+  await page.goto("http://127.0.0.1:4177/#/preferences");
   const field = page.getByRole("textbox");
+  await expect(field).toHaveCSS("min-height", "44px");
+  await expect(page.getByRole("navigation")).toHaveCSS("display", "flex");
   await field.fill("local keyboard smoke");
   await page.setViewportSize({ width: 800, height: 360 });
   await expect(field).toBeFocused();
@@ -13,6 +15,7 @@ test("shell fixture keeps text focus across resize and restores scroll on histor
   await expect(field).toBeFocused();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.getByRole("link", { name: "Home", exact: true }).click();
+  await expect(page.locator("main img")).toHaveJSProperty("naturalWidth", 543);
   await page.goBack();
   await expect(page.getByRole("link", { name: "Home", exact: true })).toBeFocused();
   expect(await page.evaluate(() => scrollY)).toBeGreaterThan(0);
@@ -45,6 +48,7 @@ test("browser navigation never loads Android adapter or writes preferences", asy
 test("skip link, route focus, history and presentation state remain coherent", async ({ page }) => {
   await page.goto("/");
   await expect(page.locator("body")).toBeFocused();
+  expect(await page.evaluate(() => history.scrollRestoration)).toBe("manual");
   await page.keyboard.press("Tab");
   await expect(page.getByRole("link", { name: "Skip to content" })).toBeFocused();
   await page.keyboard.press("Enter");
@@ -127,6 +131,9 @@ test("nested static hosting supports hash entry, reload and recovery without rew
   await page.goBack();
   await expect(page.getByLabel("Language")).toBeVisible();
   await page.goto("http://127.0.0.1:4176/client/#/unknown");
+  expect(
+    (await page.getByRole("link", { name: "Return to Home" }).boundingBox())!.height,
+  ).toBeGreaterThanOrEqual(44);
   await page.getByRole("link", { name: "Return to Home" }).click();
   await expect(page).toHaveURL(/#\/$/);
   expect((await request.get("http://127.0.0.1:4176/client/preferences")).status()).toBe(404);

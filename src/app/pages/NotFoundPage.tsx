@@ -9,7 +9,9 @@ export function NotFoundPage() {
         {t("navigation.notFound")}
       </h1>
       <p>{t("navigation.notFoundHint")}</p>
-      <Link to="/">{t("navigation.backHome")}</Link>
+      <Link to="/" className="inline-flex min-h-11 items-center self-start underline">
+        {t("navigation.backHome")}
+      </Link>
     </div>
   );
 }
