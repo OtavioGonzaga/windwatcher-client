@@ -1,0 +1,177 @@
+/* Reference palette: Windwatcher Visual Identity v4. Semantic pairs below are
+   independently contrast-tested; brand swatches are not semantic aliases. */
+@theme {
+  /* Supplied cream-wordmark artwork requires its own dark backing in both themes. */
+  --color-brand-backdrop: #1d2021;
+  --font-sans: "IBM Plex Sans", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", monospace;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --text-xs: 0.8125rem;
+  --text-sm: 0.9375rem;
+  --text-base: 1rem;
+  --text-lg: 1.25rem;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-secondary: var(--secondary);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+  --color-emphasis: var(--emphasis);
+  --color-link: var(--link);
+  --color-action: var(--action);
+  --color-action-hover: var(--action-hover);
+  --color-action-pressed: var(--action-pressed);
+  --color-on-action: var(--on-action);
+  --color-disabled: var(--disabled);
+  --color-on-disabled: var(--on-disabled);
+  --color-subtle-hover: var(--subtle-hover);
+  --color-focus: var(--focus);
+  --color-overlay: var(--overlay);
+  --color-info: var(--info);
+  --color-info-surface: var(--info-surface);
+  --color-success: var(--success);
+  --color-success-surface: var(--success-surface);
+  --color-warning: var(--warning);
+  --color-warning-surface: var(--warning-surface);
+  --color-danger: var(--danger);
+  --color-danger-surface: var(--danger-surface);
+}
+
+/* Derived light semantic colors keep warm surfaces without sacrificing AA. */
+:root {
+  color-scheme: light;
+  --background: #fbf1c7;
+  --surface: #f2e5bc;
+  --foreground: #3c3836;
+  --secondary: #665c54;
+  --muted: #665c54;
+  --border: #807366;
+  --emphasis: #62551b;
+  --link: #285e51;
+  --action: #b34700;
+  --action-hover: #983c00;
+  --action-pressed: #7e3200;
+  --on-action: #fff8e6;
+  --disabled: #e4d6ad;
+  --on-disabled: #665c54;
+  --subtle-hover: #e4d6ad;
+  --focus: #285e51;
+  --selection: #d4bc78;
+  --overlay: #1d2021b3;
+  --info: #285e51;
+  --info-surface: #e3e8cc;
+  --success: #455314;
+  --success-surface: #e6e8b9;
+  --warning: #704500;
+  --warning-surface: #f5e1a1;
+  --danger: #9d2b20;
+  --danger-surface: #f8dfce;
+  --control-height: 2.75rem;
+  --motion-duration: 180ms;
+  --motion-easing: ease-out;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --background: #1d2021;
+  --surface: #282828;
+  --foreground: #fbf1c7;
+  --secondary: #e8d099;
+  --muted: #bdae93;
+  --border: #928374;
+  --emphasis: #fabd2f;
+  --link: #83c3b0;
+  --action: #fe8019;
+  --action-hover: #ff9a45;
+  --action-pressed: #e97512;
+  --on-action: #1d2021;
+  --disabled: #3c3836;
+  --on-disabled: #bdae93;
+  --subtle-hover: #3c3836;
+  --focus: #fabd2f;
+  --selection: #66551d;
+  --overlay: #000000b3;
+  --info: #a4d0c1;
+  --info-surface: #253c36;
+  --success: #d0d572;
+  --success-surface: #34391f;
+  --warning: #f5cf75;
+  --warning-surface: #41351e;
+  --danger: #ffb0a1;
+  --danger-surface: #492b26;
+}
+
+html {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  line-height: 1.55;
+  font-synthesis: none;
+}
+
+body {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+/* Tailwind preflight already inherits control fonts inside its base layer.
+   An unlayered font shorthand here would override component size/weight utilities. */
+button,
+select {
+  touch-action: manipulation;
+}
+::selection {
+  background: var(--selection);
+  color: var(--foreground);
+}
+:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+}
+input,
+select,
+button {
+  scroll-margin: 1rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-duration: 0ms;
+  }
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@media (forced-colors: active) {
+  :focus-visible {
+    outline: 3px solid Highlight;
+  }
+  button,
+  input,
+  select,
+  [data-notice] {
+    border: 1px solid ButtonText;
+    color: CanvasText;
+    background: Canvas;
+  }
+  button:disabled,
+  input:disabled,
+  select:disabled {
+    color: GrayText;
+    border-color: GrayText;
+  }
+  ::selection {
+    background: Highlight;
+    color: HighlightText;
+  }
+}

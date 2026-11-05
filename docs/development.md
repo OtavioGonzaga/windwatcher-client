@@ -136,6 +136,13 @@ installed-adapter evidence; a debug build alone is still not release validation.
 
 ## Validation and manual smoke
 
+The [visual foundation](visual-foundation.md) documents theme/locale APIs, font
+licenses, contrast tests and the optional component fixture at port 4175.
+`test:e2e` builds that fixture separately from production and the network harness;
+it checks 320/360/768px/desktop widths, German expansion, keyboard/axe, local
+fonts and theme/locale behavior. Theme/language choices are intentionally not
+persisted; restart/reload restores system/browser preferences.
+
 See [contribution checks](../CONTRIBUTING.md#validation). Browser tests run against
 the production build at desktop and narrow-mobile widths, checking rendering,
 artwork, Tailwind output, runtime/CSP errors and horizontal overflow. They do not
@@ -152,7 +159,8 @@ For each native launch:
 1. Open the compiled application, not just a development browser.
 2. Check the window/activity name is **Windwatcher**, with the supplied banner.
 3. Resize the desktop window, or rotate the Android device; check for clipping
-   and horizontal overflow. No login/message controls should be offered yet.
+   and horizontal overflow. Test all four languages and light/dark/system modes.
+   No login/message controls should be offered yet.
 4. Close and reopen it; check for process crashes or unexpected permission prompts.
 5. Record OS, architecture, WebView version and whether this was compile-only,
    emulator or physical-device validation.
@@ -191,6 +199,41 @@ The Android build emits upstream Tauri/Gradle warnings about legacy AGP APIs,
 Kotlin hooks and Java 8 bytecode targets. They are not suppressed. The template's
 compatibility flags are retained for the pinned AGP 9.3.1; do not upgrade to AGP 10
 without reviewing the corresponding Tauri template and verifying the build again.
+
+### Visual/localization validation record (2026-11-05)
+
+- Frontend checks passed with 224 unit/component/contract tests (including CSS
+  contrast, catalog parity, font notices and immutable artwork checks). The 36
+  production-browser/isolated-fixture tests cover local fonts, all four languages,
+  system/light/dark, keyboard/axe, forced colors, reduced motion and German at
+  320/360/768/1280px with 200% text. Existing network browser tests remain included.
+- A compiled Linux x86_64 host on WebKitGTK 2.52.6 was launched and its language
+  and appearance controls exercised through native accessibility actions. German
+  rendering, focus and light/dark appearance were visually inspected, including
+  a resized 320px window. The cream wordmark's loss of contrast on the light
+  canvas led to the fixed dark artwork backing, not a modified image.
+- A compiled x86_64 debug APK was installed on Android 16/API 36 (Google APIs
+  emulator, WebView 134.0.6998.135). WebView inspection confirmed loaded Plex
+  faces, all four language changes, document language and empty preference
+  storage. At 320/360px-equivalent widths there was no horizontal overflow.
+  Native touch selection and keyboard focus worked. System night-mode changes
+  updated system appearance. Light/dark screenshots confirmed readable system
+  icons after adding fixed native system-bar contrast protection; a scrim alone
+  was insufficient under enforced transparent bars on this API.
+- Built Linux/Android network harnesses each passed all 12 existing checks,
+  including TLS/refused redirects/no-content/cancellation/body limits. Each run
+  observed two cancelled requests and zero foreign-origin or invalid-TLS HTTP
+  hits. Test harnesses remain outside normal production output.
+- Locked normal Linux, Android x86_64 and Android ARM64-target debug builds
+  passed; ARM64 compilation does not imply physical-device runtime coverage.
+  Android and Linux hosts were closed/reopened successfully after smoke checks.
+- Rust fmt/check/clippy and `bun audit` passed. No Windows machine or physical
+  ARM64 Android device was available. Fresh remote Windows/Linux/frontend CI is
+  still required for this branch; previous PR results are not this PR's evidence.
+
+Screenshots and diagnostic outputs were kept outside the checkout. The native
+smoke does not certify release signing, distribution rights, all older Android
+versions, Windows interaction or a completed keyboard-safe application shell.
 
 ## Troubleshooting
 

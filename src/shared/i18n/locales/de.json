@@ -1,0 +1,36 @@
+{
+  "common": {
+    "language": "Sprache",
+    "appearance": "Erscheinungsbild",
+    "system": "System",
+    "light": "Hell",
+    "dark": "Dunkel",
+    "languages": {
+      "en": "English",
+      "pt-BR": "Português (Brasil)",
+      "es": "Español",
+      "de": "Deutsch"
+    },
+    "reset": "Beispiel zurücksetzen",
+    "clear": "Beispieleingabe leeren"
+  },
+  "foundation": {
+    "description": "Ein Messaging-Client für selbst gehostete Server.",
+    "preferences": "Darstellung",
+    "temporary": "Sprache und Erscheinungsbild gelten nur, bis du die Anwendung schließt oder neu lädst.",
+    "showcase": "Komponentengrundlage",
+    "showcaseHint": "Nur lokale Beispiele. Es wird kein Server kontaktiert und nichts gespeichert.",
+    "serverLabel": "Beispiel für eine Serveradresse",
+    "serverHint": "Gib https:// und gegebenenfalls den Pfad des Reverse-Proxys an.",
+    "serverError": "Beispielvalidierung: Gib die vollständige Serveradresse einschließlich Protokoll und Hostname ein.",
+    "serverPlaceholder": "https://example.org/windwatcher/",
+    "info": "Information: Die Darstellungsoptionen sind ohne Benutzerkonto verfügbar.",
+    "warning": "Warnung: Diese Beispiele stellen keine Verbindung zu einem Server her.",
+    "error": "Fehlerbeispiel: Die Serveradresse ist unvollständig. Überprüfe das Eingabefeld und versuche es erneut.",
+    "success": "Erfolg: Das Beispieleingabefeld wurde lokal zurückgesetzt.",
+    "sample": "Technische Metadaten",
+    "greeting": "Willkommen, {{name}}.",
+    "examples_one": "{{count}} lokales Beispiel",
+    "examples_other": "{{count}} lokale Beispiele"
+  }
+}

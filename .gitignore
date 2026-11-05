@@ -2,6 +2,7 @@
 /node_modules/
 /dist/
 /dist-network/
+/dist-foundation/
 /coverage/
 /playwright-report/
 /test-results/

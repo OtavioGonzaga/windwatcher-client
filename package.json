@@ -18,19 +18,26 @@
     "api:check": "bun scripts/api-generate.ts --check",
     "test": "bun --bun vitest run",
     "test:watch": "bun --bun vitest",
-    "test:e2e": "bun run build:network-test && bun --bun playwright test",
+    "test:e2e": "bun run build:network-test && bun run build:foundation-test && bun --bun playwright test",
+    "build:foundation-test": "bun scripts/build-foundation-test.ts",
     "build:network-test": "bun scripts/build-network-test.ts",
     "test:native:report": "bun scripts/check-native-report.ts",
     "check": "bun run api:check && bun run format:check && bun run lint && bun run typecheck && bun run test && bun run build",
     "tauri": "bun node_modules/@tauri-apps/cli/tauri.js"
   },
   "dependencies": {
+    "@fontsource/ibm-plex-mono": "5.3.0",
+    "@fontsource/ibm-plex-sans": "5.3.0",
     "@tauri-apps/api": "2.12.4",
     "@tauri-apps/plugin-http": "2.8.3",
+    "i18next": "26.7.2",
+    "lucide-react": "1.69.0",
     "react": "19.3.1",
-    "react-dom": "19.3.1"
+    "react-dom": "19.3.1",
+    "react-i18next": "17.1.13"
   },
   "devDependencies": {
+    "@axe-core/playwright": "4.14.0",
     "@playwright/test": "1.64.1",
     "@tailwindcss/vite": "4.3.4",
     "@tauri-apps/cli": "2.12.4",

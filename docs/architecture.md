@@ -18,10 +18,21 @@ The native Rust library starts Tauri with the scoped HTTP plugin; the desktop
 executable and Android activity enter the same host. There is no server dependency or embedded
 backend. See [ADR 0001](adr/0001-shared-react-and-tauri-application.md).
 
-The current screen displays supplied artwork and the accessible proper name
-Windwatcher. It does not implement connection, authentication, conversations,
-navigation, themes or localization. Minimal Tailwind colors are not the complete
-design system. New feature boundaries should be introduced only when used.
+The current screen displays supplied artwork, the accessible proper name
+Windwatcher and real language/appearance controls. It does not implement
+connection, authentication, conversations or navigation. New feature boundaries
+should be introduced only when used.
+
+## Presentation and localization
+
+CSS semantic tokens and Tailwind 4 utilities define light/dark presentation.
+The shared theme context resolves system appearance; i18next/react-i18next use
+four bundled typed catalogs and a shared browser-locale resolver. Both choices
+are in memory only; storage remains deferred. IBM Plex fonts are bundled locally
+with OFL notices. No native font/localization plugin or API consumer is added.
+Native HTML primitives have isolated component/browser fixtures, not production
+routes. See [the visual foundation](visual-foundation.md) and
+[ADR 0003](adr/0003-shared-presentation-and-localization.md).
 
 ## Tooling boundaries
 
