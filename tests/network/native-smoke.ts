@@ -51,7 +51,7 @@ export async function nativeSmoke() {
     async () =>
       (await client("empty").request({
         method: "DELETE",
-        expectedStatus: 204,
+        expectedStatuses: [204],
         path: ["fixture"],
         response: "empty",
       })) === undefined,
@@ -68,7 +68,7 @@ export async function nativeSmoke() {
     try {
       await client("redirect").request({
         method: "GET",
-        expectedStatus: 200,
+        expectedStatuses: [200],
         path: ["instance"],
         accessToken: "fixture-only",
         decode: (value) => value,
@@ -87,7 +87,7 @@ export async function nativeSmoke() {
     await first.text();
     const result = await client("cookie").request({
       method: "GET",
-      expectedStatus: 200,
+      expectedStatuses: [200],
       path: ["instance"],
       accessToken: "fixture-only",
       decode: (value) => value,

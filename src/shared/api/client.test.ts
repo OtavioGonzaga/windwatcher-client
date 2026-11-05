@@ -13,6 +13,56 @@ function setup(response: () => Response | Promise<Response>) {
 afterEach(() => vi.useRealTimers());
 
 describe("typed JSON client", () => {
+  it.each([200, 201] as const)(
+    "accepts declared HTTP %s for created and replay results",
+    async (status) => {
+      const decode = vi.fn(decodeInstance);
+      const { client } = setup(() => Response.json(instance, { status }));
+      await expect(
+        client.request({
+          method: "POST",
+          path: ["conversations"],
+          expectedStatuses: [200, 201],
+          decode,
+        }),
+      ).resolves.toEqual(instance);
+      expect(decode).toHaveBeenCalledOnce();
+    },
+  );
+
+  it("rejects 202 even when both 200 and 201 are declared", async () => {
+    const decode = vi.fn(decodeInstance);
+    const { client } = setup(() => Response.json(instance, { status: 202 }));
+    await expect(
+      client.request({
+        method: "POST",
+        path: ["conversations"],
+        expectedStatuses: [200, 201],
+        decode,
+      }),
+    ).rejects.toMatchObject({ category: "invalid-response", metadata: { status: 202 } });
+    expect(decode).not.toHaveBeenCalled();
+  });
+
+  it("snapshots declared statuses before network work begins", async () => {
+    let finish: (response: Response) => void = () => {};
+    const { client } = setup(
+      () =>
+        new Promise<Response>((resolve) => {
+          finish = resolve;
+        }),
+    );
+    const expectedStatuses: [200 | 201, ...(200 | 201)[]] = [200, 201];
+    const pending = client.request({
+      method: "POST",
+      path: ["conversations"],
+      expectedStatuses,
+      decode: decodeInstance,
+    });
+    expectedStatuses.pop();
+    finish(Response.json(instance, { status: 201 }));
+    await expect(pending).resolves.toEqual(instance);
+  });
   it.each([0, -1, 1.5, NaN, Infinity, Number.MAX_SAFE_INTEGER + 1])(
     "rejects invalid byte budget %s before I/O",
     async (maxResponseBytes) => {
@@ -21,7 +71,7 @@ describe("typed JSON client", () => {
         client.request({
           method: "GET",
           path: ["fixture"],
-          expectedStatus: 200,
+          expectedStatuses: [200],
           maxResponseBytes,
           decode: decodeInstance,
         }),
@@ -63,7 +113,7 @@ describe("typed JSON client", () => {
       client.request({
         method: "GET",
         path: ["fixture"],
-        expectedStatus: 200,
+        expectedStatuses: [200],
         maxResponseBytes: 2 * MAX_METADATA_RESPONSE_BYTES,
         decode: decodeInstance,
       }),
@@ -79,7 +129,7 @@ describe("typed JSON client", () => {
     const result = await client.request({
       method: "GET",
       path: ["fixture"],
-      expectedStatus: 200,
+      expectedStatuses: [200],
       maxResponseBytes: MAX_METADATA_RESPONSE_BYTES * 3,
       decode: (value) => value,
     });
@@ -114,7 +164,7 @@ describe("typed JSON client", () => {
       const decode = vi.fn(decodeInstance);
       const { client, transport } = setup(() => Response.json(instance, { status }));
       await expect(
-        client.request({ method: "POST", path: ["fixture"], expectedStatus: 201, decode }),
+        client.request({ method: "POST", path: ["fixture"], expectedStatuses: [201], decode }),
       ).rejects.toMatchObject({ category: "invalid-response", metadata: { status } });
       expect(decode).not.toHaveBeenCalled();
       expect(transport).toHaveBeenCalledTimes(1);
@@ -126,7 +176,7 @@ describe("typed JSON client", () => {
       setup(() => Response.json(instance, { status })).client.request({
         method: "DELETE",
         path: ["fixture"],
-        expectedStatus: 204,
+        expectedStatuses: [204],
         response: "empty",
       }),
     ).rejects.toMatchObject({ category: "invalid-response", metadata: { status } });
@@ -145,7 +195,7 @@ describe("typed JSON client", () => {
     await expect(
       client.request({
         method: "GET",
-        expectedStatus: 200,
+        expectedStatuses: [200],
         path: ["fixture"],
         body: { secret: "password" },
         decode: decodeInstance,
@@ -154,7 +204,7 @@ describe("typed JSON client", () => {
     await expect(
       client.request({
         method: "POST",
-        expectedStatus: 201,
+        expectedStatuses: [201],
         path: ["fixture"],
         body: 1n,
         decode: decodeInstance,
@@ -163,7 +213,7 @@ describe("typed JSON client", () => {
     await expect(
       client.request({
         method: "GET",
-        expectedStatus: 200,
+        expectedStatuses: [200],
         path: ["fixture"],
         accessToken: "secret\r\nCookie: injected",
         decode: decodeInstance,
@@ -186,7 +236,7 @@ describe("typed JSON client", () => {
     const replacement = vi.fn(decodeInstance);
     const options = {
       method: "GET" as const,
-      expectedStatus: 200 as const,
+      expectedStatuses: [200] as const,
       path: ["fixture"],
       signal: original.signal,
       decode,
@@ -246,7 +296,7 @@ describe("typed JSON client", () => {
       const { client, transport } = setup(() => Response.json(instance, { status: 201 }));
       await client.request({
         method,
-        expectedStatus: 201,
+        expectedStatuses: [201],
         path: ["fixture"],
         body: { value: true },
         accessToken: "token-123",
@@ -265,7 +315,7 @@ describe("typed JSON client", () => {
     await expect(
       client.request({
         method: "DELETE",
-        expectedStatus: 204,
+        expectedStatuses: [204],
         path: ["fixture"],
         response: "empty",
       }),
@@ -403,7 +453,7 @@ describe("typed JSON client", () => {
     const controller = new AbortController();
     const request = first.client.request({
       method: "GET",
-      expectedStatus: 200,
+      expectedStatuses: [200],
       path: ["fixture"],
       accessToken: "first",
       signal: controller.signal,
@@ -413,7 +463,7 @@ describe("typed JSON client", () => {
     await expect(request).rejects.toMatchObject({ category: "cancelled" });
     await other.request({
       method: "GET",
-      expectedStatus: 200,
+      expectedStatuses: [200],
       path: ["fixture"],
       accessToken: "second",
       decode: decodeInstance,

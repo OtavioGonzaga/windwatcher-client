@@ -22,9 +22,12 @@ workflow. The returned instance is validated protocol metadata, not authenticate
 server identity or onboarding approval. There is no legacy 404/empty fallback.
 See [contract provenance and generation](api-contract.md).
 
-`request()` supports GET/POST/PATCH/PUT/DELETE. Declare `expectedStatus: 200` or
-`201` with a runtime `decode(unknown)`, or `expectedStatus: 204` with
-`response: "empty"`. Only the declared success is accepted: for example,
+`request()` supports GET/POST/PATCH/PUT/DELETE. Declare nonempty
+`expectedStatuses: [200]`, `[201]`, or `[200, 201]` with a runtime
+`decode(unknown)`, or `expectedStatuses: [204]` with `response: "empty"`.
+Only declared successes are accepted. The two-status form represents a created
+resource or an existing/idempotent replay without implementing those endpoints.
+For example,
 `getInstance()` always expects 200 and rejects 201/202/206 as well as 204, without
 reading or decoding the unexpected body. An unexpected 2xx is an invalid response, never
 an assertion that a server exists. Other endpoint methods/decoders belong with

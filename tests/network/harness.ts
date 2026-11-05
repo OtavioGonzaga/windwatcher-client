@@ -9,7 +9,7 @@ export async function probe(baseUrl: string, accessToken?: string) {
     const data = accessToken
       ? await client.request({
           method: "GET",
-          expectedStatus: 200,
+          expectedStatuses: [200],
           path: ["instance"],
           accessToken,
           decode: (value) => value,

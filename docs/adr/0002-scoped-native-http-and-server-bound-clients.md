@@ -21,7 +21,7 @@ The runtime instance type derives known fields from generated DTOs but widens
 the advertised lists without changing the pinned schema. Capability support
 checks are deferred to onboarding, not inferred from structural decoding.
 
-Operations must declare their exact success status; a 202/206 is not accepted
+Operations must declare their allowed success statuses; a 202/206 is not accepted
 merely because its body passes a decoder. Read delivered bytes incrementally
 before UTF-8/JSON decoding, with finite per-operation budgets and tighter
 metadata/problem budgets. The generic default accounts for maximum-size default

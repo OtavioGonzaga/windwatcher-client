@@ -20,10 +20,13 @@ interface RequestOptions extends RequestLifetime {
   readonly body?: unknown;
 }
 type JsonRequest<T> = RequestOptions & {
-  readonly expectedStatus: 200 | 201;
+  readonly expectedStatuses: readonly [200 | 201, ...(200 | 201)[]];
   readonly decode: (value: unknown) => T;
 };
-type EmptyRequest = RequestOptions & { readonly expectedStatus: 204; readonly response: "empty" };
+type EmptyRequest = RequestOptions & {
+  readonly expectedStatuses: readonly [204];
+  readonly response: "empty";
+};
 
 /** A server-bound client; credentials and request lifetime are never global. */
 export class ApiClient {
@@ -40,7 +43,7 @@ export class ApiClient {
     // authorization, even from an untyped JS caller supplying extra properties.
     return this.request({
       method: "GET",
-      expectedStatus: 200,
+      expectedStatuses: [200],
       maxResponseBytes: MAX_METADATA_RESPONSE_BYTES,
       path: ["instance"],
       decode: decodeInstance,
@@ -55,13 +58,20 @@ export class ApiClient {
     const signal = options.signal;
     const expectsEmpty = "response" in options;
     const decode = "decode" in options ? options.decode : undefined;
-    const expectedStatus = options.expectedStatus;
+    const declaredStatuses = options.expectedStatuses;
+    if (
+      !Array.isArray(declaredStatuses) ||
+      declaredStatuses.length === 0 ||
+      Array.from(declaredStatuses).some((status) =>
+        expectsEmpty ? status !== 204 : status !== 200 && status !== 201,
+      )
+    ) {
+      throw new TypeError("Declare nonempty expected JSON (200/201) or empty (204) statuses.");
+    }
+    const expectedStatuses: readonly number[] = [...declaredStatuses];
     const maxResponseBytes = options.maxResponseBytes ?? DEFAULT_MAX_RESPONSE_BYTES;
     if (!Number.isSafeInteger(maxResponseBytes) || maxResponseBytes <= 0) {
       throw new TypeError("Response byte budget must be a positive safe integer.");
-    }
-    if (expectsEmpty ? expectedStatus !== 204 : expectedStatus !== 200 && expectedStatus !== 201) {
-      throw new TypeError("Declare the operation's expected JSON (200/201) or empty (204) status.");
     }
     const timeout = options.timeoutMs ?? 15000;
     if (!Number.isInteger(timeout) || timeout <= 0 || timeout > 2147483647) {
@@ -128,7 +138,7 @@ export class ApiClient {
             void response.body?.cancel().catch(() => {});
             throw new ApiError("redirect", metadata);
           }
-          if (response.ok && response.status !== expectedStatus) {
+          if (response.ok && !expectedStatuses.includes(response.status)) {
             void response.body?.cancel().catch(() => {});
             throw new ApiError("invalid-response", metadata);
           }
