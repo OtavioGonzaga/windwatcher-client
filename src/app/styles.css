@@ -1,0 +1,7 @@
+@import "tailwindcss";
+
+/* Bootstrap colors only; the complete visual system is a separate delivery. */
+@theme {
+  --color-background: #1d2021;
+  --color-foreground: #fbf1c7;
+}

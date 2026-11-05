@@ -1,0 +1,30 @@
+{
+  "options": {
+    "typeAware": true,
+    "maxWarnings": 0
+  },
+  "plugins": ["typescript", "import", "react", "jsx-a11y"],
+  "env": {
+    "browser": true,
+    "node": true
+  },
+  "categories": {
+    "correctness": "error",
+    "suspicious": "warn",
+    "perf": "warn",
+    "style": "off"
+  },
+  "rules": {
+    "react/react-in-jsx-scope": "off",
+    "import/no-unassigned-import": "off",
+    "import/no-named-as-default-member": "off"
+  },
+  "ignorePatterns": [
+    "dist/**",
+    "node_modules/**",
+    "target/**",
+    "src-tauri/target/**",
+    "src-tauri/gen/**",
+    ".agents/**"
+  ]
+}

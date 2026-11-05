@@ -1,0 +1,49 @@
+name: Bug report
+description: Report unexpected behavior in the Windwatcher client.
+title: "bug: "
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. ...
+        2. ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected and actual behavior
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Client version or commit
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      options:
+        - Web
+        - Linux Tauri
+        - Windows Tauri
+        - Android Tauri
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment and diagnostics
+      description: Include OS, browser/WebView, toolchain and server versions where relevant. Never include tokens, passwords or ticket URLs.
+    validations:
+      required: true
