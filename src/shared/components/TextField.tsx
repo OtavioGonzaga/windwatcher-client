@@ -24,7 +24,7 @@ export function TextField({
       .join(" ") || undefined;
   return (
     <div className="flex min-w-0 flex-col gap-2 text-sm">
-      <label htmlFor={inputId} className="font-medium">
+      <label id={`${inputId}-label`} htmlFor={inputId} className="font-medium">
         {label}
       </label>
       {hint && (

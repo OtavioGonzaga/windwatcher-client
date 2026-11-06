@@ -47,7 +47,9 @@ test("explicit inspect/save/reload/dedupe/rename/reinspect/confirmed-forget has 
     "serverProfiles",
   ]);
   await page.getByLabel("Local display label").fill("Renamed");
-  await page.getByRole("button", { name: "Rename", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Rename https://profiles.test/proxy/", exact: true })
+    .click();
   await expect(page.getByRole("heading", { name: "Renamed" })).toBeVisible();
   await page.getByRole("link", { name: "Inspect again" }).click();
   await expect(page.getByLabel("Server URL")).toHaveValue("https://profiles.test/proxy/");
@@ -58,9 +60,13 @@ test("explicit inspect/save/reload/dedupe/rename/reinspect/confirmed-forget has 
   await expect(page.getByText(/Server saved locally/)).toBeVisible();
   await page.getByRole("link", { name: "Home", exact: true }).click();
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
-  await page.getByRole("button", { name: "Forget server", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Forget server https://profiles.test/proxy/", exact: true })
+    .click();
   await expect(page.getByRole("heading", { name: "Renamed" })).toBeVisible();
-  await page.getByRole("button", { name: "Confirm forget", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Confirm forget https://profiles.test/proxy/", exact: true })
+    .click();
   await expect(page.getByText("No servers saved yet.")).toBeVisible();
   expect(requests).toBe(2);
 });
@@ -126,9 +132,17 @@ for (const mode of ["light", "dark"] as const) {
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
       true,
     );
-    await page.getByRole("button", { name: "Umbenennen", exact: true }).focus();
+    await page
+      .getByRole("button", {
+        name: "Umbenennen https://profiles.test/long-proxy-prefix/",
+        exact: true,
+      })
+      .focus();
     await page.keyboard.press("Tab");
-    const forget = page.getByRole("button", { name: "Server vergessen", exact: true });
+    const forget = page.getByRole("button", {
+      name: "Server vergessen https://profiles.test/long-proxy-prefix/",
+      exact: true,
+    });
     await expect(forget).toBeFocused();
     await expect(forget).toHaveCSS("outline-style", "solid");
     await expect(forget).toHaveCSS("forced-color-adjust", "auto");

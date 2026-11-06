@@ -43,6 +43,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Distinguish saved-server controls by canonical address in accessible names,
+  including when display labels repeat, and format inspection dates in the active language.
 - Distinguish local-address selection buttons by their exact address in accessible
   names, preserving the short visible labels in all four languages.
 - Preserve future instance API/auth advertisements as strings while retaining

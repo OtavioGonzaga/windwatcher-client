@@ -3,6 +3,8 @@ import { beforeEach, expect, it, vi } from "vitest";
 import { MemoryRouter } from "react-router";
 import { Providers } from "../../app/Providers";
 import { createI18n } from "../../shared/i18n";
+import { locales } from "../../shared/i18n/locale";
+import type { Locale } from "../../shared/i18n/locale";
 import { emptyState } from "./schema";
 import { SaveServerProfile } from "./SaveServerProfile";
 import { ServerProfilesList } from "./ServerProfilesList";
@@ -33,9 +35,9 @@ const profile = {
   createdAt: "2026-11-06T00:00:00.000Z",
   updatedAt: "2026-11-06T00:00:00.000Z",
 };
-function mount(child: React.ReactNode) {
+function mount(child: React.ReactNode, locale: Locale = "en") {
   return render(
-    <Providers i18n={createI18n("en")}>
+    <Providers i18n={createI18n(locale)}>
       <MemoryRouter>{child}</MemoryRouter>
     </Providers>,
   );
@@ -87,19 +89,108 @@ it("lists historical profiles without network effects; forget requires confirmat
   mount(<ServerProfilesList />);
   await screen.findByRole("heading", { name: "My server" });
   expect(screen.getByText(/Last advertisement/)).toBeVisible();
-  expect(screen.getByRole("link", { name: "Inspect again" })).toHaveAttribute(
-    "href",
-    "/connect?server=https%3A%2F%2Fexample.test%2F",
-  );
-  fireEvent.click(screen.getByRole("button", { name: "Forget server" }));
+  expect(
+    screen.getByRole("link", { name: `Inspect again ${profile.canonicalUrl}` }),
+  ).toHaveAttribute("href", "/connect?server=https%3A%2F%2Fexample.test%2F");
+  fireEvent.click(screen.getByRole("button", { name: `Forget server ${profile.canonicalUrl}` }));
   expect(mock.forgetProfile).not.toHaveBeenCalled();
-  expect(screen.getByRole("button", { name: "Confirm forget" })).toHaveFocus();
-  fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
-  expect(screen.getByRole("button", { name: "Forget server" })).toHaveFocus();
-  fireEvent.click(screen.getByRole("button", { name: "Forget server" }));
-  fireEvent.click(screen.getByRole("button", { name: "Confirm forget" }));
+  expect(
+    screen.getByRole("button", { name: `Confirm forget ${profile.canonicalUrl}` }),
+  ).toHaveFocus();
+  fireEvent.click(screen.getByRole("button", { name: `Cancel ${profile.canonicalUrl}` }));
+  expect(
+    screen.getByRole("button", { name: `Forget server ${profile.canonicalUrl}` }),
+  ).toHaveFocus();
+  fireEvent.click(screen.getByRole("button", { name: `Forget server ${profile.canonicalUrl}` }));
+  fireEvent.click(screen.getByRole("button", { name: `Confirm forget ${profile.canonicalUrl}` }));
   await screen.findByText(/No servers saved yet/);
   expect(screen.getByRole("heading", { name: "Saved servers" })).toHaveFocus();
+});
+it("distinguishes every control by canonical address when two profiles share a display label", async () => {
+  const other = {
+    ...profile,
+    id: "550e8400-e29b-41d4-a716-446655440001",
+    canonicalUrl: "http://[::1]:8080/proxy/",
+  };
+  mock.load.mockResolvedValue({ ...emptyState(), serverProfiles: [profile, other] });
+  mock.renameProfile.mockResolvedValue({
+    ...emptyState(),
+    revision: 1,
+    serverProfiles: [{ ...profile, label: "Renamed" }, other],
+  });
+  mock.forgetProfile.mockResolvedValue({
+    ...emptyState(),
+    revision: 2,
+    serverProfiles: [{ ...profile, label: "Renamed" }],
+  });
+  mount(<ServerProfilesList />);
+  await screen.findAllByRole("heading", { name: "My server" });
+  for (const p of [profile, other]) {
+    expect(screen.getByRole("listitem", { name: `My server ${p.canonicalUrl}` })).toBeVisible();
+    expect(screen.getByRole("link", { name: `Inspect again ${p.canonicalUrl}` })).toBeVisible();
+    expect(
+      screen.getByRole("textbox", { name: `Local display label ${p.canonicalUrl}` }),
+    ).toHaveValue("My server");
+    expect(screen.getByRole("button", { name: `Rename ${p.canonicalUrl}` })).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: `Forget server ${p.canonicalUrl}` }));
+    expect(screen.getByRole("button", { name: `Confirm forget ${p.canonicalUrl}` })).toBeVisible();
+    expect(screen.getByRole("button", { name: `Cancel ${p.canonicalUrl}` })).toBeVisible();
+  }
+  expect(mock.forgetProfile).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole("button", { name: `Cancel ${profile.canonicalUrl}` }));
+  expect(
+    screen.getByRole("button", { name: `Forget server ${profile.canonicalUrl}` }),
+  ).toHaveFocus();
+  fireEvent.change(
+    screen.getByRole("textbox", {
+      name: `Local display label ${profile.canonicalUrl}`,
+    }),
+    { target: { value: "Renamed" } },
+  );
+  expect(
+    screen.getByRole("textbox", { name: `Local display label ${other.canonicalUrl}` }),
+  ).toHaveValue("My server");
+  fireEvent.click(screen.getByRole("button", { name: `Rename ${profile.canonicalUrl}` }));
+  await screen.findByRole("heading", { name: "Renamed" });
+  expect(mock.renameProfile).toHaveBeenCalledWith(profile.id, "Renamed", 0);
+  fireEvent.click(screen.getByRole("button", { name: `Confirm forget ${other.canonicalUrl}` }));
+  await waitFor(() => expect(mock.forgetProfile).toHaveBeenCalledWith(other.id, 1));
+  expect(screen.getByRole("link", { name: `Inspect again ${profile.canonicalUrl}` })).toBeVisible();
+});
+it.each(locales)("formats the inspection date with the active %s locale", async (locale) => {
+  mock.load.mockResolvedValue({ ...emptyState(), serverProfiles: [profile] });
+  const view = mount(<ServerProfilesList />, locale);
+  await screen.findByRole("heading", { name: "My server" });
+  const time = view.container.querySelector("time");
+  const expected = new Intl.DateTimeFormat(locale, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(new Date(profile.discovery.inspectedAt));
+  expect(time?.textContent).toContain(expected);
+  expect(time?.textContent).not.toContain(profile.discovery.inspectedAt);
+  expect(time).toHaveAttribute("datetime", profile.discovery.inspectedAt);
+});
+it("reformats the inspection date when language changes without reloading profiles", async () => {
+  mock.load.mockResolvedValue({ ...emptyState(), serverProfiles: [profile] });
+  const i18n = createI18n("en");
+  const view = render(
+    <Providers i18n={i18n}>
+      <MemoryRouter>
+        <ServerProfilesList />
+      </MemoryRouter>
+    </Providers>,
+  );
+  await screen.findByRole("heading", { name: "My server" });
+  await act(async () => {
+    await i18n.changeLanguage("de");
+  });
+  const expected = new Intl.DateTimeFormat("de", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(new Date(profile.discovery.inspectedAt));
+  expect(view.container.querySelector("time")?.textContent).toContain(expected);
+  expect(screen.getByRole("button", { name: `Umbenennen ${profile.canonicalUrl}` })).toBeVisible();
+  expect(mock.load).toHaveBeenCalledOnce();
 });
 it("external storage changes disable stale saves until explicit reload", async () => {
   mount(<SaveServerProfile result={result} acknowledged={false} />);
