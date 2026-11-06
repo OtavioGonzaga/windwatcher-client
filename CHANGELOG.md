@@ -9,10 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Explicitly saved, durable server profiles with canonical address deduplication,
+  local labels, historical inspection snapshots, reinspection and confirmed forget.
+- Validated V1 nonsecret storage and account registry with independent local IDs,
+  account-owned browser/OS credential adapters and failure-aware credential cleanup.
+  Authentication and account switching are not implemented.
 - Optional Linux-native loopback server suggestions with identity-first readiness
   checks, explicit address selection and localized dismiss/recheck actions.
-- Manual, in-memory server inspection with HTTP warnings, capability summaries
-  and explicitly unverified legacy discovery; no account or server is saved.
+- Manual server inspection with HTTP warnings, capability summaries and explicitly
+  unverified legacy discovery; inspection alone saves nothing and creates no account.
 - Shared responsive navigation between Home and presentation preferences, hash
   URLs supporting static hosting prefixes, accessible focus/skip links and
   localized not-found/render recovery in all four languages.

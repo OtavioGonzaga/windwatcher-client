@@ -9,10 +9,13 @@ import { discoverServer, LegacyProbeError } from "./discover-server";
 import type { DiscoveryResult } from "./discover-server";
 import { canDiscoverLocalServer } from "../../shared/platform/native-target";
 import { LocalServerSuggestion } from "./LocalServerSuggestion";
+import { SaveServerProfile } from "../server-profiles/SaveServerProfile";
 
 export function AddServerPage() {
   const { t } = useTranslation();
-  const [input, setInput] = useState("");
+  const [input, setInput] = useState(
+    () => new URLSearchParams(window.location.hash.split("?")[1]).get("server") ?? "",
+  );
   const [editing, setEditing] = useState(0);
   const [invalid, setInvalid] = useState(false);
   const [checking, setChecking] = useState(false);
@@ -218,6 +221,11 @@ export function AddServerPage() {
           </div>
         )}
       </output>
+      {result &&
+        (result.kind === "supported" ||
+          (result.kind === "legacy" && result.recognized && acknowledged)) && (
+          <SaveServerProfile key={result.root} result={result} acknowledged={acknowledged} />
+        )}
     </div>
   );
 }

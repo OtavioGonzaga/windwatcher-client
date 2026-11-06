@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router";
+import { ServerProfilesList } from "../../features/server-profiles/ServerProfilesList";
 
 export function HomePage() {
   const { t: foundation } = useTranslation("foundation");
@@ -23,6 +24,7 @@ export function HomePage() {
       >
         {t("discovery.title")}
       </Link>
+      <ServerProfilesList />
     </div>
   );
 }
