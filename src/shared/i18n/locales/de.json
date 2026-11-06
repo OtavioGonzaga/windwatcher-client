@@ -24,6 +24,21 @@
     },
     "reset": "Beispiel zurücksetzen",
     "clear": "Beispieleingabe leeren",
+    "localDiscovery": {
+      "title": "Lokale Servervorschläge",
+      "checking": "Lokaler Server wird gesucht…",
+      "found": "Lokale Windwatcher-Antwort gefunden",
+      "none": "Kein kompatibler lokaler Server gefunden. Du kannst weiterhin eine Adresse manuell eingeben.",
+      "ready": "Windwatcher v1 ist jetzt bereit. Übernimm die Adresse zur manuellen Prüfung; nichts wird gespeichert.",
+      "notReady": "Windwatcher antwortet, ist aber nicht bereit. Prüfe später erneut oder gib eine andere Adresse ein.",
+      "unknown": "Windwatcher erkannt, Bereitschaft jedoch unbekannt. Prüfe erneut oder gib die Adresse manuell ein.",
+      "legacy": "Möglicherweise älterer Windwatcher, nicht verifiziert. Übernimm die Adresse, prüfe sie und bestätige den Warnhinweis.",
+      "incompatible": "Dieser Windwatcher-Server bietet keine von diesem Client unterstützte API oder Anmeldung an.",
+      "use": "Diese Adresse verwenden",
+      "useSpecific": "Diese Adresse verwenden: {{address}}",
+      "dismiss": "Verwerfen",
+      "retry": "Erneut prüfen"
+    },
     "discovery": {
       "title": "Server hinzufügen",
       "intro": "Prüfe einen selbst betriebenen Windwatcher-Server, ohne dich anzumelden oder ihn zu speichern.",

@@ -8,6 +8,9 @@ const foundationHarness = process.env.WINDWATCHER_FOUNDATION_HARNESS === "1";
 const shellHarness = process.env.WINDWATCHER_SHELL_HARNESS === "1";
 
 export default defineConfig({
+  define: {
+    "import.meta.env.NATIVE_TARGET": JSON.stringify(process.env.TAURI_ENV_PLATFORM ?? "web"),
+  },
   base: "./",
   ...(shellHarness ? { root: "tests/shell", publicDir: "../../public" } : {}),
   plugins: [

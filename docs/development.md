@@ -137,6 +137,11 @@ installed-adapter evidence; a debug build alone is still not release validation.
 
 ## Validation and manual smoke
 
+Linux-only Add Server suggestions and their platform/fixture/native evidence are
+documented in [local discovery](local-discovery.md). The scanner is disabled in
+ordinary browsers, including Vite started by Tauri. The isolated local-suggestion
+browser fixture is test-only, not a substitute for WebKitGTK smoke.
+
 The [visual foundation](visual-foundation.md) documents theme/locale APIs, font
 licenses, contrast tests and the optional component fixture at port 4175.
 `test:e2e` builds that fixture separately from production, the network harness

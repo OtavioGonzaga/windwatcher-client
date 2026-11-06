@@ -18,12 +18,14 @@
     "api:check": "bun scripts/api-generate.ts --check",
     "test": "bun --bun vitest run",
     "test:watch": "bun --bun vitest",
-    "test:e2e": "bun run build:network-test && bun run build:foundation-test && bun run build:shell-test && bun --bun playwright test",
+    "test:e2e": "bun run build:network-test && bun run build:foundation-test && bun run build:shell-test && bun run build:local-discovery-test && bun --bun playwright test",
+    "build:local-discovery-test": "bun scripts/build-local-discovery-test.ts",
     "build:shell-test": "bun scripts/build-shell-test.ts",
     "build:foundation-test": "bun scripts/build-foundation-test.ts",
     "build:network-test": "bun scripts/build-network-test.ts",
     "test:native:report": "bun scripts/check-native-report.ts",
-    "check": "bun run api:check && bun run format:check && bun run lint && bun run typecheck && bun run test && bun run build",
+    "check:target": "bun scripts/check-native-target.ts",
+    "check": "bun run api:check && bun run check:target && bun run format:check && bun run lint && bun run typecheck && bun run test && bun run build",
     "tauri": "bun node_modules/@tauri-apps/cli/tauri.js"
   },
   "dependencies": {

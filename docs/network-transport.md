@@ -2,6 +2,11 @@
 
 ## Consumer boundary
 
+Linux-native Add Server also offers a finite scan of two fixed loopback defaults,
+using this same transport and manual inspection policy. Its separate bounded
+unversioned health reader does not change `ApiClient.request()` or OpenAPI.
+See [local discovery](local-discovery.md) for readiness and lifetime details.
+
 Manual discovery explicitly constructs a server-bound
 client without introducing global server/account state:
 

@@ -24,6 +24,21 @@
     },
     "reset": "Restablecer ejemplo",
     "clear": "Vaciar el campo de ejemplo",
+    "localDiscovery": {
+      "title": "Sugerencias de servidor local",
+      "checking": "Buscando un servidor local…",
+      "found": "Respuesta local de Windwatcher encontrada",
+      "none": "No se encontró un servidor local compatible. Aún puedes introducir una dirección manualmente.",
+      "ready": "Windwatcher v1 está listo ahora. Usa la dirección para comprobarlo manualmente; no se guardará nada.",
+      "notReady": "Windwatcher responde, pero no está listo. Vuelve a comprobarlo más tarde o introduce otra dirección.",
+      "unknown": "Se reconoce Windwatcher, pero no se sabe si está listo. Vuelve a comprobarlo o introduce la dirección manualmente.",
+      "legacy": "Posible Windwatcher antiguo, sin verificar. Usa la dirección, compruébala y acepta la advertencia de servidor antiguo.",
+      "incompatible": "Este servidor Windwatcher no anuncia la API o la autenticación compatible con este cliente.",
+      "use": "Usar esta dirección",
+      "useSpecific": "Usar esta dirección: {{address}}",
+      "dismiss": "Descartar",
+      "retry": "Volver a comprobar"
+    },
     "discovery": {
       "title": "Añadir servidor",
       "intro": "Inspecciona un servidor Windwatcher propio sin iniciar sesión ni guardarlo.",

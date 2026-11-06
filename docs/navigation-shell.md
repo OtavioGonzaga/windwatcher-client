@@ -6,12 +6,12 @@ and in-memory; there are no accounts or persisted settings here.
 
 ## Routes and deployment
 
-| Fragment        | Contents                                          |
-| --------------- | ------------------------------------------------- |
-| `#/`            | Supplied artwork and truthful product description |
-| `#/preferences` | Working language and appearance controls          |
-| `#/connect`     | Manual server inspection                          |
-| Any other route | Localized not-found message and Home recovery     |
+| Fragment        | Contents                                             |
+| --------------- | ---------------------------------------------------- |
+| `#/`            | Supplied artwork and truthful product description    |
+| `#/preferences` | Working language and appearance controls             |
+| `#/connect`     | Manual inspection and Linux-native local suggestions |
+| Any other route | Localized not-found message and Home recovery        |
 
 Providers wrap the router, so navigation does not reset appearance/language.
 Reload/restart restores browser/system defaults, as documented in the
