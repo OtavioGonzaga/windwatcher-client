@@ -3,6 +3,8 @@ import { ProfileRepository } from "../../features/server-profiles/repository";
 import { ClientStateStore } from "./state-store";
 import { browserDocument, browserNamespace, browserSecrets } from "./browser";
 let current: Promise<ProfileRepository> | undefined;
+// Profile composition only. PR 8 must add secret-first application coordination
+// with a prepared account ID; this factory does not implement session persistence.
 export function profileRepository(): Promise<ProfileRepository> {
   current ??= (async () => {
     if (isTauri()) {

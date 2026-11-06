@@ -14,6 +14,11 @@ explicit check, then offers an explicit update of the existing profile. Merely
 checking never saves. Forget requires confirmation and warns about local accounts
 when present. It does not delete accounts on the remote server.
 
+Row controls include the canonical address in their accessible names, even when
+display labels repeat. Inspection timestamps retain ISO UTC in storage and the
+`time` element's `datetime` attribute; visible dates use the active application
+locale and the host time zone through the shared `formatDate()` helper.
+
 Local IDs are collision-checked `crypto.randomUUID()` values. Profiles deduplicate
 by the existing `ServerUrl.parse` canonical root, not by DNS, advertisements or
 remote instance identity. Host aliases, IPv4/IPv6, schemes, nondefault ports and
@@ -135,6 +140,44 @@ does not invent one. Future refresh replaces that one envelope, not independent
 access/refresh fields. Provider overwrite/durability granularity is not a fully
 atomic distributed transaction. Restoration, refresh, logout and active-context
 cancellation remain PR 8/9 work.
+
+### PR 8 prerequisite: prepared identity and coordinated persistence
+
+**This coordination is not implemented in PR 7.** `registerAccount()` currently
+generates its local UUID inside the metadata update. It is a metadata-only
+registry operation, not a login-persistence entry point: calling it first to
+discover an ID would violate the secret-first ordering above. The composition
+root currently exposes only the profile repository, not a coordinating session
+persistence service. Synthetic smoke fixtures are not a production login recipe.
+
+Before persisting any real tokens, PR 8 must implement and test an application
+operation that:
+
+1. Resolves the authoritative `(profile ID, server user ID)` pair. For an existing
+   account, reuse its local UUID; for a new account, prepare a collision-checked
+   secure local UUID **before** writing either the secret or the account row.
+   Metadata commit must accept that prepared identity without generating another
+   UUID. Preparation alone must not create an authenticated account.
+2. Coordinates the injected metadata and secret adapters at the composition root,
+   not in React. Serialize preparation/write/commit against relevant account
+   creation/removal and profile-forget operations; recheck references and revision
+   before committing. Keep bytes out of UI state and route parameters.
+3. Writes one versioned account-owned envelope, reads it back and verifies it, then
+   commits account metadata with the **same** prepared UUID. A failed write or
+   verification must not commit the account or establish authenticated context.
+4. Compensates a failed new-account metadata commit by removing that operation's
+   secret alias. If cleanup fails or the process dies between stores, define a
+   bounded, nonsecret reconciliation intent/crash-recovery mechanism before
+   enabling token persistence; do not report success or lose the identity needed
+   for cleanup. Existing-account overwrite requires a separately tested rollback
+   policy: never blindly delete its previous record or assume an older rotating
+   credential is still usable.
+
+Required failure seams include exact UUID/order verification, failed put/readback,
+stale or failed metadata commit, failed compensation, duplicate-pair retries,
+existing-account overwrite, concurrent removal and restart after an interrupted
+commit. These requirements are an explicit PR 8 integration gate, not an API
+already supplied by `registerAccount()` or `platform-storage.ts`.
 
 ## Repeatable native smoke
 

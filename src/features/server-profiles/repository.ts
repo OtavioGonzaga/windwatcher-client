@@ -102,7 +102,12 @@ export class ProfileRepository {
       draft.serverProfiles = draft.serverProfiles.filter((p) => p.id !== id);
     }, revision);
   }
-  /** PR 8 must supply the authoritative server-returned UUID. No production account form. */
+  /**
+   * Metadata-only registry operation; not a session-persistence entry point.
+   * PR 8 must prepare/reuse a local ID before secret write/verification and then
+   * commit that exact ID through a coordinating application operation. See the
+   * cross-store prerequisite in docs/storage-and-accounts.md before storing tokens.
+   */
   registerAccount(serverProfileId: string, serverUserId: string, username: string) {
     return this.state.update((draft) => {
       ensure(draft.serverProfiles.some((p) => p.id === serverProfileId));
