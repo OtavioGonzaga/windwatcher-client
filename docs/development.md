@@ -22,6 +22,10 @@ The changelog remains `Unreleased`. Do not assign `0.1.0` merely to bootstrap.
 Native package installation, signing and a supported distribution matrix are
 separate future deliveries. macOS/iOS are not current distribution targets.
 
+The [preliminary native secret-storage review](native-secret-storage-review.md)
+records the blocked PR 7 security gate. No credential backend has been adopted;
+interactive OS-vault validation is separate from compilation.
+
 ## Install dependencies
 
 Install Bun at the pinned version and Rust through rustup. The repository's
