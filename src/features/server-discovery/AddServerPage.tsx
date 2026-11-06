@@ -7,10 +7,13 @@ import { TextField } from "../../shared/components/TextField";
 import { platformHttp } from "../../shared/platform/http";
 import { discoverServer, LegacyProbeError } from "./discover-server";
 import type { DiscoveryResult } from "./discover-server";
+import { canDiscoverLocalServer } from "../../shared/platform/native-target";
+import { LocalServerSuggestion } from "./LocalServerSuggestion";
 
 export function AddServerPage() {
   const { t } = useTranslation();
   const [input, setInput] = useState("");
+  const [editing, setEditing] = useState(0);
   const [invalid, setInvalid] = useState(false);
   const [checking, setChecking] = useState(false);
   const [result, setResult] = useState<DiscoveryResult | null>(null);
@@ -117,6 +120,7 @@ export function AddServerPage() {
           value={input}
           onChange={(event) => {
             cancel();
+            setEditing((previous) => previous + 1);
             setInput(event.target.value);
             setInvalid(false);
             setResult(null);
@@ -141,6 +145,20 @@ export function AddServerPage() {
           {checking && <Button onClick={cancel}>{t("discovery.cancel")}</Button>}
         </div>
       </form>
+      {canDiscoverLocalServer() && (
+        <LocalServerSuggestion
+          editing={editing}
+          onUse={(root) => {
+            cancel();
+            setInput(root);
+            setInvalid(false);
+            setResult(null);
+            setFailure(null);
+            setAcknowledged(false);
+            inputRef.current?.focus();
+          }}
+        />
+      )}
       <output aria-live="polite">
         {checking && <p>{t("discovery.checking")}</p>}
         {failure && (

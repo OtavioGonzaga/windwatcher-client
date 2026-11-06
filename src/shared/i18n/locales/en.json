@@ -24,6 +24,20 @@
     },
     "reset": "Reset example",
     "clear": "Clear example input",
+    "localDiscovery": {
+      "title": "Local server suggestions",
+      "checking": "Checking for a local server…",
+      "found": "Local Windwatcher response found",
+      "none": "No compatible local server found. You can still enter an address manually.",
+      "ready": "Windwatcher v1 is ready now. Use the address to check it manually; nothing will be saved.",
+      "notReady": "Windwatcher is responding but is not ready. Check again later or enter another address.",
+      "unknown": "Windwatcher is recognized, but readiness is unknown. Check again or enter the address manually.",
+      "legacy": "Possible legacy Windwatcher, unverified. Use the address, then check it and acknowledge the legacy warning.",
+      "incompatible": "This Windwatcher server does not advertise the API or authentication this client supports.",
+      "use": "Use this address",
+      "dismiss": "Dismiss",
+      "retry": "Check again"
+    },
     "discovery": {
       "title": "Add server",
       "intro": "Inspect a self-hosted Windwatcher server without signing in or saving it.",
