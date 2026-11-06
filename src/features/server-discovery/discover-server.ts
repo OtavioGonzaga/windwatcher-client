@@ -9,6 +9,13 @@ export type DiscoveryResult =
   | { kind: "unsupported-api" | "unsupported-auth"; root: string; advertised: readonly string[] }
   | { kind: "legacy"; root: string; recognized: boolean };
 
+/** Discovery was absent, but the separate legacy probe did not establish a clue. */
+export class LegacyProbeError extends ApiError {
+  constructor(error: ApiError) {
+    super(error.category, error.metadata);
+  }
+}
+
 /** One explicit user-directed inspection. No credentials, retries, or writes. */
 export async function discoverServer(
   root: string,
@@ -28,7 +35,7 @@ export async function discoverServer(
     return { kind: "supported", root, metadata };
   }
   const remaining = deadline - Date.now();
-  if (remaining <= 0) throw new ApiError("timeout");
+  if (remaining <= 0) throw new LegacyProbeError(new ApiError("timeout"));
   try {
     await client.request({
       method: "GET",
@@ -53,7 +60,7 @@ export async function discoverServer(
     ) {
       return { kind: "legacy", root, recognized: false };
     }
-    throw error;
+    throw new LegacyProbeError(error);
   }
   return { kind: "legacy", root, recognized: false };
 }

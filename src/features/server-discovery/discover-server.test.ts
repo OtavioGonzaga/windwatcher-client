@@ -47,4 +47,26 @@ describe("server discovery policy", () => {
       category: "transport",
     });
   });
+
+  it("aborts a pending legacy probe without reporting compatibility", async () => {
+    const controller = new AbortController();
+    let probeStarted: () => void = () => {};
+    const started = new Promise<void>((resolve) => {
+      probeStarted = resolve;
+    });
+    const transport = vi.fn<HttpTransport>(async (_url, options) => {
+      if (transport.mock.calls.length === 1) return new Response(null, { status: 204 });
+      probeStarted();
+      return await new Promise<Response>((_resolve, reject) => {
+        options.signal?.addEventListener("abort", () => reject(new Error("cancelled")), {
+          once: true,
+        });
+      });
+    });
+    const pending = discoverServer(root, transport, controller.signal);
+    await started;
+    controller.abort();
+    await expect(pending).rejects.toMatchObject({ category: "cancelled" });
+    expect(transport).toHaveBeenCalledTimes(2);
+  });
 });

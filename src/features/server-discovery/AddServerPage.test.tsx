@@ -6,7 +6,10 @@ import { createI18n } from "../../shared/i18n";
 import { AddServerPage } from "./AddServerPage";
 
 const mock = vi.hoisted(() => ({ discover: vi.fn(), transport: vi.fn() }));
-vi.mock("./discover-server", () => ({ discoverServer: mock.discover }));
+vi.mock("./discover-server", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./discover-server")>()),
+  discoverServer: mock.discover,
+}));
 vi.mock("../../shared/platform/http", () => ({ platformHttp: async () => mock.transport }));
 
 function mount() {
