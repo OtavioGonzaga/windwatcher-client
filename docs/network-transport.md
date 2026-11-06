@@ -28,7 +28,9 @@ server identity or onboarding approval. `inspectInstance()` additionally support
 explicit discovery absence (404, 204 or a genuinely zero-byte 200), without
 changing strict `getInstance()`. After absence, one unauthenticated
 `GET /v1/users/me` may provide a protocol clue, never proof of identity. Legacy
-registration is unknown; acknowledgment is required and no profile is saved.
+registration is unknown; acknowledgment is required. Inspection itself saves no
+profile; the separate explicit save flow is documented in
+[storage and accounts](storage-and-accounts.md).
 See [contract provenance and generation](api-contract.md).
 
 `request()` supports GET/POST/PATCH/PUT/DELETE. Declare nonempty
@@ -46,7 +48,8 @@ Only an explicit per-request `accessToken` sets Authorization. `getInstance()`
 does not accept or forward it, including extra properties from untyped callers.
 Accept is always JSON; Content-Type is set only for a JSON body. GET bodies and
 invalid bearer syntax are rejected before network I/O. There is no cookie
-authentication, retry, refresh or secret persistence.
+authentication, retry or refresh. The transport never persists secrets; opaque
+credential adapters are a separate local storage boundary.
 
 ## URL policy
 

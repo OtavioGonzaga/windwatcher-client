@@ -34,3 +34,4 @@
 !.agents/artifacts/
 .agents/artifacts/*
 !.agents/artifacts/.gitkeep
+dist-storage/

@@ -1,0 +1,10 @@
+[[permission]]
+identifier = "local-storage"
+description = "Fixed app-local nonsecret document and account-ID-only OS secret operations."
+commands.allow = [
+  "read_client_state",
+  "write_client_state",
+  "get_account_secret",
+  "put_account_secret",
+  "remove_account_secret",
+]

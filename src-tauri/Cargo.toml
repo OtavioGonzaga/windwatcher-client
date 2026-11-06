@@ -7,6 +7,7 @@ edition = "2024"
 rust-version = "1.99.1"
 license = "MIT"
 publish = false
+default-run = "windwatcher-client"
 
 [lib]
 name = "windwatcher_client_lib"
@@ -18,7 +19,21 @@ tauri-build = { version = "=2.7.4", features = [] }
 [dependencies]
 tauri = { version = "=2.12.5", features = [] }
 serde_json = "=1.0.154"
+uuid = { version = "=1.29.0", features = ["v4"] }
+tauri-plugin-keyring-store = { version = "=0.2.0", default-features = false }
 tauri-plugin-http = { version = "=2.8.3", default-features = false, features = [
   "rustls-tls",
   "http2",
 ] }
+
+[features]
+storage-smoke = []
+
+[[bin]]
+name = "storage-smoke"
+path = "../tests/native-storage/main.rs"
+required-features = ["storage-smoke"]
+
+[patch.crates-io]
+# Preserve failure/corruption semantics; see the vendored patch note.
+android-native-keyring-store = { path = "vendor/android-native-keyring-store" }

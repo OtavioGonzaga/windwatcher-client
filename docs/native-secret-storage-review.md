@@ -1,21 +1,18 @@
-# Native secret storage: preliminary review
+# Native secret storage: source review and runtime evidence
 
 ## Status (2026-11-06)
 
-**Blocked; no backend adopted and no credential-storage support implemented.**
-The PR 7 plan requires interactive native evidence on Linux, Windows and Android
-before adopting a backend and proceeding with dependent storage features. This
-checkout cannot supply the required Windows interactive environment. Compilation,
-mocked tests or a Linux implementation would not close that gate. Resume the
-security spike with access to all three environments, or obtain an explicit
-revision of the implementation boundary; do not silently ship a partial adapter.
+The initial review stopped at the all-platform interactive gate. The operator
+then explicitly waived Windows runtime testing and requested completion with
+Windows compilation left to GitHub CI. Windows OS-vault behavior is **not**
+runtime-certified by this change. Linux/Android evidence below supports the
+implemented Rust-only keyring adapter; no plaintext fallback exists.
 
-This is a source-review record, not an accepted ADR, a completed security audit,
-or runtime evidence. Profile persistence, account registration and secret adapters
-remain unimplemented. The existing in-memory presentation/discovery behavior,
-native capabilities, dependencies and server contract are unchanged.
+This is a focused integration review, not an independent security audit. See
+[ADR 0007](adr/0007-local-profiles-and-account-owned-secrets.md) and the
+[storage contract](storage-and-accounts.md) for the implemented boundaries.
 
-## Reproduced baseline and environment
+## Initial baseline and environment inventory
 
 - Started a dedicated branch from merged `origin/main` at
   `94e08d1f9e3ea3e9bbcd31bf16d65b1916ed5259`.
@@ -46,10 +43,11 @@ upstream `main`:
   not a completed transitive dependency/license review.
 - [Versioned source browser](https://docs.rs/crate/tauri-plugin-keyring-store/0.2.0/source/).
 
-No candidate dependency was added to the app or either lockfile. The review
-archive was kept outside the repository.
+The candidate is now pinned exactly with defaults disabled in the app's Cargo
+manifest/lockfile. Its generic plugin is not registered. The review archive was
+kept outside the repository.
 
-## Source findings to resolve in the spike
+## Initial source findings
 
 1. `Cargo.toml` enables the wallet-oriented `crypto` feature by default.
    `default-features = false` disables optional `iota-crypto`, but does **not**
@@ -87,25 +85,70 @@ archive was kept outside the repository.
    Activity/process lifecycle, Keystore invalidation and backup/restore in the
    actual Tauri app rather than assuming plugin support is sufficient.
 
-None of these findings proves the candidate is unusable or justifies an insecure
-fallback. They are unresolved integration and validation requirements.
+## Implemented dispositions
 
-## Evidence still required before adoption
+- The resolved Linux graph includes Secret Service 1.0.1, keyring-core 1.0.1 and
+  keyring-store 0.2.0. Android uses native keyring 1.0.0; Windows resolves native
+  keyring 1.1.0. The wallet `iota-crypto` feature is absent. Unconditional backup
+  crypto dependencies remain linked dependencies, but their procedures and all
+  generic import/export IPC are inaccessible through this app's commands.
+- Locally downloaded newly added Linux/Android packages declare MIT or
+  MIT/Apache-2.0 licenses (inventory compared with the pre-change lockfile).
+  Windows native keyring 1.1.0's published `cred.rs`, `store.rs` and utilities
+  were inspected separately: service/user-derived targets, native credential
+  operations, UTF-16 password encoding and provider size checks, without a file
+  fallback. Runtime behavior remains waived, not inferred from that review.
+- Only `KeyringStore::{set_bytes,get_bytes,delete}` are used. Neither `init()` nor
+  `Builder::build()` installs generic handlers. Local main-window ACL permits only
+  the five Windwatcher storage commands, without arbitrary path/service input.
+- Fixed error categories replace backend text. `availability()` and the background
+  getters are unused. Documentation/UI explain that cached initialization failure
+  may require restart; no missing/authenticated session is inferred from errors.
+- Android source review found unchecked SharedPreferences commit results, corrupt
+  Base64 treated as absence with logging, and lost-key reinitialization on lookup.
+  The versioned local patch fixes all three; original source/licenses are retained
+  under `src-tauri/vendor/android-native-keyring-store`. Actual Tauri JNI/NDK context
+  worked in the installed APK without adding a generic Android crypto plugin.
+- Android application backup is explicitly disabled. Ciphertext without its
+  Keystore key remains unrecoverable; OEM transfer behavior and physical-device
+  key policies are not certified. No key recovery/synchronization is implemented.
 
-| Target  | Required evidence still missing                                                                                                                                              |
-| ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Linux   | Real WebKitGTK write/read/overwrite/remove, exact-byte read after restart, locked/unavailable service behavior and recovery; KWallet where feasible.                         |
-| Windows | Interactive WebView2/Credential Manager isolation, write/read/overwrite/remove, restart and unavailable-store failure. CI compilation is insufficient.                       |
-| Android | Installed APK Keystore-backed write/read/overwrite/remove, process death/Activity restart, lock/unlock, key invalidation and backup/restore behavior or precise limitations. |
+## Runtime evidence (2026-11-06)
+
+| Target                                    | Observed evidence and limitations                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Linux x86_64                              | Real GNOME Secret Service CLI write/read/overwrite/remove with each operation in a separate process passed. An absent D-Bus address failed with fixed `unavailable`, not an empty store. A separate `dbus-run-session` with temporary HOME/data/runtime directories created and locked its own test collection: reading a retained synthetic record returned fixed `locked` when the headless unlock prompt could not run. The operator's collection was not locked. Actual built WebKitGTK app ran the three-launch smoke; AT-SPI text confirmed restart read, overwrite, isolation and cleanup. The metadata document was empty after cleanup and mode 0600. KWallet remains unverified.                                                 |
+| Android 16 x86_64, WebView 134.0.6998.135 | Installed debug APK ran the same three stages via native IPC, with `am force-stop` between launches. Exact-byte restart read/overwrite, account isolation and idempotent deletion passed. Metadata and encrypted preferences were checked for raw/Base64 synthetic byte leakage without printing those values. A controlled reset cleared this disposable app's data/Keystore, restored only synthetic ciphertext/metadata, then reopened: it failed `unavailable` and retained both metadata accounts and ciphertext entries, rather than regenerating the key or falling back. Test data was cleared afterward. This is emulator evidence, not ARM64 physical hardware, PIN/biometric policy, OEM transfer or full backup certification. |
+| Windows                                   | Interactive test waived by the operator. Final-head GitHub CI must compile/check the actual Windows target; it does not establish Credential Manager runtime behavior.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 
 Use only disposable synthetic records, report booleans rather than secret bytes,
 inspect nonsecret app data for plaintext leakage and clean up only test-owned
 entries. Do not lock the operator's live keyring to simulate failure; use an
 isolated test session. Keep all native builds sequential with at most four Cargo
-jobs. No runtime secret tests, native builds, full dependency audit or final-head
-CI validation were performed as part of this preliminary review.
+jobs. These records do not replace final-head CI or an independent audit.
 
-Documentation-only validation: `bun run check` passed, including formatting,
-lint, TypeScript, API type drift, four emitted target gates, 312 existing tests
-and the production build. Browser E2E and native smoke were not run; no runtime
-behavior changed.
+The normal Linux app (without smoke feature/config) also completed the explicit
+profile flow through native accessibility actions: choose an existing compatible
+loopback suggestion, manually inspect, save, terminate/reopen, observe the saved
+profile on Home, then confirm forget of that test-created profile. No remote
+mutation or account creation was performed. This is not physical-keyboard or
+screen-reader certification.
+
+## Local validation summary
+
+- `bun install --frozen-lockfile`, `bun run check` (355 tests, four emitted target
+  gates), `bun run test:e2e` (102 tests) and `bun audit` passed.
+- Browser checks include root/nested namespaces, real cross-tab invalidation,
+  corruption/denied/quota failure, explicit save/update/rename/confirmed forget,
+  keyboard focus and German 320px/200% text. Axe checks full authored light/dark
+  palettes. Forced-colors tests check system-adjusted focus/boundaries and other
+  axe rules; only axe's authored-color contrast calculation is disabled there
+  because it misreads token foregrounds against forced Canvas backgrounds.
+- Locked Rust check, fmt, clippy with denied warnings and four library tests
+  passed, including the actual Android commit-result decision and native
+  replace/reload/conflict/corruption preservation. These tests now run in CI on
+  both Linux and Windows; they do not access real vaults in CI.
+- Normal Linux debug/no-bundle and Android ARM64 debug APK builds passed without
+  the test feature/config. The normal web output and ARM64 library were checked
+  for absence of storage-smoke markers. APK inspection showed only `arm64-v8a`
+  native libraries, backup disabled and the existing cleartext policy unchanged.
