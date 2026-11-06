@@ -48,6 +48,17 @@ describe("server discovery policy", () => {
     });
   });
 
+  it("bounds successful legacy probe bodies to the metadata budget", async () => {
+    const transport = vi
+      .fn<HttpTransport>()
+      .mockResolvedValueOnce(new Response(null, { status: 204 }))
+      .mockResolvedValueOnce(Response.json({ data: "x".repeat(65537) }));
+    await expect(discoverServer(root, transport, signal)).rejects.toMatchObject({
+      category: "response-too-large",
+    });
+    expect(transport).toHaveBeenCalledTimes(2);
+  });
+
   it("aborts a pending legacy probe without reporting compatibility", async () => {
     const controller = new AbortController();
     let probeStarted: () => void = () => {};

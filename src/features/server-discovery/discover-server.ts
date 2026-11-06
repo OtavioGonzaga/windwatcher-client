@@ -1,5 +1,6 @@
 import { ApiClient } from "../../shared/api/client";
 import { ApiError } from "../../shared/api/error";
+import { MAX_METADATA_RESPONSE_BYTES } from "../../shared/api/body";
 import type { HttpTransport } from "../../shared/api/transport";
 import type { InstanceAdvertisement } from "../../shared/api/validation";
 
@@ -41,6 +42,7 @@ export async function discoverServer(
       method: "GET",
       path: ["users", "me"],
       expectedStatuses: [200],
+      maxResponseBytes: MAX_METADATA_RESPONSE_BYTES,
       decode: () => null,
       signal,
       timeoutMs: remaining,

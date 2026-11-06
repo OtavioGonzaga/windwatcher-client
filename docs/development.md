@@ -317,6 +317,13 @@ interactive onboarding, physical ARM64 Android and fresh remote CI remain
 unverified. ARM64 and x86_64 debug builds and the debug/release cleartext-policy
 comparison passed; these are not physical-device or release-installation evidence.
 
+Final review validation (2026-11-06): `bun run check` passed 265 unit/component/
+contract tests and the production build; `bun run test:e2e` passed 80 browser
+tests. Rust fmt/check/clippy and dependency audit passed. Review additionally
+limited the legacy corroboration response to the same 64 KiB metadata budget,
+including unexpected successful responses. Emulator retesting is deferred by
+operator request; the earlier runtime limitations above still apply.
+
 - Missing `gtk+-3.0` or `webkit2gtk-4.1` in pkg-config: install development
   packages, not just runtime libraries. `libxdo-dev` does not expose an `xdo.pc`
   file on Ubuntu; check package installation rather than treating that as failure.
