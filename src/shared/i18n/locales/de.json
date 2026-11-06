@@ -69,6 +69,7 @@
         "version-unsupported": "Nicht unterstützte Speicherversion. Einen kompatiblen Client verwenden; Daten wurden nicht zurückgesetzt.",
         "conflict": "Gespeicherte Daten wurden andernorts geändert. Vor weiteren Änderungen neu laden.",
         "quota": "Speicher voll. Platz schaffen und erneut versuchen; Änderung wurde nicht gespeichert.",
+        "too-large": "Der Anmeldedatensatz überschreitet die Kapazität des sicheren Speichers dieses Systems. Er wurde nicht gespeichert; verwenden Sie einen kompatiblen Client oder kontaktieren Sie den Support.",
         "duplicate": "Diese Adresse oder dieses Konto existiert bereits. Neu laden und den vorhandenen Datensatz ausdrücklich aktualisieren."
       }
     },
@@ -96,7 +97,7 @@
       "supported": "Dieser Endpunkt meldet Windwatcher v1 und Passwortauthentifizierung. Die Identität ist damit nicht bestätigt.",
       "open": "Die Registrierung wird als offen gemeldet. Bestehende Konten können sich ebenfalls anmelden.",
       "closed": "Die Registrierung ist geschlossen. Bestehende oder administrativ angelegte Konten können sich anmelden.",
-      "notImplemented": "Anmeldung und Kontoerstellung sind in diesem Client noch nicht verfügbar.",
+      "signInAfterSave": "Speichern Sie zuerst diesen Server und melden Sie sich dann über die gespeicherten Server an.",
       "wrongService": "Dieser Endpunkt meldet einen anderen Dienst.",
       "unsupportedApi": "Dieser Server meldet die unterstützte v1-API nicht.",
       "unsupportedAuth": "Dieser Server meldet keine Passwortauthentifizierung.",

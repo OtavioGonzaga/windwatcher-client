@@ -2,20 +2,33 @@ import { isTauri } from "@tauri-apps/api/core";
 import { ProfileRepository } from "../../features/server-profiles/repository";
 import { ClientStateStore } from "./state-store";
 import { browserDocument, browserNamespace, browserSecrets } from "./browser";
-let current: Promise<ProfileRepository> | undefined;
-// Profile composition only. PR 8 must add secret-first application coordination
-// with a prepared account ID; this factory does not implement session persistence.
-export function profileRepository(): Promise<ProfileRepository> {
+import { browserOperationLocks, queuedOperationLocks } from "./operation-lock";
+import { SessionPersistence } from "../../features/authentication/persistence";
+let current: Promise<{ profiles: ProfileRepository; sessions: SessionPersistence }> | undefined;
+function services() {
   current ??= (async () => {
     if (isTauri()) {
-      const { nativeDocument, nativeSecrets } = await import("./native");
-      return new ProfileRepository(new ClientStateStore(nativeDocument), nativeSecrets);
+      const { nativeDocument, nativeSecrets, nativeOperationLocks } = await import("./native");
+      const state = new ClientStateStore(nativeDocument, nativeOperationLocks);
+      return {
+        profiles: new ProfileRepository(state, nativeSecrets, nativeOperationLocks),
+        sessions: new SessionPersistence(state, nativeSecrets, nativeOperationLocks),
+      };
     }
     const namespace = browserNamespace(document.baseURI);
-    return new ProfileRepository(
-      new ClientStateStore(browserDocument(namespace)),
-      browserSecrets(namespace),
-    );
+    const locks = queuedOperationLocks(browserOperationLocks(namespace, navigator.locks));
+    const state = new ClientStateStore(browserDocument(namespace), locks);
+    const secrets = browserSecrets(namespace);
+    return {
+      profiles: new ProfileRepository(state, secrets, locks),
+      sessions: new SessionPersistence(state, secrets, locks),
+    };
   })();
   return current;
+}
+export async function profileRepository(): Promise<ProfileRepository> {
+  return (await services()).profiles;
+}
+export async function sessionPersistence(): Promise<SessionPersistence> {
+  return (await services()).sessions;
 }

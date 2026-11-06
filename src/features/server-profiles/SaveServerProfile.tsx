@@ -4,7 +4,7 @@ import { Button } from "../../shared/components/Button";
 import { TextField } from "../../shared/components/TextField";
 import { profileRepository } from "../../shared/storage/platform-storage";
 import type { DiscoveryResult } from "../server-discovery/discover-server";
-import type { ClientStateV1 } from "./schema";
+import type { ClientStateV2 } from "./schema";
 import { defaultLabel } from "./repository";
 import { StorageNotice } from "./StorageNotice";
 
@@ -16,7 +16,7 @@ export function SaveServerProfile({
   acknowledged: boolean;
 }) {
   const { t } = useTranslation();
-  const [state, setState] = useState<ClientStateV1>();
+  const [state, setState] = useState<ClientStateV2>();
   const [label, setLabel] = useState(defaultLabel(result.root));
   const [error, setError] = useState<unknown>();
   const [busy, setBusy] = useState(false);

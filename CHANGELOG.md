@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Coordinated session storage foundation: explicit V1-to-V2 metadata migration,
+  bounded nonsecret recovery intents, exact-ID secret-first verification and
+  fenced browser/native operation ownership. Authentication UI is not enabled yet.
 - Explicitly saved, durable server profiles with canonical address deduplication,
   local labels, historical inspection snapshots, reinspection and confirmed forget.
 - Validated V1 nonsecret storage and account registry with independent local IDs,
@@ -43,6 +46,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Replace the undersized Windows Credential Manager integration with one
+  current-user DPAPI-protected account record, verified readback and required
+  real-Windows CI coverage. Interactive Windows UX remains unqualified; authentication
+  persistence/UI still require the remaining coordination and recovery work.
+- Reject oversized Windows credential writes before vault access, with a distinct
+  localized capacity error instead of a generic provider failure. Real Server 0.1.1
+  grant measurements established the need for the DPAPI replacement above;
+  authentication UI and session persistence remain unavailable.
 - Distinguish saved-server controls by canonical address in accessible names,
   including when display labels repeat, and format inspection dates in the active language.
 - Distinguish local-address selection buttons by their exact address in accessible

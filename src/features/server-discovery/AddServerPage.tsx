@@ -191,7 +191,7 @@ export function AddServerPage() {
                     result.metadata.registration === "open" ? "discovery.open" : "discovery.closed",
                   )}
                 </p>
-                <p>{t("discovery.notImplemented")}</p>
+                <p>{t("discovery.signInAfterSave")}</p>
               </>
             )}
             {result.kind === "wrong-service" && <p>{t("discovery.wrongService")}</p>}

@@ -69,6 +69,7 @@
         "version-unsupported": "Versão de armazenamento não suportada. Use um cliente compatível; os dados não foram redefinidos.",
         "conflict": "Os dados salvos foram alterados em outro lugar. Recarregue antes de continuar.",
         "quota": "Armazenamento cheio. Libere espaço e tente novamente; a alteração não foi salva.",
+        "too-large": "O registro de credenciais excede a capacidade do armazenamento seguro deste sistema. Ele não foi salvo; use um cliente compatível ou contate o suporte.",
         "duplicate": "Este endereço ou conta já existe. Recarregue e atualize o registro existente explicitamente."
       }
     },
@@ -96,7 +97,7 @@
       "supported": "Este endpoint anuncia Windwatcher v1 e autenticação por senha. Isso não verifica a identidade.",
       "open": "O cadastro é anunciado como aberto. Contas existentes também podem entrar.",
       "closed": "O cadastro está fechado. Contas existentes ou criadas por administradores podem entrar.",
-      "notImplemented": "Entrada e criação de conta ainda não estão disponíveis neste cliente.",
+      "signInAfterSave": "Salve este servidor primeiro e depois entre pela lista de servidores salvos.",
       "wrongService": "Este endpoint anuncia outro serviço.",
       "unsupportedApi": "Este servidor não anuncia a API v1 suportada.",
       "unsupportedAuth": "Este servidor não anuncia autenticação por senha.",

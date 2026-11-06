@@ -32,3 +32,34 @@ it("native metadata uses fixed document IPC and expected snapshot", async () => 
   await nativeDocument.write(null, "next");
   expect(ipc).toHaveBeenLastCalledWith("write_client_state", { expected: null, document: "next" });
 });
+it("surfaces provider capacity failure without deleting, retrying or falling back", async () => {
+  ipc.mockRejectedValue("too-large");
+  await expect(nativeSecrets.put(crypto.randomUUID(), new Uint8Array(16384))).rejects.toMatchObject(
+    {
+      category: "too-large",
+      message: "too-large",
+    },
+  );
+  expect(ipc).toHaveBeenCalledOnce();
+  expect(ipc.mock.calls[0]![0]).toBe("put_account_secret");
+  expect(localStorage.length).toBe(0);
+});
+it("passes a complete long-issuer envelope through one IPC record, not separate rotating entries", async () => {
+  const id = crypto.randomUUID();
+  const bytes = new Uint8Array(3321).fill(0x42);
+  ipc.mockResolvedValue(undefined);
+  await nativeSecrets.put(id, bytes);
+  expect(ipc).toHaveBeenCalledOnce();
+  expect(ipc).toHaveBeenLastCalledWith("put_account_secret", {
+    accountId: id,
+    record: Array.from(bytes),
+  });
+  ipc.mockResolvedValue(Array.from(bytes));
+  expect(await nativeSecrets.get(id)).toEqual(bytes);
+});
+it("rejects over-budget records before IPC without modifying established credentials", async () => {
+  await expect(nativeSecrets.put(crypto.randomUUID(), new Uint8Array(16385))).rejects.toMatchObject(
+    { category: "too-large" },
+  );
+  expect(ipc).not.toHaveBeenCalled();
+});

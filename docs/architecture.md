@@ -79,6 +79,10 @@ The browser never falls back to a native transport after a failed fetch.
 and stale-type detection are offline build-time operations; generated types do
 not validate untrusted JSON by themselves. There is no separate SDK package or
 generated endpoint service implementation.
+`src/features/authentication` wraps this client with public registration/login/refresh
+and explicit-bearer current-user operations, bounded runtime DTO decoders and safe
+error categories. It is not wired into production UI or credential persistence;
+see [authentication and sessions](authentication-and-sessions.md).
 Instance advertisements use a derived runtime metadata type with open-ended
 string lists, preserving unknown API/auth capabilities without mutating the
 pinned generated enum types or deciding onboarding support.
@@ -93,11 +97,19 @@ identity excludes web/Windows/Android. See [local discovery](local-discovery.md)
 and [ADR 0006](adr/0006-linux-local-server-suggestions.md).
 
 The profile repository owns stable local IDs, canonical URL deduplication,
-strict V1 decoding and serialized nonsecret updates. Web localStorage and narrow
+strict V1-to-V2 migration and serialized nonsecret updates. V2 carries bounded
+nonsecret operation intents; the coordinating session service prepares/reuses the
+exact local account ID, verifies one bound secret envelope and then commits account
+metadata. Web Locks and fenced native OS-lock owners coordinate metadata/session
+operations with account removal, without a distributed-transaction claim.
+Web localStorage and narrow
 native app-data commands persist metadata separately from account-owned secret
-adapters. Native vault access uses only Rust keyring APIs, never generic plugin
+adapters. Native secret access uses Rust-only keyring APIs on Linux/Android and
+current-user DPAPI ciphertext records on Windows, never generic plugin
 export/procedure commands. See [storage and accounts](storage-and-accounts.md),
 [ADR 0007](adr/0007-local-profiles-and-account-owned-secrets.md),
+[ADR 0008](adr/0008-windows-user-scoped-dpapi-records.md),
+[ADR 0009](adr/0009-coordinated-session-commits-and-recovery-intents.md),
 [HTTP behavior and smoke](network-transport.md), [contract provenance](api-contract.md)
 and [ADR 0002](adr/0002-scoped-native-http-and-server-bound-clients.md).
 

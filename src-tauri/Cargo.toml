@@ -19,12 +19,23 @@ tauri-build = { version = "=2.7.4", features = [] }
 [dependencies]
 tauri = { version = "=2.12.5", features = [] }
 serde_json = "=1.0.154"
+zeroize = "=1.9.1"
 uuid = { version = "=1.29.0", features = ["v4"] }
-tauri-plugin-keyring-store = { version = "=0.2.0", default-features = false }
 tauri-plugin-http = { version = "=2.8.3", default-features = false, features = [
   "rustls-tls",
   "http2",
 ] }
+
+[target.'cfg(not(windows))'.dependencies]
+tauri-plugin-keyring-store = { version = "=0.2.0", default-features = false }
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "=0.61.2", features = [
+  "Win32_Foundation",
+  "Win32_Security_Cryptography",
+  "Win32_Storage_FileSystem",
+] }
+sha2 = "=0.10.9"
 
 [features]
 storage-smoke = []
@@ -32,6 +43,11 @@ storage-smoke = []
 [[bin]]
 name = "storage-smoke"
 path = "../tests/native-storage/main.rs"
+required-features = ["storage-smoke"]
+
+[[bin]]
+name = "operation-lock-smoke"
+path = "../tests/native-storage/operation-lock-smoke.rs"
 required-features = ["storage-smoke"]
 
 [patch.crates-io]

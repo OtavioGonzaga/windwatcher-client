@@ -9,6 +9,8 @@ ADRs record significant architectural decisions implemented in this client repos
 - [0005: Bounded manual server inspection](0005-manual-server-inspection.md).
 - [0006: Linux-only, identity-first local suggestions](0006-linux-local-server-suggestions.md).
 - [0007: Local profiles and account-owned secrets](0007-local-profiles-and-account-owned-secrets.md).
+- [0008: Windows user-scoped DPAPI account records](0008-windows-user-scoped-dpapi-records.md).
+- [0009: Coordinated session commits and nonsecret recovery intents](0009-coordinated-session-commits-and-recovery-intents.md).
 
 Introduce an ADR in the same PR that implements a material architectural
 boundary or long-lived technical direction. Do not record roadmap intentions

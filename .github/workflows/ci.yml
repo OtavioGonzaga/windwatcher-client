@@ -65,8 +65,20 @@ jobs:
       - run: cargo check --manifest-path src-tauri/Cargo.toml --all-targets --locked
       - run: cargo test --manifest-path src-tauri/Cargo.toml --lib --locked
       - run: cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets --locked -- -D warnings
+      - name: Exercise account operation ownership across real processes
+        run: cargo run --manifest-path src-tauri/Cargo.toml --locked --features storage-smoke --bin operation-lock-smoke
+      - name: Lint the Windows-only DPAPI process fixture
+        if: runner.os == 'Windows'
+        run: cargo clippy --manifest-path src-tauri/Cargo.toml --locked --features storage-smoke --bin storage-smoke -- -D warnings
+      - name: Exercise real Windows DPAPI across processes (not interactive UI certification)
+        if: runner.os == 'Windows'
+        timeout-minutes: 5
+        run: cargo run --manifest-path src-tauri/Cargo.toml --locked --features storage-smoke --bin storage-smoke
       - name: Compile native debug host without installers
         run: bun run tauri build --debug --no-bundle --ci -- --locked
+      - name: Verify Windows normal artifacts exclude the storage fixture
+        if: runner.os == 'Windows'
+        run: bun scripts/check-native-storage-bundle.ts src-tauri/target/debug/windwatcher-client.exe
 
   required:
     if: always()
