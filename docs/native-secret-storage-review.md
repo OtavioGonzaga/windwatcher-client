@@ -2,6 +2,12 @@
 
 ## Status (2026-11-06)
 
+This document records **PR 7 historical review/evidence**. The subsequent Windows
+provider is now [current-user DPAPI](windows-secret-storage.md), with required
+real-Windows CI tests rather than compilation alone. The old Credential Manager
+findings/waiver below do not certify or describe the new backend. Linux/Android
+findings remain applicable.
+
 The initial review stopped at the all-platform interactive gate. The operator
 then explicitly waived Windows runtime testing and requested completion with
 Windows compilation left to GitHub CI. Windows OS-vault behavior is **not**

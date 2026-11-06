@@ -117,14 +117,16 @@ Closed registration was independently confirmed as `403 registration.closed`.
 SQLite persistence can shorten timestamp fractional precision on refresh; compare
 instants, not raw timestamp string lengths, when checking session expiry.
 
-**Gate failed:** even this compact envelope cannot fit valid server grants.
+**Historical Credential Manager gate failed:** even this compact envelope could not fit valid server grants.
 The 2049-byte issuer yields a JWT exceeding the raw 2560-byte OS limit itself,
 so bypassing Base64 alone is not a complete solution. No truncation, independent
 rotating token entries, hardcoded encryption or plaintext fallback is acceptable.
-A reviewed, adequately sized single OS-protected record is still required before
-production persistence/refresh/UI can be enabled. Native size checks now reject
-over-limit writes before provider I/O with localized `too-large`, preserving
-previous values. They do not make the backend support full session grants.
+Windows now uses a reviewed, bounded, single [DPAPI record](windows-secret-storage.md)
+instead of that route. The byte budget is 16 KiB; required Windows CI must verify
+the actual provider against that bound before treating the capacity gate as
+qualified. Native size checks reject over-limit writes before provider I/O with
+localized `too-large`, preserving previous values. Cross-store coordination and
+refresh recovery remain independent gates, not implemented by the provider change.
 
 ### Reproduction and evidence limits
 
@@ -138,12 +140,15 @@ with isolated configuration, random signing keys, temporary SQLite databases and
 loopback ephemeral listeners. Inherited Windwatcher configuration overrides are
 removed. It consumes only startup diagnostics and prints safe counts/booleans.
 It revokes its sessions and removes only its own sandbox afterward.
-Exit 0 means all measured envelopes fit; exit 2 means the measurement completed
-but the capacity gate failed; exit 1 means no complete measurement was obtained.
+The output distinguishes `fitsLegacyWindowsProvider` from
+`fitsWindowsDpapiByteBudget`: the latter measures input bytes, not successful
+DPAPI writes. Exit 0 means all measured envelopes fit the DPAPI byte budget;
+exit 2 means that budget failed; exit 1 means no complete measurement was obtained.
 
 This is actual released-server contract/size evidence on Linux, **not Windows
-Credential Manager put/overwrite/readback evidence**. No Windows process or OS
-vault was exercised. No claim is made about full cross-platform persistence,
+Credential Manager put/overwrite/readback evidence**. This particular server tool
+does not exercise Windows. The separate [DPAPI CI](windows-secret-storage.md)
+tests the exact production backend on real Windows. No claim is made about full cross-platform persistence,
 session restoration, disabled-user or expiry runtime coverage, or crash recovery.
 The historical PR 7 Windows waiver is recorded separately and does not resolve
 the demonstrated capacity failure.

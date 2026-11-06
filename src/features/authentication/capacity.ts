@@ -1,11 +1,11 @@
-import { LOCAL_ID } from "../../shared/storage/secret-store";
+import { LOCAL_ID, MAX_SECRET_BYTES } from "../../shared/storage/secret-store";
 import { decodeSessionGrant, serverUuid } from "./validation";
 import type { SessionGrant } from "./validation";
 
 export const WINDOWS_CREDENTIAL_BLOB_BYTES = 2560;
 export const WINDOWS_KEYRING_INPUT_BYTES = 960;
 
-/** Exact pinned keyring-store Base64 -> Windows UTF-16 password route; no terminator. */
+/** Historical keyring-store Base64 -> Windows UTF-16 route, NOT the DPAPI backend. */
 export function windowsCredentialBlobBytes(inputBytes: number): number {
   if (!Number.isSafeInteger(inputBytes) || inputBytes < 0 || inputBytes > 16_384)
     throw new Error("Invalid credential length.");
@@ -55,9 +55,10 @@ export function measureSessionEnvelope(grant: SessionGrant, binding: EnvelopeMea
   const result = {
     accessTokenBytes: new TextEncoder().encode(decoded.access_token).byteLength,
     envelopeBytes: bytes.byteLength,
-    windowsBlobBytes: windowsCredentialBlobBytes(bytes.byteLength),
-    fitsCurrentWindowsProvider:
+    legacyWindowsBlobBytes: windowsCredentialBlobBytes(bytes.byteLength),
+    fitsLegacyWindowsProvider:
       windowsCredentialBlobBytes(bytes.byteLength) <= WINDOWS_CREDENTIAL_BLOB_BYTES,
+    fitsWindowsDpapiByteBudget: bytes.byteLength <= MAX_SECRET_BYTES,
   };
   bytes.fill(0); // Best effort only; JavaScript strings/copies cannot be securely erased.
   return result;

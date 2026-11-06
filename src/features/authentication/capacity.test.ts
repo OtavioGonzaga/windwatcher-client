@@ -49,17 +49,19 @@ describe("Windows credential capacity gate", () => {
       grant.session_expires_at,
     ]);
     expect(result.envelopeBytes).toBe(new TextEncoder().encode(encoded).byteLength);
-    expect(result.windowsBlobBytes).toBe(
+    expect(result.legacyWindowsBlobBytes).toBe(
       Buffer.byteLength(Buffer.from(encoded).toString("base64"), "utf16le"),
     );
-    expect(result.fitsCurrentWindowsProvider).toBe(true);
+    expect(result.fitsLegacyWindowsProvider).toBe(true);
+    expect(result.fitsWindowsDpapiByteBudget).toBe(true);
     expect(JSON.stringify(result)).not.toContain(grant.refresh_token);
     expect(JSON.stringify(result)).not.toContain(grant.access_token);
   });
   it("fails the gate for oversized grants without truncation or splitting", () => {
     const long = { ...grant, access_token: `synthetic.${"a".repeat(1500)}.signature` };
     const result = measureSessionEnvelope(long, binding);
-    expect(result.fitsCurrentWindowsProvider).toBe(false);
+    expect(result.fitsLegacyWindowsProvider).toBe(false);
+    expect(result.fitsWindowsDpapiByteBudget).toBe(true);
     expect(result.accessTokenBytes).toBe(long.access_token.length);
     expect(result.envelopeBytes).toBeGreaterThan(result.accessTokenBytes);
     expect(long.access_token).toHaveLength(1520);
@@ -81,5 +83,18 @@ describe("Windows credential capacity gate", () => {
     expect(() => measureSessionEnvelope(grant, { ...binding, generation: 0 })).toThrow();
     expect(() => measureSessionEnvelope(grant, { ...binding, accountId: "../alias" })).toThrow();
     expect(() => measureSessionEnvelope(grant, { ...binding, userId: "alice" })).toThrow();
+  });
+  it("fits the maximum accepted wire JWT plus bindings in the DPAPI byte budget", () => {
+    const result = measureSessionEnvelope(
+      { ...grant, access_token: `a.${"x".repeat(8188)}.b` },
+      {
+        ...binding,
+        generation: Number.MAX_SAFE_INTEGER,
+      },
+    );
+    expect(result.accessTokenBytes).toBe(8192);
+    expect(result.envelopeBytes).toBeGreaterThan(8192);
+    expect(result.fitsLegacyWindowsProvider).toBe(false);
+    expect(result.fitsWindowsDpapiByteBudget).toBe(true);
   });
 });

@@ -15,5 +15,7 @@ not a functional messaging client. No client releases are available yet.
 - [API contract](api-contract.md): released source, snapshot provenance and offline type generation.
 - [Authentication and sessions](authentication-and-sessions.md): implemented HTTP boundary,
   runtime validation and remaining production-persistence gates.
+- [Windows secret storage](windows-secret-storage.md): current-user DPAPI records,
+  source review, real-Windows CI and qualification limits.
 - [Architectural Decision Records](adr/README.md): decision-record policy and template.
 - [Brand assets](../public/brand/README.md): supplied artwork and source inventory.

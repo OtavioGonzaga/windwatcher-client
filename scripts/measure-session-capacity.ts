@@ -261,16 +261,16 @@ try {
     // oxlint-disable-next-line no-await-in-loop -- Isolated native processes must run sequentially.
     results.push(await sample(name, issuer, registration));
   }
-  const capacityGatePassed = results.every(
+  const windowsDpapiByteBudgetPassed = results.every(
     (result) =>
       !("login" in result) ||
       result.login === undefined ||
-      (result.login.fitsCurrentWindowsProvider && result.refresh.fitsCurrentWindowsProvider),
+      (result.login.fitsWindowsDpapiByteBudget && result.refresh.fitsWindowsDpapiByteBudget),
   );
   console.log(
-    JSON.stringify({ sourceCommit: PINNED_SOURCE, capacityGatePassed, results }, null, 2),
+    JSON.stringify({ sourceCommit: PINNED_SOURCE, windowsDpapiByteBudgetPassed, results }, null, 2),
   );
-  if (!capacityGatePassed) process.exitCode = 2;
+  if (!windowsDpapiByteBudgetPassed) process.exitCode = 2;
 } catch (error) {
   console.error(
     `Isolated authentication capacity gate failed (${stage}, ${authFailure(error)}); raw diagnostics and credentials suppressed.`,

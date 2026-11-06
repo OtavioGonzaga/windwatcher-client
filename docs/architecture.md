@@ -99,9 +99,11 @@ and [ADR 0006](adr/0006-linux-local-server-suggestions.md).
 The profile repository owns stable local IDs, canonical URL deduplication,
 strict V1 decoding and serialized nonsecret updates. Web localStorage and narrow
 native app-data commands persist metadata separately from account-owned secret
-adapters. Native vault access uses only Rust keyring APIs, never generic plugin
+adapters. Native secret access uses Rust-only keyring APIs on Linux/Android and
+current-user DPAPI ciphertext records on Windows, never generic plugin
 export/procedure commands. See [storage and accounts](storage-and-accounts.md),
 [ADR 0007](adr/0007-local-profiles-and-account-owned-secrets.md),
+[ADR 0008](adr/0008-windows-user-scoped-dpapi-records.md),
 [HTTP behavior and smoke](network-transport.md), [contract provenance](api-contract.md)
 and [ADR 0002](adr/0002-scoped-native-http-and-server-bound-clients.md).
 

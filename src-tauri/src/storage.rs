@@ -5,23 +5,23 @@ use std::{
     path::PathBuf,
 };
 use tauri::Manager;
+#[cfg(not(windows))]
 use tauri_plugin_keyring_store::{Error, KeyringStore};
+#[cfg(windows)]
+#[path = "storage/windows_dpapi.rs"]
+mod windows_dpapi;
 
 type StorageResult<T> = Result<T, &'static str>;
 const MAX_DOCUMENT: u64 = 1_048_576;
+#[cfg(not(windows))]
 const MAX_SECRET: usize = 16_384;
-const WINDOWS_CREDENTIAL_BLOB_BYTES: usize = 2560;
 
-fn validate_write_size(length: usize, windows: bool) -> StorageResult<()> {
+#[cfg(not(windows))]
+fn validate_write_size(length: usize) -> StorageResult<()> {
     if length == 0 {
         return Err("corrupt");
     }
     if length > MAX_SECRET {
-        return Err("too-large");
-    }
-    // keyring-store 0.2.0 encodes bytes as Base64; Windows stores that as UTF-16.
-    // Reject BEFORE provider I/O, without truncating or touching an old record.
-    if windows && 2 * (4 * length.div_ceil(3)) > WINDOWS_CREDENTIAL_BLOB_BYTES {
         return Err("too-large");
     }
     Ok(())
@@ -42,6 +42,7 @@ fn alias(account_id: &str) -> StorageResult<String> {
     Ok(format!("windwatcher-client:v1:{id}"))
 }
 
+#[cfg(not(windows))]
 fn safe_error(error: Error) -> &'static str {
     match error {
         Error::KeychainLocked => "locked",
@@ -50,6 +51,7 @@ fn safe_error(error: Error) -> &'static str {
     }
 }
 
+#[cfg(not(windows))]
 #[tauri::command(async)]
 pub fn get_account_secret(account_id: String) -> StorageResult<Option<Vec<u8>>> {
     let record = KeyringStore::new(SERVICE)
@@ -64,19 +66,58 @@ pub fn get_account_secret(account_id: String) -> StorageResult<Option<Vec<u8>>> 
     Ok(record)
 }
 
+#[cfg(not(windows))]
 #[tauri::command(async)]
 pub fn put_account_secret(account_id: String, record: Vec<u8>) -> StorageResult<()> {
-    validate_write_size(record.len(), cfg!(target_os = "windows"))?;
+    validate_write_size(record.len())?;
     KeyringStore::new(SERVICE)
         .set_bytes(&alias(&account_id)?, &record)
         .map_err(safe_error)
 }
 
+#[cfg(not(windows))]
 #[tauri::command(async)]
 pub fn remove_account_secret(account_id: String) -> StorageResult<()> {
     KeyringStore::new(SERVICE)
         .delete(&alias(&account_id)?)
         .map_err(safe_error)
+}
+
+#[cfg(windows)]
+fn windows_secrets(app: &tauri::AppHandle) -> StorageResult<windows_dpapi::RecordStore> {
+    let root = app.path().app_local_data_dir().map_err(|_| "unavailable")?;
+    #[cfg(feature = "storage-smoke")]
+    let root = root.join("storage-smoke");
+    windows_dpapi::RecordStore::new(root.join("account-secrets-dpapi-v1"), SERVICE)
+}
+
+#[cfg(windows)]
+#[tauri::command(async)]
+pub fn get_account_secret(
+    app: tauri::AppHandle,
+    account_id: String,
+) -> StorageResult<Option<Vec<u8>>> {
+    alias(&account_id)?;
+    windows_secrets(&app)?.get(&account_id)
+}
+
+#[cfg(windows)]
+#[tauri::command(async)]
+pub fn put_account_secret(
+    app: tauri::AppHandle,
+    account_id: String,
+    record: Vec<u8>,
+) -> StorageResult<()> {
+    alias(&account_id)?;
+    let record = zeroize::Zeroizing::new(record);
+    windows_secrets(&app)?.put(&account_id, &record)
+}
+
+#[cfg(windows)]
+#[tauri::command(async)]
+pub fn remove_account_secret(app: tauri::AppHandle, account_id: String) -> StorageResult<()> {
+    alias(&account_id)?;
+    windows_secrets(&app)?.remove(&account_id)
 }
 
 fn directory(app: &tauri::AppHandle) -> StorageResult<PathBuf> {
@@ -248,15 +289,14 @@ fn validate_nonsecret_keys(value: &serde_json::Value) -> StorageResult<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[cfg(not(windows))]
     #[test]
-    fn windows_base64_utf16_limit_is_checked_before_provider_writes() {
-        assert_eq!(validate_write_size(0, true), Err("corrupt"));
-        assert_eq!(validate_write_size(960, true), Ok(()));
-        assert_eq!(validate_write_size(961, true), Err("too-large"));
-        assert_eq!(validate_write_size(1273, true), Err("too-large"));
-        assert_eq!(validate_write_size(MAX_SECRET, false), Ok(()));
-        assert_eq!(validate_write_size(MAX_SECRET + 1, false), Err("too-large"));
-        assert_eq!(validate_write_size(usize::MAX, true), Err("too-large"));
+    fn native_opaque_record_size_is_checked_before_provider_writes() {
+        assert_eq!(validate_write_size(0), Err("corrupt"));
+        assert_eq!(validate_write_size(961), Ok(()));
+        assert_eq!(validate_write_size(MAX_SECRET), Ok(()));
+        assert_eq!(validate_write_size(MAX_SECRET + 1), Err("too-large"));
+        assert_eq!(validate_write_size(usize::MAX), Err("too-large"));
     }
     #[test]
     fn aliases_reject_paths_and_noncanonical_ids() {

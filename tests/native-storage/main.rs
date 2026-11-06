@@ -1,12 +1,23 @@
 //! Opt-in OS-backend smoke; never a production command, route or diagnostic.
 #[allow(dead_code)]
+#[cfg(not(windows))]
 #[path = "../../src-tauri/src/storage.rs"]
 mod storage;
+#[cfg(windows)]
+#[path = "../windows-secrets/main.rs"]
+mod windows_smoke;
+#[cfg(not(windows))]
 use std::{
     io::{Read, Write},
     process::{Command, Stdio},
 };
 
+#[cfg(windows)]
+fn main() {
+    windows_smoke::main();
+}
+
+#[cfg(not(windows))]
 fn main() {
     if let Err(category) = run() {
         eprintln!("native storage smoke failed: {category}");
@@ -14,6 +25,7 @@ fn main() {
     }
 }
 
+#[cfg(not(windows))]
 fn run() -> Result<(), &'static str> {
     let args: Vec<String> = std::env::args().collect();
     if args.len() == 3 {

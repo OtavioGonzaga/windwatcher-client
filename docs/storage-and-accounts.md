@@ -89,8 +89,9 @@ automatically promoted. A directory-flush failure after rename is an ambiguous
 commit: reload before retrying. Unix directories/files are created as 0700/0600;
 Windows uses the current user's app data ACLs. Metadata is not encrypted.
 
-Secrets use the pinned third-party `tauri-plugin-keyring-store` **0.2.0** Rust API
-with defaults disabled, not its JavaScript plugin. We do not install its generic
+Linux/Android secrets use the pinned third-party `tauri-plugin-keyring-store`
+**0.2.0** Rust API with defaults disabled, not its JavaScript plugin. Windows uses
+[user-scoped DPAPI records](windows-secret-storage.md) instead. We do not install its generic
 plugin handler or grant default vault/export/procedure permissions. The local main
 window receives only five app commands: fixed metadata read/write and account-ID
 secret get/put/remove. Secret commands accept canonical local UUIDv4 values and
@@ -98,21 +99,23 @@ derive a fixed service plus `windwatcher-client:v1:<account UUID>` alias. No mut
 URL/username or frontend-chosen service/path is used. Opaque records are nonempty
 and capped at 16 KiB; native provider limits can be smaller and must surface as
 failures. PR 8 must verify actual session-envelope sizes, not truncate tokens.
-Oversized native writes now fail with fixed `too-large` before provider I/O;
-Windows enforces its exact 960-input-byte Base64/UTF-16 bound. This is distinct
+Oversized native writes fail with fixed `too-large` before provider I/O.
+The Windows DPAPI input budget is 16 KiB, with one complete envelope per record.
+This is distinct
 from a full disk/quota and cannot be repaired by freeing disk space. Existing
 credentials are not overwritten by a rejected oversized write.
-In particular, the candidate's Windows Base64/UTF-16 password route reduces the
+The previous Windows Base64/UTF-16 password route reduced the
 2560-byte Credential Manager blob ceiling to about 960 input bytes. PR 8 must
-verify its actual envelope fits or revisit that provider integration before
-shipping authentication; splitting rotating fields into separate records is not
-an acceptable workaround. PR 7 does not claim full-size session-token support.
+verify its actual envelope fits; splitting rotating fields into separate records
+is not an acceptable workaround. PR 7 did not claim full-size session-token support.
 The [real-grant capacity gate](authentication-and-sessions.md#windows-capacity-gate)
-now demonstrates valid 0.1.1 grants that cannot fit. Production authentication
-remains blocked pending a reviewed Windows backend solution; no new session
-format or production token persistence is enabled by the measurement tooling.
+demonstrated valid 0.1.1 grants that could not fit. The DPAPI replacement and its
+required real-Windows CI address that provider restriction; application-level
+coordination/recovery still gates production authentication. No production session
+format or token persistence is enabled by the measurement tooling.
 
-Linux uses Secret Service; Windows uses Credential Manager; Android encrypts
+Linux uses Secret Service; Windows protects fixed local app-data ciphertext files
+with current-user DPAPI; Android encrypts
 SharedPreferences ciphertext with an Android Keystore AES-GCM key. No plaintext
 native secret fallback exists. The upstream Android 1.0.0 backend is vendored with
 failure-preservation fixes; see its `WINDWATCHER-PATCH.md`. It checks failed commit,
@@ -123,7 +126,8 @@ certified. An invalidated/lost key is an unavailable credential, requiring futur
 it is never reconstructed from plaintext. Device lock is not a guarantee that
 all providers deny access; no biometric/per-use authentication is promised.
 
-Unlock the system vault and retry on `locked`. On `unavailable`, check the user
+For Linux/Android keyring-store backends, unlock the system vault and retry on
+`locked`. On `unavailable`, check the user
 session/service and restart if necessary: the plugin caches backend initialization
 failure for the process. Other provider failures are conservatively unavailable,
 not missing entries or authenticated empty sessions. The plugin's `availability()`
@@ -212,4 +216,7 @@ isolation and idempotent deletion, then removes fixture metadata. Inspect nonsec
 app data for plaintext leakage. Repeat failures only in isolated sessions/data,
 never by locking an operator's live keyring. Rebuild normal Linux/Android outputs
 without feature/config after testing. Windows interactive evidence was explicitly
-waived by the operator; CI compilation is not vault runtime certification.
+waived by the operator; compilation alone is not vault runtime certification.
+The Windows CLI now exercises the [DPAPI lifecycle/crash matrix](windows-secret-storage.md)
+on the real hosted Windows runner, using a unique temporary directory instead of
+the operator's app data. This does not certify interactive Tauri/WebView2 UX.
