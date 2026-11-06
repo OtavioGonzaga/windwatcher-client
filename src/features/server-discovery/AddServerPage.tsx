@@ -5,7 +5,7 @@ import { apiUrl, ServerUrl, ServerUrlError } from "../../shared/api/url";
 import { Button } from "../../shared/components/Button";
 import { TextField } from "../../shared/components/TextField";
 import { platformHttp } from "../../shared/platform/http";
-import { discoverServer } from "./discover-server";
+import { discoverServer, LegacyProbeError } from "./discover-server";
 import type { DiscoveryResult } from "./discover-server";
 
 export function AddServerPage() {
@@ -16,6 +16,7 @@ export function AddServerPage() {
   const [result, setResult] = useState<DiscoveryResult | null>(null);
   const [failure, setFailure] = useState<ApiError | null>(null);
   const [acknowledged, setAcknowledged] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
   const attempt = useRef<AbortController | null>(null);
   let base: ServerUrl | undefined;
   let reason: ServerUrlError["reason"] = "invalid";
@@ -39,7 +40,10 @@ export function AddServerPage() {
   );
   const submit = async () => {
     if (!base || attempt.current) {
-      if (!base) setInvalid(true);
+      if (!base) {
+        setInvalid(true);
+        inputRef.current?.focus();
+      }
       return;
     }
     const root = base.toString();
@@ -106,6 +110,7 @@ export function AddServerPage() {
       >
         <TextField
           id="server-url"
+          ref={inputRef}
           label={t("discovery.url")}
           hint={t("discovery.hint")}
           {...(invalid ? { error: t(`discovery.urlError.${reason}`) } : {})}
@@ -140,6 +145,7 @@ export function AddServerPage() {
         {checking && <p>{t("discovery.checking")}</p>}
         {failure && (
           <div>
+            {failure instanceof LegacyProbeError && <p>{t("discovery.probeFailed")}</p>}
             <p>{t(`discovery.${failureKey}`)}</p>
             {failure.metadata.status && (
               <p>
@@ -179,9 +185,10 @@ export function AddServerPage() {
                 <p>
                   {t(result.recognized ? "discovery.legacyRecognized" : "discovery.legacyUnknown")}
                 </p>
-                <label className="flex items-start gap-2">
+                <label className="flex min-h-11 items-center gap-2">
                   <input
                     type="checkbox"
+                    className="size-5 shrink-0"
                     checked={acknowledged}
                     onChange={(event) => setAcknowledged(event.target.checked)}
                   />

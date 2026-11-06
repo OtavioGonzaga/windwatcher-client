@@ -62,7 +62,8 @@
         "queryFragment": "Remove the query and fragment from the address.",
         "apiRoot": "Enter the server root, without the final /v1.",
         "invalid": "Enter a valid server root without spaces, controls or traversal."
-      }
+      },
+      "probeFailed": "Discovery metadata is absent; the additional compatibility check failed. Compatibility remains unconfirmed."
     }
   },
   "foundation": {

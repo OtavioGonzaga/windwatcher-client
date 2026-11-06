@@ -7,8 +7,8 @@ One React application targets the web and Tauri 2 on Linux, Windows and Android.
 ## Status
 
 This repository contains the shared toolchain, a typed HTTP foundation and a
-responsive shell with Home and Preferences routes, accessible visual tokens and
-working language/appearance choices. Server-selection UI, accounts and messaging
+responsive shell, accessible visual tokens, working language/appearance choices
+and manual server inspection. Saved server profiles, accounts and messaging
 are **not implemented yet**.
 There are no published client releases or supported installation packages.
 `0.0.1-dev.0` in build manifests is an unpublished development placeholder, not a release.
@@ -16,7 +16,8 @@ There are no published client releases or supported installation packages.
 The intended server baseline is Windwatcher Server 0.1.1, HTTP API `/v1`.
 The client does not embed the Rust server/library or require a central service.
 The pinned OpenAPI snapshot and browser/native HTTP adapters are documented in
-the [transport guide](docs/network-transport.md); the screen makes no API calls.
+the [transport guide](docs/network-transport.md). Inspection contacts only the
+server the user supplies; it does not authenticate or save a profile.
 
 ## Development
 

@@ -62,7 +62,8 @@
         "queryFragment": "Remova a consulta e o fragmento do endereço.",
         "apiRoot": "Informe a raiz do servidor, sem o /v1 final.",
         "invalid": "Informe uma raiz válida, sem espaços, controles ou caminhos de navegação."
-      }
+      },
+      "probeFailed": "Os metadados de descoberta estão ausentes; a verificação adicional falhou. A compatibilidade continua não confirmada."
     }
   },
   "foundation": {

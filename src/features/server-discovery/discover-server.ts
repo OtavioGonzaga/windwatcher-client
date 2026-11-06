@@ -1,5 +1,6 @@
 import { ApiClient } from "../../shared/api/client";
 import { ApiError } from "../../shared/api/error";
+import { MAX_METADATA_RESPONSE_BYTES } from "../../shared/api/body";
 import type { HttpTransport } from "../../shared/api/transport";
 import type { InstanceAdvertisement } from "../../shared/api/validation";
 
@@ -8,6 +9,13 @@ export type DiscoveryResult =
   | { kind: "wrong-service"; root: string }
   | { kind: "unsupported-api" | "unsupported-auth"; root: string; advertised: readonly string[] }
   | { kind: "legacy"; root: string; recognized: boolean };
+
+/** Discovery was absent, but the separate legacy probe did not establish a clue. */
+export class LegacyProbeError extends ApiError {
+  constructor(error: ApiError) {
+    super(error.category, error.metadata);
+  }
+}
 
 /** One explicit user-directed inspection. No credentials, retries, or writes. */
 export async function discoverServer(
@@ -28,12 +36,13 @@ export async function discoverServer(
     return { kind: "supported", root, metadata };
   }
   const remaining = deadline - Date.now();
-  if (remaining <= 0) throw new ApiError("timeout");
+  if (remaining <= 0) throw new LegacyProbeError(new ApiError("timeout"));
   try {
     await client.request({
       method: "GET",
       path: ["users", "me"],
       expectedStatuses: [200],
+      maxResponseBytes: MAX_METADATA_RESPONSE_BYTES,
       decode: () => null,
       signal,
       timeoutMs: remaining,
@@ -53,7 +62,7 @@ export async function discoverServer(
     ) {
       return { kind: "legacy", root, recognized: false };
     }
-    throw error;
+    throw new LegacyProbeError(error);
   }
   return { kind: "legacy", root, recognized: false };
 }

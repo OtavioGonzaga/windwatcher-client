@@ -62,7 +62,8 @@
         "queryFragment": "Entferne Abfrage und Fragment aus der Adresse.",
         "apiRoot": "Gib die Serveradresse ohne abschließendes /v1 ein.",
         "invalid": "Gib eine gültige Serveradresse ohne Leerzeichen, Steuerzeichen oder Pfadumgehung ein."
-      }
+      },
+      "probeFailed": "Discovery-Metadaten fehlen; die zusätzliche Kompatibilitätsprüfung ist fehlgeschlagen. Die Kompatibilität ist weiterhin unbestätigt."
     }
   },
   "foundation": {

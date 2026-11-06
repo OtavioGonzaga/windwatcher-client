@@ -62,7 +62,8 @@
         "queryFragment": "Elimina la consulta y el fragmento de la dirección.",
         "apiRoot": "Introduce la raíz del servidor, sin el /v1 final.",
         "invalid": "Introduce una raíz válida sin espacios, controles ni rutas de navegación."
-      }
+      },
+      "probeFailed": "Faltan los metadatos de descubrimiento; falló la comprobación adicional. La compatibilidad sigue sin confirmarse."
     }
   },
   "foundation": {

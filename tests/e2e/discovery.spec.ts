@@ -71,3 +71,44 @@ test("browser enforces real cross-origin CORS responses", async ({ page }) => {
   await expect(page.getByText(/The request failed/)).toBeVisible();
   await expect(page.getByText(/Self-registration is closed/)).not.toBeVisible();
 });
+
+test("invalid input, unsupported metadata and failure preserve accessibility", async ({ page }) => {
+  await page.route("https://example.test/**", async (route) => {
+    await route.fulfill({
+      json: {
+        service: "windwatcher",
+        api_versions: ["v2"],
+        auth_methods: ["password"],
+        registration: "closed",
+      },
+      headers: { "Access-Control-Allow-Origin": "*" },
+    });
+  });
+  await page.goto("/#/connect");
+  const input = page.getByRole("textbox", { name: "Server URL" });
+  await input.fill("https://example.test/v1");
+  await input.press("Enter");
+  await expect(input).toBeFocused();
+  await expect(input).toHaveAttribute("aria-invalid", "true");
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+  await input.fill("https://example.test");
+  await input.press("Enter");
+  await expect(page.getByText(/does not advertise the supported v1 API/)).toBeVisible();
+  await expect(page.getByText("v2", { exact: true })).toBeVisible();
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+});
+
+test("German discovery remains usable at narrow width and enlarged text", async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 600 });
+  await page.goto("/#/preferences");
+  await page.getByLabel("Language").selectOption("de");
+  await page.getByRole("link", { name: "Startseite" }).click();
+  await page.getByRole("link", { name: "Server hinzufügen" }).click();
+  await page.evaluate(() => {
+    document.documentElement.style.fontSize = "200%";
+  });
+  await expect(page.getByRole("heading", { name: "Server hinzufügen" })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.emulateMedia({ forcedColors: "active", reducedMotion: "reduce" });
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+});
