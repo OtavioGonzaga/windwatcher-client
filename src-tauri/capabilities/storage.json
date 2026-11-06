@@ -1,0 +1,8 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "storage",
+  "description": "Local main-window storage only; no remote origins or generic filesystem/keyring operations.",
+  "local": true,
+  "windows": ["main"],
+  "permissions": ["local-storage"]
+}

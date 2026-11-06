@@ -1,0 +1,17 @@
+{
+  "build": {
+    "beforeBuildCommand": "bun scripts/build-storage-test.ts",
+    "frontendDist": "../dist-storage"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "Windwatcher storage smoke",
+        "url": "tests/native-storage/index.html",
+        "width": 600,
+        "height": 500
+      }
+    ]
+  }
+}

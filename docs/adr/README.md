@@ -8,6 +8,7 @@ ADRs record significant architectural decisions implemented in this client repos
 - [0004: Hash navigation and portable static hosting](0004-hash-navigation-and-static-hosting.md).
 - [0005: Bounded manual server inspection](0005-manual-server-inspection.md).
 - [0006: Linux-only, identity-first local suggestions](0006-linux-local-server-suggestions.md).
+- [0007: Local profiles and account-owned secrets](0007-local-profiles-and-account-owned-secrets.md).
 
 Introduce an ADR in the same PR that implements a material architectural
 boundary or long-lived technical direction. Do not record roadmap intentions

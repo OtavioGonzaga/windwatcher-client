@@ -14,14 +14,15 @@ React application (src/app)
 ```
 
 There is one React root in `src/main.tsx`. Both browser and native builds use it.
-The native Rust library starts Tauri with the scoped HTTP plugin; the desktop
+The native Rust library starts Tauri with the scoped HTTP plugin and narrow local
+storage commands; the desktop
 executable and Android activity enter the same host. There is no server dependency or embedded
 backend. See [ADR 0001](adr/0001-shared-react-and-tauri-application.md).
 
 The Home route displays supplied artwork and a truthful product description;
 Preferences offers real language/appearance controls. Both share responsive
-navigation. A Home CTA opens manual server inspection; no server is saved and
-there is no authentication or conversation UI. New boundaries
+navigation. A Home CTA opens manual server inspection with explicit profile save;
+Home lists persisted profiles. There is no authentication or conversation UI. New boundaries
 should be introduced only when used.
 
 ## Presentation and localization
@@ -29,7 +30,7 @@ should be introduced only when used.
 CSS semantic tokens and Tailwind 4 utilities define light/dark presentation.
 The shared theme context resolves system appearance; i18next/react-i18next use
 four bundled typed catalogs and a shared browser-locale resolver. Both choices
-are in memory only; storage remains deferred. IBM Plex fonts are bundled locally
+are in memory only; profile/account storage does not persist them. IBM Plex fonts are bundled locally
 with OFL notices. No native font/localization plugin or API consumer is added.
 Native HTML primitives have isolated component/browser fixtures, not production
 routes. See [the visual foundation](visual-foundation.md) and
@@ -91,14 +92,19 @@ editing and never saves or authenticates. A build-target literal plus native
 identity excludes web/Windows/Android. See [local discovery](local-discovery.md)
 and [ADR 0006](adr/0006-linux-local-server-suggestions.md).
 
-No storage or account-adapter scaffolding is introduced. Those boundaries will
-be implemented only when their feature consumers exist. See
+The profile repository owns stable local IDs, canonical URL deduplication,
+strict V1 decoding and serialized nonsecret updates. Web localStorage and narrow
+native app-data commands persist metadata separately from account-owned secret
+adapters. Native vault access uses only Rust keyring APIs, never generic plugin
+export/procedure commands. See [storage and accounts](storage-and-accounts.md),
+[ADR 0007](adr/0007-local-profiles-and-account-owned-secrets.md),
 [HTTP behavior and smoke](network-transport.md), [contract provenance](api-contract.md)
 and [ADR 0002](adr/0002-scoped-native-http-and-server-bound-clients.md).
 
 ## Network security
 
-- There are no custom native commands. The main window grants the official HTTP
+- Native storage commands are fixed-document/account-ID-only and local-main-window
+  scoped. The main window grants the official HTTP
   plugin access to HTTP/HTTPS origins with arbitrary ports/paths, as required for
   user-directed servers. No filesystem/shell or remote-page grants are added.
 - The native plugin disables cookie storage, request tracing, unsafe headers and
@@ -106,7 +112,8 @@ and [ADR 0002](adr/0002-scoped-native-http-and-server-bound-clients.md).
   requests never inherit a bearer. Request cancellation never retries a write.
 - Production web output receives a CSP through Vite. Native production CSP is
   configured independently in Tauri; development allows Vite HMR explicitly.
-- No remote scripts/fonts, analytics or credential storage are introduced.
+- No remote scripts/fonts or analytics are introduced. Account-owned secrets use
+  separate browser/OS adapters; no actual authentication credentials exist yet.
   Supplied images are served from the application itself. Browser CSP permits
   HTTP/HTTPS connections; native CSP stays IPC-only. Native plugin grants do not
   authorize arbitrary remote scripts or replace app-level URL validation.

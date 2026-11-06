@@ -28,8 +28,9 @@ additional runtime shipped inside Tauri.
   weaken types to bypass validation.
 - Add small, concrete boundaries when needed, not speculative features/modules.
 - Keep native operations out of shared API/UI features. Use the injected network
-  boundary; the host grants only scoped HTTP(S), without custom commands or
-  unrelated filesystem/shell capabilities.
+  boundary. Storage uses only the narrow fixed-document/account-ID commands in
+  [the storage contract](docs/storage-and-accounts.md), never generic filesystem,
+  shell or credential-export capabilities. Credentials must not enter metadata.
 - Do not add server-side administration or UI suggesting unsupported protocol features.
 - Introduce localized end-user strings with the four-locale foundation; the
   [visual foundation guide](docs/visual-foundation.md) documents typed keys,
@@ -72,8 +73,10 @@ CARGO_BUILD_JOBS=4 cargo check --manifest-path src-tauri/Cargo.toml --all-target
 CARGO_BUILD_JOBS=4 cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets --locked -- -D warnings
 ```
 
-There are no Rust business operations to unit-test yet. Add relevant tests when
-behavior is introduced rather than artificial tests of an empty shell.
+Run Rust storage validation tests with
+`CARGO_BUILD_JOBS=4 cargo test --manifest-path src-tauri/Cargo.toml --lib --locked`.
+The [storage smoke procedure](docs/storage-and-accounts.md) is opt-in and separate
+from the normal frontend; mock/compile checks are not OS credential evidence.
 Run applicable native smoke checks in [development](docs/development.md).
 Do not run test suites concurrently; keep heavy native builds sequential with
 at most four Cargo jobs. Report unavailable platforms honestly.

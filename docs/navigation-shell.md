@@ -2,13 +2,14 @@
 
 Windwatcher has one React root, one declarative React Router HashRouter and the
 same shell on web, Linux, Windows and Android. Manual server inspection is public
-and in-memory; there are no accounts or persisted settings here.
+and in-memory until explicitly saved. Home lists local profiles; account UI is
+deferred and presentation choices remain in memory.
 
 ## Routes and deployment
 
 | Fragment        | Contents                                             |
 | --------------- | ---------------------------------------------------- |
-| `#/`            | Supplied artwork and truthful product description    |
+| `#/`            | Artwork, product description and saved profiles      |
 | `#/preferences` | Working language and appearance controls             |
 | `#/connect`     | Manual inspection and Linux-native local suggestions |
 | Any other route | Localized not-found message and Home recovery        |
@@ -27,8 +28,10 @@ Image URLs follow `import.meta.env.BASE_URL`; built CSS/fonts/chunks resolve
 relative to their emitted files. CSP is unchanged and permits no remote scripts
 or fonts. Tests serve the production output under `/client/` without rewrites.
 
-The Home CTA opens manual inspection. No server is saved and no authentication
-is performed. Authenticated routes should be introduced with their real consumers.
+The Home CTA opens manual inspection. An explicit Save server action persists a
+successful inspection; no authentication is performed. Saved profiles can be
+renamed, forgotten with confirmation or opened for an explicit fresh inspection.
+No network check runs from listing alone. Authenticated routes are deferred.
 
 ## Layout and accessibility
 

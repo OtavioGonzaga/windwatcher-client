@@ -17,6 +17,9 @@ test batches sequential with at most four Cargo jobs.
   generate replacement logos or claim unverified asset provenance.
 - Add ADRs alongside implemented architectural decisions, not in advance.
 - Do not create speculative modules or implement later roadmap deliveries early.
+- Keep profile/account metadata nonsecret. Credentials belong only to the
+  account-owned secret adapter; never introduce a plaintext native fallback or
+  generic filesystem/credential-export permissions. See `docs/storage-and-accounts.md`.
 
 <!-- ai-memory:start -->
 

@@ -22,6 +22,11 @@ The changelog remains `Unreleased`. Do not assign `0.1.0` merely to bootstrap.
 Native package installation, signing and a supported distribution matrix are
 separate future deliveries. macOS/iOS are not current distribution targets.
 
+The [native secret-storage review](native-secret-storage-review.md) records the
+source review, Linux/Android runtime evidence and explicit Windows runtime waiver.
+See [storage and accounts](storage-and-accounts.md) for adapters, failure contracts
+and opt-in smoke commands. OS-vault runtime validation is separate from compilation.
+
 ## Install dependencies
 
 Install Bun at the pinned version and Rust through rustup. The repository's
