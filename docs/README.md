@@ -13,5 +13,7 @@ not a functional messaging client. No client releases are available yet.
 - [HTTP transport](network-transport.md): consumer boundary, error/security behavior and native smoke.
 - [Local discovery](local-discovery.md): Linux-only loopback suggestions, readiness policy and native evidence.
 - [API contract](api-contract.md): released source, snapshot provenance and offline type generation.
+- [Authentication and sessions](authentication-and-sessions.md): implemented HTTP boundary,
+  runtime validation and remaining production-persistence gates.
 - [Architectural Decision Records](adr/README.md): decision-record policy and template.
 - [Brand assets](../public/brand/README.md): supplied artwork and source inventory.
