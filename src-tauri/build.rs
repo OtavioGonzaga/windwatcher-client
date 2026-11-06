@@ -6,6 +6,9 @@ fn main() {
             "get_account_secret",
             "put_account_secret",
             "remove_account_secret",
+            "acquire_storage_operation",
+            "check_storage_operation",
+            "release_storage_operation",
         ]),
     ))
     .expect("failed to build native application manifest");

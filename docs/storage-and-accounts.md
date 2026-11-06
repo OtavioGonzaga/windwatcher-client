@@ -31,7 +31,23 @@ not invent it or substitute the username. There is no production account creatio
 login, selection or switching UI. Nullable selected-account metadata establishes
 no authenticated context. Registration being closed does not prevent later login.
 
-## V1 document and failure policy
+## V1 compatibility and V2 document
+
+V1 is validated completely before an in-memory V2 migration. Reads do not write;
+the next successful mutation writes V2 at the **same** existing key/file, with
+revision increment and verified document readback. Profiles, account IDs, selected
+account and all secret aliases are preserved. Native writes reject V2-to-V1
+downgrades. Unknown versions/corrupt originals remain untouched.
+
+V2 adds `authOperations` and an optional nonsecret account `session` binding
+(`generation`, `sessionId`, `operationId`). A binding alone never authenticates
+an account. The journal allows at most 500 entries, one per local account and
+profile/server-user pair. Every entry has strictly validated foreign identity,
+operation/session UUIDs, generation bounds, enum phase/kind and ISO timestamp;
+unknown/secret fields are rejected by TypeScript and native IPC.
+See [ADR 0009](adr/0009-coordinated-session-commits-and-recovery-intents.md).
+
+### Original V1 validation and common limits
 
 `schema.ts` validates the complete bounded nonsecret V1 document before returning
 state and again before every write. Unknown fields, malformed JSON, missing/future
@@ -71,12 +87,14 @@ Separate paths on an origin are namespaces, not a security boundary. Browser/pri
 mode policy can deny storage or discard it on exit. There is no cookie fallback.
 
 Each localStorage item replacement is atomic at the browser API's granularity,
-but read/check/write is **not browser-wide compare-and-swap**. The store re-reads
-before writing, refuses mismatched documents and invalidates on `storage` events
-(including origin-wide clear). Observed changes require reload; simultaneous tabs
-can still race before observing events. Do not claim lossless multi-tab merging or
-use multiple tabs as independent writers. The repository does not cache a snapshot
-for use as an unconditional overwrite.
+but read/check/write is **not browser-wide compare-and-swap**. The production
+composition now joins namespaced Web Locks for all metadata writes and per-account
+secret/session operations. It re-reads before writing, verifies readback, and
+invalidates on `storage` events (including origin-wide clear). Observed conflicts
+still require reload; there is no automatic lossless merge or unconditional cached
+overwrite. Without Web Locks, production metadata is read-only and authentication
+is unavailable rather than relying on a localStorage/BroadcastChannel imitation.
+Uncooperative same-origin code/XSS is not constrained by these application locks.
 
 ## Native adapters and permissions
 
@@ -93,8 +111,10 @@ Linux/Android secrets use the pinned third-party `tauri-plugin-keyring-store`
 **0.2.0** Rust API with defaults disabled, not its JavaScript plugin. Windows uses
 [user-scoped DPAPI records](windows-secret-storage.md) instead. We do not install its generic
 plugin handler or grant default vault/export/procedure permissions. The local main
-window receives only five app commands: fixed metadata read/write and account-ID
-secret get/put/remove. Secret commands accept canonical local UUIDv4 values and
+window receives eight narrow app commands: fixed metadata read/write, account-ID
+secret get/put/remove, and operation acquire/check/release. Operation keys select
+only the fixed state lock, an account UUID, or a profile/server-user UUID pair;
+they cannot select arbitrary paths. Secret commands accept canonical local UUIDv4 values and
 derive a fixed service plus `windwatcher-client:v1:<account UUID>` alias. No mutable
 URL/username or frontend-chosen service/path is used. Opaque records are nonempty
 and capped at 16 KiB; native provider limits can be smaller and must surface as
@@ -155,15 +175,16 @@ cancellation remain PR 8/9 work.
 
 ### PR 8 prerequisite: prepared identity and coordinated persistence
 
-**This coordination is not implemented in PR 7.** `registerAccount()` currently
+**Implemented by `SessionPersistence` in PR 8; not implemented in PR 7.** The
+production composition shares the repository, state store, secret adapter and
+operation locks. `registerAccount()` still
 generates its local UUID inside the metadata update. It is a metadata-only
 registry operation, not a login-persistence entry point: calling it first to
 discover an ID would violate the secret-first ordering above. The composition
-root currently exposes only the profile repository, not a coordinating session
-persistence service. Synthetic smoke fixtures are not a production login recipe.
+root now also composes the coordinating session persistence service, without
+exposing its secret port to React. Synthetic smoke fixtures are not a production login recipe.
 
-Before persisting any real tokens, PR 8 must implement and test an application
-operation that:
+The implemented application operation and its tests enforce this contract:
 
 1. Resolves the authoritative `(profile ID, server user ID)` pair. For an existing
    account, reuse its local UUID; for a new account, prepare a collision-checked
@@ -188,8 +209,45 @@ operation that:
 Required failure seams include exact UUID/order verification, failed put/readback,
 stale or failed metadata commit, failed compensation, duplicate-pair retries,
 existing-account overwrite, concurrent removal and restart after an interrupted
-commit. These requirements are an explicit PR 8 integration gate, not an API
-already supplied by `registerAccount()` or `platform-storage.ts`.
+commit. These are supplied by `SessionPersistence`, not the metadata-only
+`registerAccount()` method.
+
+### Intent recovery and owned operations
+
+The journal's exact fields are account/profile/server-user/session/operation IDs,
+kind (`create`, `replace`, `refresh`), phase (`prepared`, `sent`,
+`recovery-required`), expected/target generation and start timestamp. Credential
+bytes and fingerprints never enter it. A fresh login can supersede an unresolved
+intent only with a new operation and a generation above every known reserved or
+persisted value. Entries older than 24 hours cannot complete an established
+session automatically; bounded terminal evidence remains until re-login/removal.
+
+Recovery runs under the same account owner as writes/removal. Unregistered new
+aliases are cleaned before their intent is cleared. A confirmed newer envelope
+can complete an established account's metadata; no account is invented from a
+username. An old envelope after a durable refresh `sent` marker requires login,
+never replay. A prepared refresh with a confirmed old envelope is provably unsent
+because verified `sent` persistence is mandatory before the future refresh POST.
+Missing/corrupt/uncertain established secrets are retained, not deleted as orphans.
+
+Native operation owners use fixed app-data lock files and nonsecret UUID leases,
+at most 64 live owners, with a single host expiry worker and a 120-second deadline.
+Future native writes check both key and owner. A released/expired owner cannot
+resume after another process takes over. A native call already executing retains
+its OS guard until it returns; a hung vault call may require process restart,
+not unsafe force-unlocking. CLI tests kill a separate owning process and confirm
+exclusion, unrelated-account availability, lock recovery and old-owner fencing.
+The native library also tests expiry without another renderer call.
+
+```bash
+CARGO_BUILD_JOBS=4 cargo run --manifest-path src-tauri/Cargo.toml --locked \
+  --features storage-smoke --bin operation-lock-smoke
+```
+
+Persistent synthetic fixtures cover pre-secret intent, failed put/readback,
+orphan-cleanup failure, old/new replacement values, prepared/sent refresh states,
+metadata committed before intent clear, and unknown/aged outcomes. They are
+policy/crash-state evidence, not a claim that end-to-end login/refresh UX is enabled.
 
 ## Repeatable native smoke
 

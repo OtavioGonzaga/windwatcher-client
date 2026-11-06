@@ -1,6 +1,7 @@
 //! Minimal native host for the shared Windwatcher frontend.
 #[cfg(all(feature = "storage-smoke", not(debug_assertions)))]
 compile_error!("The storage-smoke feature is debug-only and must not ship in release builds.");
+mod operation_locks;
 mod storage;
 // Exercise the exact vendored Android commit decision on host CI without JNI.
 #[cfg(test)]
@@ -11,6 +12,7 @@ mod android_commit_result;
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .manage(operation_locks::OperationLocks::default())
         .plugin(tauri_plugin_http::init())
         .invoke_handler(tauri::generate_handler![
             storage::read_client_state,
@@ -18,6 +20,9 @@ pub fn run() {
             storage::get_account_secret,
             storage::put_account_secret,
             storage::remove_account_secret,
+            storage::acquire_storage_operation,
+            storage::check_storage_operation,
+            storage::release_storage_operation,
         ])
         .run(tauri::generate_context!())
         .expect("failed to run Windwatcher");

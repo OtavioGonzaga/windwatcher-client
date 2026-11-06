@@ -1,6 +1,7 @@
 import { LOCAL_ID, MAX_SECRET_BYTES } from "../../shared/storage/secret-store";
 import { decodeSessionGrant, serverUuid } from "./validation";
 import type { SessionGrant } from "./validation";
+import { encodeSessionEnvelope } from "./envelope";
 
 export const WINDOWS_CREDENTIAL_BLOB_BYTES = 2560;
 export const WINDOWS_KEYRING_INPUT_BYTES = 960;
@@ -22,7 +23,7 @@ export interface EnvelopeMeasurementBinding {
 
 /**
  * Capacity gate only: encode a fully bound compact candidate, return counts, never tokens.
- * This is NOT a production persistence format or a credential write operation.
+ * Uses the production envelope encoder; this measurement never writes credentials.
  */
 export function measureSessionEnvelope(grant: SessionGrant, binding: EnvelopeMeasurementBinding) {
   const decoded = decodeSessionGrant(grant);
@@ -36,22 +37,7 @@ export function measureSessionEnvelope(grant: SessionGrant, binding: EnvelopeMea
     throw new Error("Invalid measurement binding.");
   serverUuid(binding.userId);
   // Tuple positions are documented in authentication-and-sessions.md.
-  const bytes = new TextEncoder().encode(
-    JSON.stringify([
-      1,
-      binding.accountId,
-      binding.profileId,
-      binding.userId,
-      binding.operationId,
-      binding.generation,
-      decoded.session_id,
-      decoded.token_type,
-      decoded.access_token,
-      decoded.refresh_token,
-      decoded.access_token_expires_at,
-      decoded.session_expires_at,
-    ]),
-  );
+  const bytes = encodeSessionEnvelope({ ...binding, grant: decoded });
   const result = {
     accessTokenBytes: new TextEncoder().encode(decoded.access_token).byteLength,
     envelopeBytes: bytes.byteLength,

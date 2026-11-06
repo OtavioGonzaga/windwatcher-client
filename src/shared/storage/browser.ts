@@ -2,6 +2,12 @@ import type { DocumentPort } from "./state-store";
 import type { SecretStore } from "./secret-store";
 import { validateAccountId, validateSecret } from "./secret-store";
 import { storageError, StorageError } from "./errors";
+import type { OperationLease } from "./operation-lock";
+
+async function checkLease(key: string, lease?: OperationLease) {
+  if (lease && lease.key !== key) throw new StorageError("conflict");
+  await lease?.check();
+}
 
 export function browserNamespace(base: string) {
   return `windwatcher-client:${encodeURIComponent(new URL(".", base).pathname)}:v1`;
@@ -20,7 +26,8 @@ export function browserDocument(
         throw storageError(error);
       }
     },
-    async write(expected, document) {
+    async write(expected, document, lease) {
+      await checkLease("state", lease);
       try {
         if (storage().getItem(key) !== expected) throw new StorageError("conflict");
         storage().setItem(key, document);
@@ -53,7 +60,8 @@ export function browserSecrets(
     return `${namespace}:secret:${id}`;
   };
   return {
-    async put(id, record) {
+    async put(id, record, lease) {
+      await checkLease(`account-${id}`, lease);
       validateSecret(record);
       try {
         storage().setItem(key(id), JSON.stringify({ schemaVersion: 1, bytes: Array.from(record) }));
@@ -61,7 +69,8 @@ export function browserSecrets(
         throw storageError(error);
       }
     },
-    async get(id) {
+    async get(id, lease) {
+      await checkLease(`account-${id}`, lease);
       try {
         const raw = storage().getItem(key(id));
         if (raw === null) return null;
@@ -92,7 +101,8 @@ export function browserSecrets(
         throw storageError(error);
       }
     },
-    async remove(id) {
+    async remove(id, lease) {
+      await checkLease(`account-${id}`, lease);
       try {
         storage().removeItem(key(id));
       } catch (error) {

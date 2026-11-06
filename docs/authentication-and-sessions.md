@@ -2,11 +2,11 @@
 
 ## Implementation status
 
-The server-bound HTTP authentication boundary and runtime decoders are implemented.
-There is **no production login/registration UI, token persistence, refresh coordinator
-or session restoration yet**. The existing profile/account registry does not establish
-authentication. Production persistence remains gated by the capacity and cross-store
-requirements in [storage and accounts](storage-and-accounts.md).
+The server-bound HTTP boundary, runtime decoders and coordinated session persistence
+are implemented and tested. There is **no production login/registration UI, refresh
+coordinator or automatic session restoration yet**. The profile/account registry alone
+does not establish authentication. `SessionPersistence` is composed above the ports,
+but no end-user flow invokes login persistence until the remaining integration gates pass.
 
 ## Pinned contract
 
@@ -81,8 +81,8 @@ On 2026-11-06, the corrected PR 7 baseline was verified: merged `main`
 `9d79fc1ed29a0e7dcf35b78960542783013ab75f` contains corrected head
 `ea5e311fb9d74301b2830ca4d5d29d47ea022f88`.
 
-`measureSessionEnvelope()` serializes a compact **candidate**, not a production
-format, as this tuple (no passwords):
+`measureSessionEnvelope()` initially measured a compact candidate. That tuple is
+now the implemented session-envelope V1 (no passwords):
 
 ```text
 [1, accountId, profileId, serverUserId, operationId, generation, sessionId,
@@ -93,7 +93,8 @@ All IDs are full validated UUIDs; generation uses `Number.MAX_SAFE_INTEGER` in
 the real-server gate to include its maximum decimal width. Sizes include actual
 server timestamp precision and UTF-8 JSON encoding. The tool never returns or
 prints token values; no live grants, keys, configs or databases are committed.
-The candidate has no production decoder/migration and is never written to a vault.
+`envelope.ts` encodes/decodes the format with full binding and byte limits.
+The measurement itself still never writes live grant bytes to a vault.
 
 The pinned `KeyringStore::set_bytes()` Base64-encodes before calling
 `set_password()`. Windows native keyring 1.1.0 converts that ASCII text to UTF-16

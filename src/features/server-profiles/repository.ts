@@ -4,13 +4,18 @@ import type { SecretStore } from "../../shared/storage/secret-store";
 import { randomLocalId } from "../../shared/storage/secret-store";
 import { StorageError } from "../../shared/storage/errors";
 import { displayText, ensure } from "./schema";
-import type { ClientStateV1, ServerProfile } from "./schema";
+import type { ClientStateV2, ServerProfile } from "./schema";
+import type { OperationLease, OperationLocks } from "../../shared/storage/operation-lock";
 import { ServerUrl } from "../../shared/api/url";
 
-function newId(state: ClientStateV1) {
+function newId(state: ClientStateV2) {
   for (let i = 0; i < 10; i++) {
     const id = randomLocalId();
-    if (![...state.serverProfiles, ...state.accounts].some((record) => record.id === id)) return id;
+    if (
+      ![...state.serverProfiles, ...state.accounts].some((record) => record.id === id) &&
+      !state.authOperations.some((op) => op.accountId === id)
+    )
+      return id;
   }
   throw new StorageError("write-failed");
 }
@@ -24,12 +29,16 @@ export class ProfileRepository {
   constructor(
     private readonly state: ClientStateStore,
     private readonly secrets: SecretStore,
+    private readonly locks?: OperationLocks,
   ) {}
   load() {
     return this.state.load();
   }
   subscribe(listener: () => void) {
     return this.state.subscribe(listener);
+  }
+  private accountOperation<T>(id: string, action: (lease?: OperationLease) => Promise<T>) {
+    return this.locks?.supported ? this.locks.run(`account-${id}`, action) : action();
   }
   saveInspection(
     result: DiscoveryResult,
@@ -87,12 +96,19 @@ export class ProfileRepository {
     }, revision);
   }
   forgetProfile(id: string, revision?: number) {
-    return this.state.update(async (draft) => {
+    return this.state.update(async (draft, stateLease) => {
       ensure(draft.serverProfiles.some((p) => p.id === id));
       // Keep ALL metadata on any cleanup failure, including partial deletion, for retry.
-      for (const account of draft.accounts.filter((a) => a.serverProfileId === id))
+      const ids = new Set([
+        ...draft.accounts.filter((a) => a.serverProfileId === id).map((a) => a.id),
+        ...draft.authOperations.filter((op) => op.profileId === id).map((op) => op.accountId),
+      ]);
+      for (const accountId of ids)
         // oxlint-disable-next-line no-await-in-loop -- Stop on the first cleanup failure; retain metadata for retry.
-        await this.secrets.remove(account.id);
+        await this.accountOperation(accountId, async (lease) => {
+          await stateLease?.check();
+          await this.secrets.remove(accountId, lease);
+        });
       const removed = new Set(
         draft.accounts.filter((a) => a.serverProfileId === id).map((a) => a.id),
       );
@@ -100,6 +116,7 @@ export class ProfileRepository {
       if (draft.selectedAccountId && removed.has(draft.selectedAccountId))
         draft.selectedAccountId = null;
       draft.serverProfiles = draft.serverProfiles.filter((p) => p.id !== id);
+      draft.authOperations = draft.authOperations.filter((op) => op.profileId !== id);
     }, revision);
   }
   /**
@@ -137,11 +154,15 @@ export class ProfileRepository {
     });
   }
   removeAccount(id: string) {
-    return this.state.update(async (draft) => {
+    return this.state.update(async (draft, stateLease) => {
       ensure(draft.accounts.some((a) => a.id === id));
-      await this.secrets.remove(id);
+      await this.accountOperation(id, async (lease) => {
+        await stateLease?.check();
+        await this.secrets.remove(id, lease);
+      });
       draft.accounts = draft.accounts.filter((a) => a.id !== id);
       if (draft.selectedAccountId === id) draft.selectedAccountId = null;
+      draft.authOperations = draft.authOperations.filter((op) => op.accountId !== id);
     });
   }
   selectAccount(id: string | null) {

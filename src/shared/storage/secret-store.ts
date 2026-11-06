@@ -1,8 +1,9 @@
 import { StorageError } from "./errors";
+import type { OperationLease } from "./operation-lock";
 export interface SecretStore {
-  put(accountId: string, record: Uint8Array): Promise<void>;
-  get(accountId: string): Promise<Uint8Array | null>;
-  remove(accountId: string): Promise<void>;
+  put(accountId: string, record: Uint8Array, lease?: OperationLease): Promise<void>;
+  get(accountId: string, lease?: OperationLease): Promise<Uint8Array | null>;
+  remove(accountId: string, lease?: OperationLease): Promise<void>;
 }
 export const LOCAL_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 export const MAX_SECRET_BYTES = 16_384;

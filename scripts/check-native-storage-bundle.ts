@@ -9,6 +9,7 @@ const markers = [
   "windwatcher-client.windows-ci.dpapi.v1",
   "Windows DPAPI real-OS capacity/restart/overwrite/isolation/corruption/crash/leak checks passed.",
   "pending-flushed",
+  "operation-lock-acquired",
   "synthetic.header.signature",
 ];
 const paths = [nativePath];

@@ -7,4 +7,7 @@ commands.allow = [
   "get_account_secret",
   "put_account_secret",
   "remove_account_secret",
+  "acquire_storage_operation",
+  "check_storage_operation",
+  "release_storage_operation",
 ]

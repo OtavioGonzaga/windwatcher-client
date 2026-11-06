@@ -6,7 +6,7 @@ import { TextField } from "../../shared/components/TextField";
 import { profileRepository } from "../../shared/storage/platform-storage";
 import { formatDate } from "../../shared/i18n/format";
 import { resolveLocale } from "../../shared/i18n/locale";
-import type { ClientStateV1, ServerProfile } from "./schema";
+import type { ClientStateV2, ServerProfile } from "./schema";
 import { StorageNotice } from "./StorageNotice";
 
 function ProfileRow({
@@ -129,7 +129,7 @@ function ProfileRow({
 
 export function ServerProfilesList() {
   const { t } = useTranslation();
-  const [state, setState] = useState<ClientStateV1>();
+  const [state, setState] = useState<ClientStateV2>();
   const [error, setError] = useState<unknown>();
   const [busy, setBusy] = useState(false);
   const [success, setSuccess] = useState(false);
