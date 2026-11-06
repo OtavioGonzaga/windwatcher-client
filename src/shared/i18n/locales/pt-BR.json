@@ -97,7 +97,7 @@
       "supported": "Este endpoint anuncia Windwatcher v1 e autenticação por senha. Isso não verifica a identidade.",
       "open": "O cadastro é anunciado como aberto. Contas existentes também podem entrar.",
       "closed": "O cadastro está fechado. Contas existentes ou criadas por administradores podem entrar.",
-      "notImplemented": "Entrada e criação de conta ainda não estão disponíveis neste cliente.",
+      "signInAfterSave": "Salve este servidor primeiro e depois entre pela lista de servidores salvos.",
       "wrongService": "Este endpoint anuncia outro serviço.",
       "unsupportedApi": "Este servidor não anuncia a API v1 suportada.",
       "unsupportedAuth": "Este servidor não anuncia autenticação por senha.",

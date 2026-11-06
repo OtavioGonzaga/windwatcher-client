@@ -97,7 +97,7 @@
       "supported": "Dieser Endpunkt meldet Windwatcher v1 und Passwortauthentifizierung. Die Identität ist damit nicht bestätigt.",
       "open": "Die Registrierung wird als offen gemeldet. Bestehende Konten können sich ebenfalls anmelden.",
       "closed": "Die Registrierung ist geschlossen. Bestehende oder administrativ angelegte Konten können sich anmelden.",
-      "notImplemented": "Anmeldung und Kontoerstellung sind in diesem Client noch nicht verfügbar.",
+      "signInAfterSave": "Speichern Sie zuerst diesen Server und melden Sie sich dann über die gespeicherten Server an.",
       "wrongService": "Dieser Endpunkt meldet einen anderen Dienst.",
       "unsupportedApi": "Dieser Server meldet die unterstützte v1-API nicht.",
       "unsupportedAuth": "Dieser Server meldet keine Passwortauthentifizierung.",

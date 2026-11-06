@@ -14,6 +14,8 @@ export class ClientStateStore {
   private stale = false;
   private generation = 0;
   private listeners = new Set<() => void>();
+  private committed = new Set<() => void>();
+  private accountInvalidations = new Set<(accountId: string) => void>();
   private dispose: (() => void) | undefined;
   constructor(
     private readonly port: DocumentPort,
@@ -31,9 +33,13 @@ export class ClientStateStore {
       this.listeners.delete(listener);
     };
   }
+  subscribeCommitted(listener: () => void) { this.committed.add(listener); return () => { this.committed.delete(listener); }; }
+  subscribeAccountInvalidation(listener: (accountId: string) => void) { this.accountInvalidations.add(listener); return () => { this.accountInvalidations.delete(listener); }; }
+  invalidateAccount(accountId: string) { for (const listener of this.accountInvalidations) listener(accountId); }
   close() {
     this.dispose?.();
     this.listeners.clear();
+    this.committed.clear(); this.accountInvalidations.clear();
   }
   async load() {
     await this.queue;
@@ -64,6 +70,7 @@ export class ClientStateStore {
       await this.port.write(before, document, lease);
       if ((await this.port.read()) !== document) throw new StorageError("conflict");
       if (generation !== this.generation) throw new StorageError("conflict");
+      for (const listener of this.committed) listener();
       return checked;
     };
     const operation = this.queue

@@ -69,4 +69,9 @@ export class AuthApi {
       timeoutMs: lifetime.timeoutMs,
     });
   }
+  /** Best-effort cleanup of a freshly created, never-persisted login; not a logout UI. */
+  revokeUncommitted(token: string, lifetime: RequestLifetime = {}) {
+    return this.client.request({ method: "DELETE", path: ["sessions", "current"], expectedStatuses: [204], response: "empty",
+      accessToken: accessToken(token), signal: lifetime.signal, timeoutMs: lifetime.timeoutMs });
+  }
 }

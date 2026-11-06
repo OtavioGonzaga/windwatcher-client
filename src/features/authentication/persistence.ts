@@ -186,14 +186,17 @@ export class SessionPersistence {
             ) {
               await this.secrets.remove(id, lease);
               await this.clear(intent);
-            } else if (!completed) await this.requireRecovery(intent);
+            } else if (!completed) {
+              if (signal?.aborted) await this.requireRecovery(intent);
+              else await this.reconcileOne(id, lease);
+            }
           } catch {
             /* Keep the durable intent if compensation/lease/storage fails. */
           }
           throw error;
         }
-      });
-    });
+      }, true);
+    }, true);
   }
   async prepareRefresh(
     account: AccountRecord,
