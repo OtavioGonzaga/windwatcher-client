@@ -85,8 +85,14 @@ Each operation declares its allowed success statuses. Body consumption has a fin
 byte budget before UTF-8/JSON decoding, with tighter instance/problem limits;
 see the transport guide for the page-size calculation and configurable-server caveats.
 
-No storage, local discovery or account-adapter scaffolding is introduced. Those
-boundaries will be implemented only when their feature consumers exist. See
+Linux Tauri Add Server additionally performs bounded, identity-first discovery of
+the two documented loopback defaults. Advice is page-local, cancels on manual
+editing and never saves or authenticates. A build-target literal plus native
+identity excludes web/Windows/Android. See [local discovery](local-discovery.md)
+and [ADR 0006](adr/0006-linux-local-server-suggestions.md).
+
+No storage or account-adapter scaffolding is introduced. Those boundaries will
+be implemented only when their feature consumers exist. See
 [HTTP behavior and smoke](network-transport.md), [contract provenance](api-contract.md)
 and [ADR 0002](adr/0002-scoped-native-http-and-server-bound-clients.md).
 

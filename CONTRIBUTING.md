@@ -53,6 +53,9 @@ bun run test:e2e
 
 `check` runs format checking, lint, TypeScript, unit/component tests and the
 production build, plus offline API type drift checking. It never rewrites files.
+It also validates emitted web/Linux/Windows/Android local-discovery target gates.
+The browser suite includes an isolated local-suggestion fixture; real native
+behavior requires the [Linux smoke procedure](docs/local-discovery.md).
 Use `bun run api:generate` only when deliberately regenerating pinned-contract
 types; see [contract provenance](docs/api-contract.md). The application checker
 remains TypeScript 7 (`typescript-checker`); TypeScript 5 provides the generator's
