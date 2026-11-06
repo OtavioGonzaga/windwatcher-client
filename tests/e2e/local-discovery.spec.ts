@@ -27,7 +27,13 @@ for (const theme of ["light", "dark"] as const) {
     await page.getByLabel("Language").selectOption("de");
     await page.getByRole("link", { name: "Startseite" }).click();
     await page.getByRole("link", { name: "Server hinzufügen" }).click();
-    await expect(page.getByRole("button", { name: "Diese Adresse verwenden" })).toHaveCount(2);
+    await expect(page.getByRole("button", { name: /Diese Adresse verwenden:/ })).toHaveCount(2);
+    await expect(
+      page.getByRole("button", {
+        name: "Diese Adresse verwenden: http://127.0.0.1:8080/",
+        exact: true,
+      }),
+    ).toBeVisible();
     for (const width of [320, 360, 768, 1280]) {
       // One viewport must settle before measuring it and moving to the next.
       // oxlint-disable-next-line no-await-in-loop
@@ -43,14 +49,17 @@ for (const theme of ["light", "dark"] as const) {
     }
     expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
     await page.emulateMedia({ forcedColors: "active", reducedMotion: "reduce" });
-    const use = page.getByRole("button", { name: "Diese Adresse verwenden" }).last();
+    const use = page.getByRole("button", {
+      name: "Diese Adresse verwenden: http://[::1]:8080/",
+      exact: true,
+    });
     await use.focus();
     await page.keyboard.press("Enter");
     const input = page.getByRole("textbox", { name: "Server-URL" });
     await expect(input).toHaveValue("http://[::1]:8080/");
     await expect(input).toBeFocused();
     await page.getByRole("button", { name: "Erneut prüfen" }).click();
-    await expect(page.getByRole("button", { name: "Diese Adresse verwenden" })).toHaveCount(2);
+    await expect(page.getByRole("button", { name: /Diese Adresse verwenden:/ })).toHaveCount(2);
     await page.getByRole("button", { name: "Verwerfen" }).click();
     await expect(page.getByRole("button", { name: "Erneut prüfen" })).toBeFocused();
     expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);

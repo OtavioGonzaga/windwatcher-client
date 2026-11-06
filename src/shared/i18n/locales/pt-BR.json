@@ -35,6 +35,7 @@
       "legacy": "Possível Windwatcher legado, não verificado. Use o endereço, verifique-o e confirme o aviso de servidor legado.",
       "incompatible": "Este servidor Windwatcher não anuncia a API ou a autenticação compatível com este cliente.",
       "use": "Usar este endereço",
+      "useSpecific": "Usar este endereço: {{address}}",
       "dismiss": "Dispensar",
       "retry": "Verificar novamente"
     },

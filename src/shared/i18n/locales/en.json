@@ -35,6 +35,7 @@
       "legacy": "Possible legacy Windwatcher, unverified. Use the address, then check it and acknowledge the legacy warning.",
       "incompatible": "This Windwatcher server does not advertise the API or authentication this client supports.",
       "use": "Use this address",
+      "useSpecific": "Use this address: {{address}}",
       "dismiss": "Dismiss",
       "retry": "Check again"
     },

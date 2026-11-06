@@ -35,6 +35,7 @@
       "legacy": "Möglicherweise älterer Windwatcher, nicht verifiziert. Übernimm die Adresse, prüfe sie und bestätige den Warnhinweis.",
       "incompatible": "Dieser Windwatcher-Server bietet keine von diesem Client unterstützte API oder Anmeldung an.",
       "use": "Diese Adresse verwenden",
+      "useSpecific": "Diese Adresse verwenden: {{address}}",
       "dismiss": "Verwerfen",
       "retry": "Erneut prüfen"
     },

@@ -28,10 +28,10 @@ beforeEach(() => {
   mock.scan.mockReset();
   mock.manual.mockReset();
 });
-function answer(candidate: LocalCandidate) {
+function answer(...candidates: LocalCandidate[]) {
   mock.scan.mockImplementation(async (_transport, _signal, notify) => {
-    notify(candidate);
-    return [candidate];
+    candidates.forEach((candidate) => notify(candidate));
+    return candidates;
   });
 }
 describe("page-local Linux advice", () => {
@@ -40,7 +40,7 @@ describe("page-local Linux advice", () => {
     mount();
     const field = screen.getByLabelText("Server URL");
     field.focus();
-    const use = await screen.findByRole("button", { name: "Use this address" });
+    const use = await screen.findByRole("button", { name: `Use this address: ${root}` });
     expect(field).toHaveValue("");
     expect(field).toHaveFocus();
     expect(mock.scan).toHaveBeenCalledOnce(); // StrictMode's disposed effect never starts I/O.
@@ -57,7 +57,7 @@ describe("page-local Linux advice", () => {
       answer({ root, kind: "supported", readiness });
       mount();
       await screen.findByText(root);
-      expect(screen.queryByRole("button", { name: "Use this address" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: /Use this address/ })).not.toBeInTheDocument();
       expect(screen.getByRole("button", { name: "Check again" })).toBeEnabled();
     },
   );
@@ -65,7 +65,7 @@ describe("page-local Linux advice", () => {
     answer({ root, kind: "legacy" });
     mock.manual.mockResolvedValue({ root, kind: "legacy", recognized: true });
     mount();
-    fireEvent.click(await screen.findByRole("button", { name: "Use this address" }));
+    fireEvent.click(await screen.findByRole("button", { name: `Use this address: ${root}` }));
     expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Check server" }));
     const checkbox = await screen.findByRole("checkbox");
@@ -102,7 +102,7 @@ describe("page-local Linux advice", () => {
       third?.[2]({ root, kind: "supported", readiness: "ready" });
     });
     expect(screen.getByLabelText("Server URL")).toHaveValue("https://mine.test");
-    expect(screen.queryByRole("button", { name: "Use this address" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Use this address/ })).not.toBeInTheDocument();
     expect(mock.scan).toHaveBeenCalledTimes(3);
     fireEvent.click(screen.getByRole("button", { name: "Check again" }));
     await waitFor(() => expect(mock.scan).toHaveBeenCalledTimes(4));
@@ -114,9 +114,35 @@ describe("page-local Linux advice", () => {
     ["pt-BR", "Usar este endereço"],
     ["es", "Usar esta dirección"],
     ["de", "Diese Adresse verwenden"],
-  ] as const)("renders translated actions in %s", async (language, label) => {
-    answer({ root, kind: "supported", readiness: "ready" });
-    mount(language);
-    expect(await screen.findByRole("button", { name: label })).toBeVisible();
+  ] as const)(
+    "distinguishes both addresses accessibly while preserving visible %s labels",
+    async (language, label) => {
+      const ipv6 = "http://[::1]:8080/";
+      answer(
+        { root, kind: "supported", readiness: "ready" },
+        { root: ipv6, kind: "supported", readiness: "ready" },
+      );
+      mount(language);
+      const first = await screen.findByRole("button", { name: `${label}: ${root}` });
+      const second = screen.getByRole("button", { name: `${label}: ${ipv6}` });
+      expect(first).toBeVisible();
+      expect(second).toBeVisible();
+      expect(first).toHaveAccessibleName(`${label}: ${root}`);
+      expect(second).toHaveAccessibleName(`${label}: ${ipv6}`);
+      expect(first).toHaveTextContent(label);
+      expect(second).toHaveTextContent(label);
+      fireEvent.click(second);
+      expect(screen.getByRole("textbox")).toHaveValue(ipv6);
+      expect(screen.getByRole("textbox")).toHaveFocus();
+    },
+  );
+  it("keeps foreign and inconclusive responders behind the compact truthful summary", async () => {
+    answer({ root, kind: "wrong-service" }, { root: "http://[::1]:8080/", kind: "unknown" });
+    mount();
+    expect(await screen.findByText(/No compatible local server found/)).toBeVisible();
+    expect(screen.queryByText(root)).not.toBeInTheDocument();
+    expect(screen.queryByText("http://[::1]:8080/")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Use this address/ })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Check again" })).toBeEnabled();
   });
 });

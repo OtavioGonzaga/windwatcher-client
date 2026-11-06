@@ -63,6 +63,13 @@ After absent instance metadata, only the existing exact legacy
 suggestion. No readiness request is made. Other absence/inconclusive/foreign
 responses yield no positive suggestion. Error prose/raw exceptions are not shown.
 
+The compact interface intentionally does not list foreign services, inconclusive
+responses or unreachable candidates individually. If none qualify for display,
+it says no compatible local server was found; if another candidate qualifies,
+only that candidate is shown. This avoids noisy diagnostics or implying anything
+about installation/process state. The scanner retains these distinct outcomes,
+and manual inspection remains available for an explicitly chosen address.
+
 ## Interaction and lifetime
 
 **Use this address** only fills/focuses the existing URL field. It does not inspect,
@@ -79,6 +86,10 @@ state. Returning to the route starts a new visit. Completion does not steal focu
 selection focuses the field, dismissal focuses Check again. A polite status region
 and all actions are translated into English, Brazilian Portuguese, Spanish and
 German.
+
+Selection buttons retain their short visible text but include the exact candidate
+root in their localized accessible names, distinguishing IPv4/IPv6 when navigating
+a screen reader's control list.
 
 ## Validation and repeatable smoke
 

@@ -38,6 +38,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Distinguish local-address selection buttons by their exact address in accessible
+  names, preserving the short visible labels in all four languages.
 - Preserve future instance API/auth advertisements as strings while retaining
   validation of known fields and the unchanged generated v1 DTO contract.
 - Validate the success statuses declared by each HTTP operation rather than

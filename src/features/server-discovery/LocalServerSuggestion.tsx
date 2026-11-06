@@ -85,6 +85,7 @@ export function LocalServerSuggestion({
                   {(candidate.kind === "legacy" ||
                     (candidate.kind === "supported" && candidate.readiness === "ready")) && (
                     <Button
+                      aria-label={t("localDiscovery.useSpecific", { address: candidate.root })}
                       onClick={() => {
                         active.current?.abort();
                         setDismissed(true);
