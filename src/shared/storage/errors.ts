@@ -14,9 +14,8 @@ export class StorageError extends Error {
     this.name = "StorageError";
   }
 }
-export function storageError(error: unknown): StorageError {
-  if (error instanceof StorageError) return error;
-  if (
+function isCategory(error: unknown): error is StorageCategory {
+  return (
     typeof error === "string" &&
     [
       "unavailable",
@@ -29,8 +28,11 @@ export function storageError(error: unknown): StorageError {
       "quota",
       "duplicate",
     ].includes(error)
-  )
-    return new StorageError(error as StorageCategory);
+  );
+}
+export function storageError(error: unknown): StorageError {
+  if (error instanceof StorageError) return error;
+  if (isCategory(error)) return new StorageError(error);
   if (error instanceof DOMException) {
     if (error.name === "QuotaExceededError") return new StorageError("quota");
     if (error.name === "SecurityError" || error.name === "NotAllowedError")

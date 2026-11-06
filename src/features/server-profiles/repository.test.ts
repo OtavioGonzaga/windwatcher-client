@@ -5,6 +5,7 @@ import type { ClientStateV1 } from "./schema";
 import { ClientStateStore } from "../../shared/storage/state-store";
 import { browserDocument, browserNamespace, browserSecrets } from "../../shared/storage/browser";
 import { StorageError } from "../../shared/storage/errors";
+import { LOCAL_ID, randomLocalId } from "../../shared/storage/secret-store";
 import type { DiscoveryResult } from "../server-discovery/discover-server";
 
 const inspection = (root = "https://example.test/"): DiscoveryResult => ({
@@ -28,6 +29,16 @@ function fixture() {
 beforeEach(() => localStorage.clear());
 
 describe("profile/account repository", () => {
+  it("uses secure getRandomValues when randomUUID is unavailable", () => {
+    const secure = crypto.getRandomValues.bind(crypto);
+    vi.stubGlobal("crypto", { getRandomValues: secure });
+    try {
+      expect(randomLocalId()).toMatch(LOCAL_ID);
+      expect(randomLocalId()).not.toBe(randomLocalId());
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
   it("does not initialize storage on a missing read; saves and reloads N distinct roots", async () => {
     const { repository } = fixture();
     expect(await repository.load()).toEqual(emptyState());
@@ -40,7 +51,7 @@ describe("profile/account repository", () => {
       "http://127.0.0.1/",
       "http://[::1]/",
     ];
-    for (const root of roots) await repository.saveInspection(inspection(root), "", false);
+    await Promise.all(roots.map((root) => repository.saveInspection(inspection(root), "", false)));
     const state = await fixture().repository.load();
     expect(state.serverProfiles.map((p) => p.canonicalUrl)).toEqual(roots);
     expect(new Set(state.serverProfiles.map((p) => p.id)).size).toBe(roots.length);
@@ -133,7 +144,9 @@ describe("profile/account repository", () => {
     await repository.registerAccount(first.id, user1, "alice");
     await repository.registerAccount(first.id, user2, "bob");
     const state = await repository.registerAccount(second.id, user1, "alice");
-    for (const account of state.accounts) await secrets.put(account.id, new Uint8Array([1, 2, 3]));
+    await Promise.all(
+      state.accounts.map((account) => secrets.put(account.id, new Uint8Array([1, 2, 3]))),
+    );
     const remove = vi.spyOn(secrets, "remove");
     remove
       .mockImplementationOnce(async (id) => browserSecrets("test").remove(id))
@@ -198,10 +211,9 @@ describe("profile/account repository", () => {
   );
   it("collision-checks secure local UUIDs", async () => {
     const { repository } = fixture();
-    const id = (await repository.saveInspection(inspection(), "One", false)).serverProfiles[0]!.id;
-    const random = vi
-      .spyOn(crypto, "randomUUID")
-      .mockReturnValue(id as `${string}-${string}-${string}-${string}-${string}`);
+    const id = "550e8400-e29b-41d4-a716-446655440000";
+    const random = vi.spyOn(crypto, "randomUUID").mockReturnValue(id);
+    await repository.saveInspection(inspection(), "One", false);
     await expect(
       repository.saveInspection(inspection("https://other.test/"), "Two", false),
     ).rejects.toMatchObject({ category: "write-failed" });
@@ -210,6 +222,11 @@ describe("profile/account repository", () => {
 });
 
 describe("strict V1 decoding", () => {
+  it("classifies unknown future documents before applying V1 field rules", () => {
+    expect(() => decodeState('{"schemaVersion":2,"futureField":true}')).toThrow(
+      expect.objectContaining({ category: "version-unsupported" }),
+    );
+  });
   it.each([
     "",
     "{",
@@ -261,12 +278,16 @@ describe("browser storage ports", () => {
     );
   });
   it("reports quota/denied writes without modifying the previous document", async () => {
-    const storage = {
+    const storage: Storage = {
+      length: 1,
+      key: () => "state",
+      removeItem: () => {},
+      clear: () => {},
       getItem: () => "previous",
       setItem: () => {
         throw new DOMException("private details", "QuotaExceededError");
       },
-    } as unknown as Storage;
+    };
     const port = browserDocument("denied", () => storage);
     await expect(port.write("previous", "next")).rejects.toMatchObject({
       message: "quota",

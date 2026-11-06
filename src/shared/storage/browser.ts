@@ -30,11 +30,13 @@ export function browserDocument(
     },
     onExternalChange(listener) {
       const handler = (event: StorageEvent) => {
-        if (
-          (event.key === key || event.key === null) &&
-          (!event.storageArea || event.storageArea === storage())
-        )
-          listener();
+        if (event.key !== key && event.key !== null) return;
+        try {
+          if (event.storageArea && event.storageArea !== storage()) return;
+        } catch {
+          /* A policy change can revoke access; invalidate rather than throw from the event handler. */
+        }
+        listener();
       };
       events.addEventListener("storage", handler);
       return () => events.removeEventListener("storage", handler);
@@ -79,11 +81,11 @@ export function browserSecrets(
           !Array.isArray(data.bytes) ||
           !data.bytes.every(
             (byte: unknown) =>
-              Number.isInteger(byte) && (byte as number) >= 0 && (byte as number) <= 255,
+              typeof byte === "number" && Number.isInteger(byte) && byte >= 0 && byte <= 255,
           )
         )
           throw new StorageError("corrupt");
-        const record = new Uint8Array(data.bytes as number[]);
+        const record = new Uint8Array(data.bytes);
         validateSecret(record);
         return record;
       } catch (error) {
