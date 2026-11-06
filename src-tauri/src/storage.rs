@@ -10,6 +10,22 @@ use tauri_plugin_keyring_store::{Error, KeyringStore};
 type StorageResult<T> = Result<T, &'static str>;
 const MAX_DOCUMENT: u64 = 1_048_576;
 const MAX_SECRET: usize = 16_384;
+const WINDOWS_CREDENTIAL_BLOB_BYTES: usize = 2560;
+
+fn validate_write_size(length: usize, windows: bool) -> StorageResult<()> {
+    if length == 0 {
+        return Err("corrupt");
+    }
+    if length > MAX_SECRET {
+        return Err("too-large");
+    }
+    // keyring-store 0.2.0 encodes bytes as Base64; Windows stores that as UTF-16.
+    // Reject BEFORE provider I/O, without truncating or touching an old record.
+    if windows && 2 * (4 * length.div_ceil(3)) > WINDOWS_CREDENTIAL_BLOB_BYTES {
+        return Err("too-large");
+    }
+    Ok(())
+}
 #[cfg(not(feature = "storage-smoke"))]
 const SERVICE: &str = "io.github.otaviogonzaga.windwatcher.client.sessions.v1";
 #[cfg(feature = "storage-smoke")]
@@ -50,9 +66,7 @@ pub fn get_account_secret(account_id: String) -> StorageResult<Option<Vec<u8>>> 
 
 #[tauri::command(async)]
 pub fn put_account_secret(account_id: String, record: Vec<u8>) -> StorageResult<()> {
-    if record.is_empty() || record.len() > MAX_SECRET {
-        return Err("corrupt");
-    }
+    validate_write_size(record.len(), cfg!(target_os = "windows"))?;
     KeyringStore::new(SERVICE)
         .set_bytes(&alias(&account_id)?, &record)
         .map_err(safe_error)
@@ -234,6 +248,16 @@ fn validate_nonsecret_keys(value: &serde_json::Value) -> StorageResult<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn windows_base64_utf16_limit_is_checked_before_provider_writes() {
+        assert_eq!(validate_write_size(0, true), Err("corrupt"));
+        assert_eq!(validate_write_size(960, true), Ok(()));
+        assert_eq!(validate_write_size(961, true), Err("too-large"));
+        assert_eq!(validate_write_size(1273, true), Err("too-large"));
+        assert_eq!(validate_write_size(MAX_SECRET, false), Ok(()));
+        assert_eq!(validate_write_size(MAX_SECRET + 1, false), Err("too-large"));
+        assert_eq!(validate_write_size(usize::MAX, true), Err("too-large"));
+    }
     #[test]
     fn aliases_reject_paths_and_noncanonical_ids() {
         assert!(alias("../credentials").is_err());

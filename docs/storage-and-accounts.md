@@ -98,11 +98,19 @@ derive a fixed service plus `windwatcher-client:v1:<account UUID>` alias. No mut
 URL/username or frontend-chosen service/path is used. Opaque records are nonempty
 and capped at 16 KiB; native provider limits can be smaller and must surface as
 failures. PR 8 must verify actual session-envelope sizes, not truncate tokens.
+Oversized native writes now fail with fixed `too-large` before provider I/O;
+Windows enforces its exact 960-input-byte Base64/UTF-16 bound. This is distinct
+from a full disk/quota and cannot be repaired by freeing disk space. Existing
+credentials are not overwritten by a rejected oversized write.
 In particular, the candidate's Windows Base64/UTF-16 password route reduces the
 2560-byte Credential Manager blob ceiling to about 960 input bytes. PR 8 must
 verify its actual envelope fits or revisit that provider integration before
 shipping authentication; splitting rotating fields into separate records is not
 an acceptable workaround. PR 7 does not claim full-size session-token support.
+The [real-grant capacity gate](authentication-and-sessions.md#windows-capacity-gate)
+now demonstrates valid 0.1.1 grants that cannot fit. Production authentication
+remains blocked pending a reviewed Windows backend solution; no new session
+format or production token persistence is enabled by the measurement tooling.
 
 Linux uses Secret Service; Windows uses Credential Manager; Android encrypts
 SharedPreferences ciphertext with an Android Keystore AES-GCM key. No plaintext

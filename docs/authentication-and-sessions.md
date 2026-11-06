@@ -74,3 +74,88 @@ DNS. Future UI must localize these categories rather than render raw exceptions.
 Lost registration responses may mean the identity already exists; lost login or
 refresh responses may mean remote processing succeeded. A generic transport
 failure is never evidence that the server made no change.
+
+## Windows capacity gate
+
+On 2026-11-06, the corrected PR 7 baseline was verified: merged `main`
+`9d79fc1ed29a0e7dcf35b78960542783013ab75f` contains corrected head
+`ea5e311fb9d74301b2830ca4d5d29d47ea022f88`.
+
+`measureSessionEnvelope()` serializes a compact **candidate**, not a production
+format, as this tuple (no passwords):
+
+```text
+[1, accountId, profileId, serverUserId, operationId, generation, sessionId,
+ tokenType, accessToken, refreshToken, accessExpiresAt, sessionExpiresAt]
+```
+
+All IDs are full validated UUIDs; generation uses `Number.MAX_SAFE_INTEGER` in
+the real-server gate to include its maximum decimal width. Sizes include actual
+server timestamp precision and UTF-8 JSON encoding. The tool never returns or
+prints token values; no live grants, keys, configs or databases are committed.
+The candidate has no production decoder/migration and is never written to a vault.
+
+The pinned `KeyringStore::set_bytes()` Base64-encodes before calling
+`set_password()`. Windows native keyring 1.1.0 converts that ASCII text to UTF-16
+and checks against the 2560-byte Credential Manager blob limit. Thus actual blob
+bytes are `2 * 4 * ceil(envelopeBytes / 3)`, with an exact input bound of **960
+bytes** (961 input bytes require 2568). No NUL terminator is part of that blob.
+Tests independently compare this formula with Base64 and UTF-16 encoding.
+
+Observed real Server 0.1.1 results (sizes may vary slightly with timestamp precision):
+
+| Issuer UTF-8 bytes | JWT bytes | Login envelope bytes | Windows encoded blob bytes | Fits current provider |
+| ------------------ | --------- | -------------------- | -------------------------- | --------------------- |
+| 11 (default)       | 275       | 604                  | 1616                       | Yes, size only        |
+| 513                | 944       | 1273                 | 3400                       | **No**                |
+| 2049               | 2992      | 3321                 | 8856                       | **No**                |
+
+All three samples successfully registered, logged in, retrieved the authoritative
+identity, refreshed once, rejected the consumed refresh token, retrieved the
+identity with the new access token, revoked the session and rejected its refresh.
+Closed registration was independently confirmed as `403 registration.closed`.
+SQLite persistence can shorten timestamp fractional precision on refresh; compare
+instants, not raw timestamp string lengths, when checking session expiry.
+
+**Gate failed:** even this compact envelope cannot fit valid server grants.
+The 2049-byte issuer yields a JWT exceeding the raw 2560-byte OS limit itself,
+so bypassing Base64 alone is not a complete solution. No truncation, independent
+rotating token entries, hardcoded encryption or plaintext fallback is acceptable.
+A reviewed, adequately sized single OS-protected record is still required before
+production persistence/refresh/UI can be enabled. Native size checks now reject
+over-limit writes before provider I/O with localized `too-large`, preserving
+previous values. They do not make the backend support full session grants.
+
+### Reproduction and evidence limits
+
+```bash
+bun scripts/measure-session-capacity.ts /absolute/path/to/clean/pinned/server/source
+```
+
+This opt-in tool verifies the pinned source SHA and clean tracked files, builds
+that server with `--locked` and four Cargo jobs, and runs processes sequentially
+with isolated configuration, random signing keys, temporary SQLite databases and
+loopback ephemeral listeners. Inherited Windwatcher configuration overrides are
+removed. It consumes only startup diagnostics and prints safe counts/booleans.
+It revokes its sessions and removes only its own sandbox afterward.
+Exit 0 means all measured envelopes fit; exit 2 means the measurement completed
+but the capacity gate failed; exit 1 means no complete measurement was obtained.
+
+This is actual released-server contract/size evidence on Linux, **not Windows
+Credential Manager put/overwrite/readback evidence**. No Windows process or OS
+vault was exercised. No claim is made about full cross-platform persistence,
+session restoration, disabled-user or expiry runtime coverage, or crash recovery.
+The historical PR 7 Windows waiver is recorded separately and does not resolve
+the demonstrated capacity failure.
+
+### Local validation of the gate implementation (2026-11-06)
+
+- `bun install --frozen-lockfile`, `bun run check` (479 tests),
+  `bun run test:e2e` (102 existing regression tests) and `bun audit` passed.
+- Locked Linux Rust format/check/Clippy and five library tests passed, including
+  the platform-independent test of the exact Windows write-size preflight.
+- The real-server measurement completed with intentional exit 2, demonstrating
+  the unresolved capacity gate, not a successful provider-persistence test.
+- No Windows build/runtime, normal native launch, Android APK/Keystore flow or
+  final-head GitHub CI has been performed for these changes. Existing E2E tests
+  do not exercise new login UI because no such UI is enabled.

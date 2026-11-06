@@ -43,6 +43,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Reject oversized Windows credential writes before vault access, with a distinct
+  localized capacity error instead of a generic provider failure. Real Server 0.1.1
+  grant measurements expose an unresolved capacity gate; authentication UI and
+  session persistence remain unavailable.
 - Distinguish saved-server controls by canonical address in accessible names,
   including when display labels repeat, and format inspection dates in the active language.
 - Distinguish local-address selection buttons by their exact address in accessible

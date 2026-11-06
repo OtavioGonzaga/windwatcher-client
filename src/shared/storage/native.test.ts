@@ -32,3 +32,13 @@ it("native metadata uses fixed document IPC and expected snapshot", async () => 
   await nativeDocument.write(null, "next");
   expect(ipc).toHaveBeenLastCalledWith("write_client_state", { expected: null, document: "next" });
 });
+it("surfaces provider capacity failure without deleting, retrying or falling back", async () => {
+  ipc.mockRejectedValue("too-large");
+  await expect(nativeSecrets.put(crypto.randomUUID(), new Uint8Array(961))).rejects.toMatchObject({
+    category: "too-large",
+    message: "too-large",
+  });
+  expect(ipc).toHaveBeenCalledOnce();
+  expect(ipc.mock.calls[0]![0]).toBe("put_account_secret");
+  expect(localStorage.length).toBe(0);
+});

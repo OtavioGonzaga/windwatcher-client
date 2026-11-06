@@ -69,6 +69,7 @@
         "version-unsupported": "Storage uses an unsupported version. Use a compatible client; data was not reset.",
         "conflict": "Saved state changed elsewhere. Reload before making further changes.",
         "quota": "Storage is full. Free space and retry; the change was not saved.",
+        "too-large": "The credential record exceeds this system's secure storage capacity. It was not saved; use a compatible client or contact support.",
         "duplicate": "This address or account already exists. Reload and explicitly update the existing record."
       }
     },

@@ -69,6 +69,7 @@
         "version-unsupported": "Nicht unterstützte Speicherversion. Einen kompatiblen Client verwenden; Daten wurden nicht zurückgesetzt.",
         "conflict": "Gespeicherte Daten wurden andernorts geändert. Vor weiteren Änderungen neu laden.",
         "quota": "Speicher voll. Platz schaffen und erneut versuchen; Änderung wurde nicht gespeichert.",
+        "too-large": "Der Anmeldedatensatz überschreitet die Kapazität des sicheren Speichers dieses Systems. Er wurde nicht gespeichert; verwenden Sie einen kompatiblen Client oder kontaktieren Sie den Support.",
         "duplicate": "Diese Adresse oder dieses Konto existiert bereits. Neu laden und den vorhandenen Datensatz ausdrücklich aktualisieren."
       }
     },

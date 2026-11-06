@@ -69,6 +69,7 @@
         "version-unsupported": "Versión de almacenamiento no compatible. Use un cliente compatible; los datos no se restablecieron.",
         "conflict": "Los datos guardados cambiaron en otro lugar. Recargue antes de continuar.",
         "quota": "Almacenamiento lleno. Libere espacio y reintente; el cambio no se guardó.",
+        "too-large": "El registro de credenciales supera la capacidad de almacenamiento seguro de este sistema. No se guardó; use un cliente compatible o contacte con soporte.",
         "duplicate": "Esta dirección o cuenta ya existe. Recargue y actualice el registro existente explícitamente."
       }
     },

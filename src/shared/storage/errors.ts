@@ -7,6 +7,7 @@ export type StorageCategory =
   | "version-unsupported"
   | "conflict"
   | "quota"
+  | "too-large"
   | "duplicate";
 export class StorageError extends Error {
   constructor(readonly category: StorageCategory) {
@@ -26,6 +27,7 @@ function isCategory(error: unknown): error is StorageCategory {
       "version-unsupported",
       "conflict",
       "quota",
+      "too-large",
       "duplicate",
     ].includes(error)
   );
