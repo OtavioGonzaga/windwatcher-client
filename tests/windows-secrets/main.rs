@@ -183,6 +183,7 @@ fn no_plaintext(root: &Path) -> Result<(), &'static str> {
         for marker in [
             b"BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB".as_slice(),
             b"CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC",
+            b"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
             b"QkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJC",
             b"Q0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0ND",
         ] {
@@ -265,6 +266,30 @@ fn exercise(root: &Path, id: &str, other: &str) -> Result<(), &'static str> {
     child(root, other, "remove", b"")?;
     child(root, id, "put", &replacement)?;
     child(root, id, "get", &replacement)?;
+    let envelope = Zeroizing::new(
+        serde_json::to_vec(&serde_json::json!([
+            1,
+            id,
+            other,
+            "019a0000-0000-7000-8000-000000000001",
+            uuid::Uuid::new_v4().to_string(),
+            9_007_199_254_740_991u64,
+            "019a0000-0000-7000-8000-000000000002",
+            "Bearer",
+            format!("a.{}.b", "B".repeat(8188)),
+            "A".repeat(43),
+            "2026-11-06T12:15:00.123456789Z",
+            "2026-12-06T12:00:00.123456789Z"
+        ]))
+        .map_err(|_| "fixture")?,
+    );
+    if envelope.len() <= 8192 || envelope.len() > MAX_SECRET_BYTES {
+        return Err("fixture-size");
+    }
+    child(root, id, "put", &envelope)?;
+    child(root, id, "get", &envelope)?;
+    no_plaintext(root)?;
+    child(root, id, "put", &replacement)?;
     let binary = Zeroizing::new((0u8..=255).cycle().take(3321).collect::<Vec<_>>());
     child(root, other, "put", &binary)?;
     child(root, other, "get", &binary)?;

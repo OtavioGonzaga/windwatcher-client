@@ -117,15 +117,31 @@ in a separate process under the same runner user. It tests:
 - an OS-killed writer after pending flush, competitor refusal while it owns the
   lock, subsequent lock recovery and refusal to promote pending ciphertext;
 - both initial-write and replacement interruption, arbitrary binary round trips,
+  a JSON envelope candidate containing the maximum 8192-byte accepted JWT,
   idempotent removal, and raw/Base64 synthetic plaintext leakage scans.
 
 Only fixed stage/category text is printed. No byte-bearing assertions, tokens,
 keys or ciphertext artifacts are uploaded. Cleanup targets only the CLI's own
 sandbox. The test feature/config is absent from the subsequent normal native build.
+The Windows job checks that native/web normal artifacts exclude named smoke/secret
+fixture markers. This marker regression check is not a general-purpose secret scanner.
 
-**Evidence status:** CI execution is pending until the run's exact SHA/result is
-recorded below. Local Linux compilation cannot validate this Windows-only module.
-Even a passing runner test establishes only the storage integration under that
+**Observed real-Windows evidence (2026-11-06):**
+[CI run 42270421305](https://github.com/OtavioGonzaga/windwatcher-client/actions/runs/42270421305),
+head `5bd8166`, passed frontend, Linux, Windows and required checks. The Windows job
+actually ran the DPAPI library test and process fixture, not just compilation:
+new/overwrite/readback through 16 KiB, capacity/context/corruption/blocked-I/O
+preservation and killed-writer/lock/pending/leak checks all reported success.
+The subsequent normal Windows native build also passed. Later fixture extensions
+and normal-artifact marker checks require fresh final-HEAD CI; see PR #8 checks.
+
+Local Linux validation also passed `bun run check` (482 tests), 102 existing browser
+regressions, audit, locked Rust fmt/check/test/Clippy and the normal native debug build.
+The pinned real-server measurement now passes the DPAPI byte budget for all three
+grant samples; it still reports the historical provider failures separately.
+
+Local Linux compilation cannot validate this Windows-only module. A passing runner
+test establishes only the storage integration under that
 runner user/OS: interactive Tauri/WebView2 UX, desktop restart/installation flows,
 other Windows versions and real end-to-end session restoration remain untested.
 The operator accepted this noninteractive qualification instead of maintaining a VM.
