@@ -300,13 +300,22 @@ is opt-in and excluded from ordinary production output/APKs. See
 ### Manual discovery validation
 
 The server contract and error codes were checked against the pinned 0.1.1 source.
-Automated tests exercise bounded discovery, capability interpretation, stale
-requests and explicit legacy acknowledgment; browser tests cover Home navigation,
-modern open/closed metadata, legacy absence and nested static entry. Mocked
-responses are not evidence of interoperability with a historical legacy server.
-Live disposable 0.1.1 open/closed instances and native interactive onboarding have
-not yet been exercised for this change; Android, Windows and Linux runtime
-validation and fresh CI remain required before claiming full platform coverage.
+Two disposable 0.1.1 instances, using isolated configuration and SQLite, were
+queried by the discovery operation with open and closed registration. Both
+returned the expected supported result. Automated tests also exercise bounded
+discovery, capability interpretation, stale requests, cancellation, legacy
+acknowledgment, nested static entry and actual browser CORS allow/deny responses.
+Mocked legacy responses are not evidence of interoperability with an older server.
+
+An Android 16 x86_64 emulator installed the debug APK and inspected the open
+instance over the actual native HTTP transport (the field was populated using
+WebView debugging). The page showed the HTTP warning and correct open-registration
+summary. The emulator's System UI stopped responding during the interactive IME
+check; keyboard and Back behavior were not revalidated for this page. Linux was
+launched and the page opened, but live entry was not completed. Linux/Windows
+interactive onboarding, physical ARM64 Android and fresh remote CI remain
+unverified. ARM64 and x86_64 debug builds and the debug/release cleartext-policy
+comparison passed; these are not physical-device or release-installation evidence.
 
 - Missing `gtk+-3.0` or `webkit2gtk-4.1` in pkg-config: install development
   packages, not just runtime libraries. `libxdo-dev` does not expose an `xdo.pc`
