@@ -4,6 +4,7 @@
 /dist-network/
 /dist-foundation/
 /dist-shell/
+/dist-local-discovery/
 /coverage/
 /playwright-report/
 /test-results/

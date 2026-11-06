@@ -24,6 +24,8 @@ async function bounded<T>(
   milliseconds: number,
   operation: (signal: AbortSignal) => Promise<T>,
 ): Promise<T> {
+  if (parent.aborted) throw new ApiError("cancelled");
+  if (milliseconds <= 0) throw new ApiError("timeout");
   const controller = new AbortController();
   let rejectAbort: (error: ApiError) => void = () => {};
   const aborted = new Promise<never>((_, reject) => {

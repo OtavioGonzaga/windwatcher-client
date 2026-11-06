@@ -7,6 +7,37 @@ afterEach(() => vi.useRealTimers());
 const scan = (transport: HttpTransport) =>
   discoverLocalServers(transport, new AbortController().signal, () => {});
 describe("fixed, identity-first local discovery", () => {
+  it("does no I/O for an already cancelled scan", async () => {
+    const controller = new AbortController();
+    controller.abort();
+    const transport = vi.fn<HttpTransport>();
+    await expect(
+      discoverLocalServers(transport, controller.signal, () => {}),
+    ).rejects.toMatchObject({ category: "cancelled" });
+    expect(transport).not.toHaveBeenCalled();
+  });
+  it("finishes two slow complete probes within the global budget, without retries", async () => {
+    vi.useFakeTimers();
+    const transport = vi.fn<HttpTransport>(
+      (url) =>
+        new Promise((resolve) => {
+          setTimeout(
+            () =>
+              resolve(
+                Response.json(url.pathname === "/v1/instance" ? instance : { status: "ready" }),
+              ),
+            2900,
+          );
+        }),
+    );
+    const start = Date.now();
+    const pending = scan(transport);
+    await vi.advanceTimersByTimeAsync(5800);
+    expect(await pending).toMatchObject([{ readiness: "ready" }, { readiness: "ready" }]);
+    expect(Date.now() - start).toBeLessThan(8000);
+    expect(transport).toHaveBeenCalledTimes(4);
+    expect(vi.getTimerCount()).toBe(0);
+  });
   it("checks exactly two distinct roots, only public GET, instance before health", async () => {
     const paths = new Map<string, string[]>();
     const transport = vi.fn<HttpTransport>(async (url, request) => {

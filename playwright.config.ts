@@ -23,6 +23,11 @@ export default defineConfig({
   ],
   webServer: [
     {
+      command: "bun --bun vite preview --outDir dist-local-discovery --port 4178",
+      url: "http://127.0.0.1:4178/",
+      reuseExistingServer: false,
+    },
+    {
       command: "bun --bun vite preview --outDir dist-shell --port 4177",
       url: "http://127.0.0.1:4177/",
       reuseExistingServer: false,
