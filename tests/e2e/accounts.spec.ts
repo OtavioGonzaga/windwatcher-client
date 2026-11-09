@@ -110,6 +110,7 @@ test("switch accounts, clear selection, persist, log out offline and remove loca
   await expect(dialog.getByText("Active — verified", { exact: true })).toBeVisible();
   await dialog.getByRole("button", { name: "Close", exact: true }).click();
   await expect(page.getByText("Signed in as bob", { exact: true })).toBeVisible();
+  await expect(trigger).toContainText("one.accounts.test");
   await page.reload();
   await expect(page.getByText("Signed in as bob", { exact: true })).toBeVisible();
   await trigger.click();

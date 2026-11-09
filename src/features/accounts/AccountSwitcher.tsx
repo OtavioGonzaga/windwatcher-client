@@ -108,6 +108,7 @@ export function AccountSwitcher() {
     }
   };
   const selected = state?.accounts.find((a) => a.id === state.selectedAccountId);
+  const selectedProfile = state?.serverProfiles.find((p) => p.id === selected?.serverProfileId);
   const close = () => {
     setOpen(false);
     setConfirmation(undefined);
@@ -119,10 +120,13 @@ export function AccountSwitcher() {
         ref={trigger}
         aria-haspopup="dialog"
         aria-expanded={open}
+        className="max-w-full"
         onClick={() => setOpen(true)}
       >
         {t("accounts.title")}
-        {selected ? `: ${selected.username}` : ""}
+        {selected && selectedProfile && (
+          <span className="min-w-0 break-all">{`: ${selected.username} — ${selectedProfile.label} (${selectedProfile.canonicalUrl})`}</span>
+        )}
       </Button>
       <dialog
         ref={dialog}

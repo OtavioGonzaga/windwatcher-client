@@ -93,6 +93,63 @@ async function setup() {
 beforeEach(() => localStorage.clear());
 
 describe("authentication orchestration", () => {
+  it.each([false, true])(
+    "revalidates the selected session after invalid credentials (account-specific: %s)",
+    async (reauthenticate) => {
+      const f = await setup();
+      await f.login();
+      const id = await f.selected();
+      f.transport.mockClear();
+      f.transport.mockResolvedValueOnce(
+        Response.json(problem(401, "auth.invalid_credentials"), {
+          status: 401,
+          headers: { "Content-Type": "application/problem+json" },
+        }),
+      );
+      await expect(
+        f.service.login(
+          f.profileId,
+          reauthenticate ? "alice" : "bob",
+          "wrong",
+          f.signal(),
+          reauthenticate ? id : undefined,
+        ),
+      ).rejects.toMatchObject({ category: "http" });
+      expect(f.service.getSnapshot()).toMatchObject({ kind: "ready", accountId: id });
+      expect((await f.store.load()).selectedAccountId).toBe(id);
+      expect(
+        f.transport.mock.calls.filter(([url]) => url.pathname.endsWith("/users/me")),
+      ).toHaveLength(1);
+    },
+  );
+  it("does not restore the previous session when a newer selection wins during failed login", async () => {
+    const f = await setup();
+    await f.login();
+    const a = await f.selected();
+    const profile = await f.addProfile("https://other.test/");
+    await f.service.login(profile, "alice", "synthetic", f.signal());
+    const b = await f.selected();
+    await f.service.switchAccount(a);
+    let finish!: (response: Response) => void;
+    let started!: () => void;
+    const submitted = new Promise<void>((resolve) => {
+      started = resolve;
+    });
+    f.transport.mockImplementationOnce(async () => {
+      started();
+      return new Promise<Response>((resolve) => {
+        finish = resolve;
+      });
+    });
+    const login = f.service.login(f.profileId, "bob", "wrong", f.signal());
+    const failed = expect(login).rejects.toBeInstanceOf(Error);
+    await submitted;
+    await f.service.switchAccount(b);
+    finish(Response.json(problem(401, "auth.invalid_credentials"), { status: 401 }));
+    await failed;
+    expect(f.service.getSnapshot()).toMatchObject({ kind: "ready", accountId: b });
+    expect((await f.store.load()).selectedAccountId).toBe(b);
+  });
   it("does not let a late logout response replace a newly selected account", async () => {
     const f = await setup();
     await f.login();

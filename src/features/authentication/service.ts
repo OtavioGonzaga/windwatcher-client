@@ -399,6 +399,7 @@ export class AuthenticationService {
           const active = previous;
           try {
             const latest = await this.persistence.state.load();
+            if (publication !== this.publication) throw error;
             if (latest.authOperations.some((op) => op.accountId === active.accountId))
               this.publish({
                 kind: "needs-login",
@@ -412,12 +413,14 @@ export class AuthenticationService {
                 accountId: active.accountId,
                 category: "storage-conflict",
               });
+            else await this.restoreSelected(new AbortController().signal);
           } catch {
-            this.publish({
-              kind: "error",
-              category: "storage-unavailable",
-              accountId: active.accountId,
-            });
+            if (publication === this.publication)
+              this.publish({
+                kind: "error",
+                category: "storage-unavailable",
+                accountId: active.accountId,
+              });
           }
         }
       }
