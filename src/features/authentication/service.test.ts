@@ -93,6 +93,82 @@ async function setup() {
 beforeEach(() => localStorage.clear());
 
 describe("authentication orchestration", () => {
+  it.each([204, 401, 429, 500])(
+    "logs out locally without refresh and reports remote HTTP %s honestly",
+    async (status) => {
+      const f = await setup();
+      await f.login();
+      const id = await f.selected();
+      f.transport.mockClear();
+      f.transport.mockResolvedValueOnce(new Response(null, { status }));
+      expect(await f.service.logoutAccount(id)).toEqual({
+        localSignedOut: true,
+        remoteRevocation: status === 204 ? "confirmed" : "unconfirmed",
+      });
+      expect(await f.secrets.get(id)).toBeNull();
+      expect(await f.store.load()).toMatchObject({
+        selectedAccountId: null,
+        accounts: [{ id }],
+        authOperations: [],
+      });
+      expect((await f.store.load()).accounts[0]?.session).toBeUndefined();
+      expect(f.transport).toHaveBeenCalledOnce();
+      expect(f.refreshCalls()).toHaveLength(0);
+      expect(await f.service.switchAccount(id)).toMatchObject({
+        kind: "needs-login",
+        reason: "missing",
+      });
+      expect(await f.service.logoutAccount(id)).toMatchObject({
+        remoteRevocation: "not-attempted",
+      });
+    },
+  );
+  it("keeps another active account verified when logging out an inactive session", async () => {
+    const f = await setup();
+    await f.login();
+    const a = await f.selected();
+    const profileId = await f.addProfile("https://other.test/");
+    await f.service.login(profileId, "alice", "synthetic", f.signal());
+    const b = await f.selected();
+    const before = f.service.getSnapshot();
+    f.transport.mockClear();
+    await f.service.logoutAccount(a);
+    expect(f.service.getSnapshot()).toEqual(before);
+    expect((await f.store.load()).selectedAccountId).toBe(b);
+    expect(await f.secrets.get(b)).not.toBeNull();
+    expect(f.transport.mock.calls[0]![0].origin).toBe("https://example.test");
+  });
+  it("does not report local logout success when deletion cannot be verified", async () => {
+    const f = await setup();
+    await f.login();
+    const id = await f.selected();
+    vi.spyOn(f.secrets, "remove").mockRejectedValueOnce(new StorageError("locked"));
+    f.transport.mockClear();
+    await expect(f.service.logoutAccount(id)).rejects.toMatchObject({ category: "locked" });
+    expect(f.service.getSnapshot().kind).not.toBe("ready");
+    expect((await f.store.load()).accounts[0]?.session).toBeDefined();
+    expect(f.transport).not.toHaveBeenCalled();
+  });
+  it("does not refresh an expired bearer solely for logout", async () => {
+    const f = await setup();
+    await f.login();
+    const id = await f.selected();
+    f.clock.value += 120_000;
+    f.transport.mockClear();
+    expect(await f.service.logoutAccount(id)).toMatchObject({ remoteRevocation: "not-attempted" });
+    expect(f.transport).not.toHaveBeenCalled();
+  });
+  it("removes only the requested saved account without remote logout", async () => {
+    const f = await setup();
+    await f.login();
+    const id = await f.selected();
+    f.transport.mockClear();
+    await f.service.removeSavedAccount(id);
+    expect((await f.store.load()).accounts).toEqual([]);
+    expect((await f.store.load()).serverProfiles).toHaveLength(1);
+    expect(f.transport).not.toHaveBeenCalled();
+    expect(f.service.getSnapshot().kind).toBe("signed-out");
+  });
   it("switches persisted accounts without deleting inactive credentials and fences old contexts", async () => {
     const f = await setup();
     await f.login();

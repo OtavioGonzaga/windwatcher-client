@@ -46,6 +46,11 @@ export type SessionStatus =
       readonly retryAfterMs?: number;
     };
 
+export type LogoutOutcome = {
+  readonly localSignedOut: true;
+  readonly remoteRevocation: "confirmed" | "unconfirmed" | "not-attempted";
+};
+
 export class SessionIssue extends Error {
   constructor(readonly reason: LoginReason | "clock" | "coordination") {
     super("Session operation could not complete.");
@@ -215,6 +220,66 @@ export class AuthenticationService {
       throw error;
     }
     return this.status;
+  }
+  private invalidateTarget(id: string) {
+    if ("accountId" in this.status && this.status.accountId === id) this.suspend();
+  }
+  async logoutAccount(id: string): Promise<LogoutOutcome> {
+    this.supported();
+    this.invalidateTarget(id);
+    // No component signal: once cleanup starts, unmount cannot interrupt durable work.
+    const captured = await this.persistence.accountOperation(
+      id,
+      async (lease) => {
+        const state = await this.persistence.state.load();
+        const account = state.accounts.find((a) => a.id === id);
+        const profile = state.serverProfiles.find((p) => p.id === account?.serverProfileId);
+        if (!account || !profile) throw new StorageError("conflict");
+        let bearer: { token: string; expires: number; api: AuthApi } | undefined;
+        try {
+          const envelope = await this.persistence.read(account, lease);
+          if (
+            envelope &&
+            matchesAccount(envelope, account) &&
+            !state.authOperations.some((op) => op.accountId === id)
+          ) {
+            bearer = {
+              token: envelope.grant.access_token,
+              expires: Math.min(
+                Date.parse(envelope.grant.access_token_expires_at),
+                Date.parse(envelope.grant.session_expires_at),
+              ),
+              api: this.api(profile),
+            };
+          }
+        } catch (error) {
+          if (!(error instanceof StorageError) || error.category !== "corrupt") throw error;
+        }
+        await this.persistence.clearSession(id, lease);
+        return bearer;
+      },
+      true,
+    );
+    if (!captured || captured.expires - this.now() <= 5_000)
+      return { localSignedOut: true, remoteRevocation: "not-attempted" };
+    try {
+      await captured.api.revokeSession(captured.token, { timeoutMs: 3000 });
+      return { localSignedOut: true, remoteRevocation: "confirmed" };
+    } catch {
+      return { localSignedOut: true, remoteRevocation: "unconfirmed" };
+    }
+  }
+  async removeSavedAccount(id: string) {
+    this.supported();
+    this.invalidateTarget(id);
+    return this.persistence.profiles().removeAccount(id);
+  }
+  async forgetServer(id: string, revision?: number) {
+    this.supported();
+    const state = await this.persistence.state.load();
+    const selected = state.accounts.find((a) => a.id === state.selectedAccountId);
+    if (selected?.serverProfileId === id) this.invalidateTarget(selected.id);
+    return this.persistence.profiles().forgetProfile(id, revision);
   }
   private supported() {
     if (!this.persistence.locks.supported) throw new SessionIssue("coordination");

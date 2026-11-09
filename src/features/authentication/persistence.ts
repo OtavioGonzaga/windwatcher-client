@@ -1,7 +1,8 @@
 import { ApiError } from "../../shared/api/error";
 import { StorageError } from "../../shared/storage/errors";
 import type { SecretStore } from "../../shared/storage/secret-store";
-import { randomLocalId } from "../../shared/storage/secret-store";
+import { randomLocalId, removeVerified } from "../../shared/storage/secret-store";
+import { ProfileRepository } from "../server-profiles/repository";
 import type { ClientStateStore } from "../../shared/storage/state-store";
 import type { OperationLease, OperationLocks } from "../../shared/storage/operation-lock";
 import type { AccountRecord, AuthIntent, ClientStateV2 } from "../server-profiles/schema";
@@ -55,6 +56,26 @@ export class SessionPersistence {
     private readonly secrets: SecretStore,
     readonly locks: OperationLocks,
   ) {}
+
+  profiles() {
+    return new ProfileRepository(this.state, this.secrets, this.locks);
+  }
+  async clearSession(id: string, lease: OperationLease) {
+    await lease.check();
+    const snapshot = await this.state.load();
+    if (!snapshot.accounts.some((a) => a.id === id)) throw new StorageError("conflict");
+    this.state.invalidateAccount(id);
+    await removeVerified(this.secrets, id, lease);
+    return this.state.update(async (draft) => {
+      await lease.check();
+      const row = draft.accounts.find((a) => a.id === id);
+      if (!row) throw new StorageError("conflict");
+      delete row.session;
+      row.updatedAt = new Date().toISOString();
+      draft.authOperations = draft.authOperations.filter((op) => op.accountId !== id);
+      if (draft.selectedAccountId === id) draft.selectedAccountId = null;
+    }, snapshot.revision);
+  }
 
   /** Profile gate bounds bulk cleanup to one profile, one account and one state lease. */
   async accountOperation<T>(
