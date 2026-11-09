@@ -23,6 +23,11 @@ built ARM64 debug APK was not run. This does not qualify device/OEM behavior,
 key invalidation, every interruption point, or interactive Windows UX. The
 operator's existing Podman container and database were not modified by this test.
 
+On the same date, the Linux `storage-smoke` executable passed its separate-process
+write/read/overwrite/remove lifecycle against an isolated GNOME Secret Service
+session. This is native provider evidence, not a test of the complete Linux
+Tauri login and refresh UI.
+
 ## Pinned contract
 
 The source is released Server **0.1.1**, commit
