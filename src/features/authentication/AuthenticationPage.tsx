@@ -36,6 +36,7 @@ export function AuthenticationPage({ registration = false }: { registration?: bo
   const password = useRef<HTMLInputElement>(null);
   const confirmation = useRef<HTMLInputElement>(null);
   const active = useRef<AbortController | null>(null);
+  const fieldsDisabled = busy || !profile || (registration && policy === "checking");
   useEffect(() => {
     const controller = new AbortController();
     // oxlint-disable-next-line react/set-state-in-effect -- Reset the previously inspected server before starting a new async inspection.
@@ -187,7 +188,7 @@ export function AuthenticationPage({ registration = false }: { registration?: bo
             ref={username}
             label={t("auth.username")}
             autoComplete="username"
-            disabled={busy}
+            disabled={fieldsDisabled}
             hint={registration ? t("auth.usernameHint") : undefined}
             error={validation === "username" ? t("auth.requiredUsername") : undefined}
           />
@@ -196,7 +197,7 @@ export function AuthenticationPage({ registration = false }: { registration?: bo
             label={t("auth.password")}
             type="password"
             autoComplete={registration ? "new-password" : "current-password"}
-            disabled={busy}
+            disabled={fieldsDisabled}
             hint={registration ? t("auth.passwordHint") : undefined}
             error={
               validation === "password"
@@ -212,7 +213,7 @@ export function AuthenticationPage({ registration = false }: { registration?: bo
               label={t("auth.confirmation")}
               type="password"
               autoComplete="new-password"
-              disabled={busy}
+              disabled={fieldsDisabled}
               error={validation === "confirmation" ? t("auth.confirmationMismatch") : undefined}
             />
           )}

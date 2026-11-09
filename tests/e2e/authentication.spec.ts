@@ -137,6 +137,7 @@ test("authoritative registration closure overrides an open inspection", async ({
   await page.goto("/#/");
   await page.getByRole("link", { name: /Sign in https:\/\/closing-auth.test/ }).click();
   await page.getByRole("link", { name: "Create an account on this server" }).click();
+  await expect(page.getByText("Self-registration is currently advertised as open.")).toBeVisible();
   await page.getByLabel("Username").fill("alice");
   await page.getByLabel("Password", { exact: true }).fill("synthetic password");
   await page.getByLabel("Confirm password").fill("synthetic password");
