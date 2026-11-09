@@ -4,7 +4,7 @@
 
 The server-bound HTTP boundary, runtime decoders, coordinated session persistence,
 refresh coordinator and saved-server login and registration routes are implemented.
-Home restores the selected account and only displays an authenticated identity after
+The application shell restores the selected account and only displays an authenticated identity after
 the server confirms it. The profile/account registry alone does not establish
 authentication. Registration creates a remote user but does not create a session.
 Browser credential storage is unencrypted and the UI warns about HTTP and browser
