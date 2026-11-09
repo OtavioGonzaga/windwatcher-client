@@ -10,6 +10,19 @@ authentication. Registration creates a remote user but does not create a session
 Browser credential storage is unencrypted and the UI warns about HTTP and browser
 storage; Web Locks are required for coordinated writes.
 
+## Android integration evidence
+
+On 2026-11-09, an x86_64 Android emulator ran the normal debug APK from client
+head `4dbd931` against an isolated Server 0.1.1 instance (`d83d5d9`) with a
+disposable database and short access-token lifetime. Registration and login
+completed through the actual Android application and credential adapter. After
+force-stop and relaunch, the authenticated summary returned and the nonsecret
+session generation advanced from 1 to 2 with no pending intent; a second
+force-stop and relaunch restored the account and advanced it to 3. The separately
+built ARM64 debug APK was not run. This does not qualify device/OEM behavior,
+key invalidation, every interruption point, or interactive Windows UX. The
+operator's existing Podman container and database were not modified by this test.
+
 ## Pinned contract
 
 The source is released Server **0.1.1**, commit
