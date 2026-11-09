@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import type { BrowserContext, Page } from "@playwright/test";
 import { AxeBuilder } from "@axe-core/playwright";
 import { grant, user } from "../fixtures/authentication";
 import { problem } from "../fixtures/instance";
@@ -152,3 +153,211 @@ test("inbox follows cursor, refreshes and fetches detail without read mutations"
   expect(calls).toContain("GET /v1/conversations?limit=50&cursor=opaque");
   expect(calls.some((call) => /read-state|messages/.test(call))).toBe(false);
 });
+
+async function isolatedServers(context: BrowserContext, page: Page) {
+  const headers = {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Headers": "authorization, content-type",
+    "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
+  };
+  let mode: "normal" | "rate" | "missing" | "hold" = "normal";
+  let release: (() => void) | undefined;
+  let started: (() => void) | undefined;
+  let finished: (() => void) | undefined;
+  let requestStarted = Promise.resolve();
+  let requestFinished = Promise.resolve();
+  const calls: { host: string; path: string; authorization: string | undefined }[] = [];
+  await context.route("https://*.inbox-isolation.test/**", async (route) => {
+    const request = route.request();
+    const url = new URL(request.url());
+    if (request.method() === "OPTIONS") return route.fulfill({ status: 204, headers });
+    if (request.method() === "DELETE") return route.fulfill({ status: 204, headers });
+    if (url.pathname.endsWith("/instance"))
+      return route.fulfill({
+        headers,
+        json: {
+          service: "windwatcher",
+          api_versions: ["v1"],
+          auth_methods: ["password"],
+          registration: "open",
+        },
+      });
+    if (url.pathname.endsWith("/sessions"))
+      return route.fulfill({
+        status: 201,
+        headers,
+        json: {
+          ...grant,
+          access_token: `fixture.${url.hostname.startsWith("one.") ? "one" : "two"}.signature`,
+          access_token_expires_at: new Date(Date.now() + 600_000).toISOString(),
+          session_expires_at: new Date(Date.now() + 86_400_000).toISOString(),
+        },
+      });
+    if (url.pathname.endsWith("/users/me")) return route.fulfill({ headers, json: user });
+    if (url.pathname.includes("/conversations")) {
+      calls.push({
+        host: url.host,
+        path: url.pathname,
+        authorization: request.headers().authorization,
+      });
+      const held = mode === "hold";
+      if (held) {
+        mode = "normal";
+        started?.();
+        await new Promise<void>((resolve) => {
+          release = resolve;
+        });
+      } else if (mode === "rate") {
+        mode = "normal";
+        return route.fulfill({
+          status: 429,
+          headers: { ...headers, "Content-Type": "application/problem+json", "Retry-After": "1" },
+          json: problem(429, "rate_limit.exceeded"),
+        });
+      } else if (mode === "missing") {
+        mode = "normal";
+        return route.fulfill({
+          status: 404,
+          headers: { ...headers, "Content-Type": "application/problem+json" },
+          json: problem(404, "conversation.not_found"),
+        });
+      }
+      const title = url.hostname.startsWith("one.") ? "Server one private" : "Server two private";
+      try {
+        return await route.fulfill({
+          headers,
+          json: url.pathname.endsWith("/conversations")
+            ? { items: [conversation(first, title)], has_more: false }
+            : conversation(first, title),
+        });
+      } catch {
+        // The browser may close a request after cancellation; its late response must not render.
+        return;
+      } finally {
+        if (held) finished?.();
+      }
+    }
+    return route.abort();
+  });
+  const add = async (name: string) => {
+    await page.goto("/#/connect");
+    await page.getByLabel("Server URL").fill(`https://${name}.inbox-isolation.test/`);
+    await page.getByRole("button", { name: "Check server", exact: true }).click();
+    await page.getByRole("button", { name: "Save server", exact: true }).click();
+    await page.goto("/#/");
+    await page
+      .getByRole("link", { name: `Sign in https://${name}.inbox-isolation.test/`, exact: true })
+      .click();
+    await page.getByLabel("Username").fill("alice");
+    await page.getByLabel("Password", { exact: true }).fill("synthetic password");
+    await page.getByRole("button", { name: "Sign in and save session" }).click();
+    await expect(page.getByText("Signed in as alice", { exact: true })).toBeVisible();
+  };
+  return {
+    add,
+    calls,
+    setMode: (value: typeof mode) => {
+      mode = value;
+      if (value === "hold") {
+        requestStarted = new Promise<void>((resolve) => {
+          started = resolve;
+        });
+        requestFinished = new Promise<void>((resolve) => {
+          finished = resolve;
+        });
+      }
+    },
+    started: () => requestStarted,
+    finished: () => requestFinished,
+    release: () => release?.(),
+  };
+}
+
+test("inbox and detail recover safely from 429 and inaccessible 404", async ({ page, context }) => {
+  const f = await isolatedServers(context, page);
+  await f.add("one");
+  f.setMode("rate");
+  await page.getByRole("link", { name: "Inbox", exact: true }).click();
+  await expect(page.getByText(/Too many requests/)).toBeVisible();
+  const retry = page.getByRole("button", { name: "Try again" });
+  await expect(retry).toBeDisabled();
+  await expect(retry).toBeEnabled({ timeout: 5000 });
+  await retry.click();
+  await page.getByRole("link", { name: "Server one private" }).waitFor();
+  f.setMode("missing");
+  await page.getByRole("link", { name: "Server one private" }).click();
+  await expect(page.getByText("This conversation is unavailable.")).toBeVisible();
+  await expect(page.getByText("Server one private")).toHaveCount(0);
+  await page.getByRole("link", { name: "Back to inbox" }).click();
+  await expect(page.getByRole("link", { name: "Server one private" })).toBeVisible();
+});
+
+test("cross-tab server selection drops a late detail response and isolates bearers", async ({
+  page,
+  context,
+}) => {
+  const f = await isolatedServers(context, page);
+  await f.add("one");
+  await f.add("two");
+  await page.getByRole("link", { name: "Inbox", exact: true }).click();
+  await expect(page.getByText("Server two private")).toBeVisible();
+  const other = await context.newPage();
+  await other.goto("/#/conversations");
+  await expect(other.getByText("Server two private")).toBeVisible();
+  f.setMode("hold");
+  await other.getByRole("link", { name: "Server two private" }).click();
+  await f.started();
+  await page.getByRole("button", { name: /^Accounts and servers/ }).click();
+  await page
+    .getByRole("button", {
+      name: "Switch to alice on https://one.inbox-isolation.test/",
+      exact: true,
+    })
+    .click();
+  await page.getByRole("button", { name: "Close", exact: true }).click();
+  await expect(page.getByText("Server one private")).toBeVisible();
+  await expect(other.getByText("Server two private")).toHaveCount(0);
+  f.release();
+  await f.finished();
+  await expect(other.getByText("Server one private")).toBeVisible();
+  await expect(other.getByText("Server two private")).toHaveCount(0);
+  expect(
+    f.calls
+      .filter((call) => call.host.startsWith("one."))
+      .every((call) => call.authorization === "Bearer fixture.one.signature"),
+  ).toBe(true);
+  expect(
+    f.calls
+      .filter((call) => call.host.startsWith("two."))
+      .every((call) => call.authorization === "Bearer fixture.two.signature"),
+  ).toBe(true);
+  await other.close();
+});
+
+for (const action of ["Log out", "Remove saved account"] as const) {
+  test(`${action} hides protected inbox data while a request is pending`, async ({
+    page,
+    context,
+  }) => {
+    const f = await isolatedServers(context, page);
+    await f.add("one");
+    await page.getByRole("link", { name: "Inbox", exact: true }).click();
+    await expect(page.getByText("Server one private")).toBeVisible();
+    f.setMode("hold");
+    await page.getByRole("button", { name: "Refresh" }).click();
+    await f.started();
+    await page.getByRole("button", { name: /^Accounts and servers/ }).click();
+    await page
+      .getByRole("button", {
+        name: `${action} alice on https://one.inbox-isolation.test/`,
+        exact: true,
+      })
+      .click();
+    await page.getByRole("button", { name: "Confirm", exact: true }).click();
+    await expect(page.getByText("Server one private")).toHaveCount(0);
+    f.release();
+    await f.finished();
+    await expect(page.getByText("Server one private")).toHaveCount(0);
+    await expect(page.getByText("Select a signed-in account to see its inbox.")).toBeVisible();
+  });
+}
