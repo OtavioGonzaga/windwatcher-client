@@ -118,6 +118,7 @@ export class SessionPersistence {
     userInput: UserIdentity,
     grantInput: SessionGrant,
     signal?: AbortSignal,
+    expectedAccountId?: string,
   ): Promise<AccountRecord> {
     const user = decodeUserIdentity(userInput);
     const grant = decodeSessionGrant(grantInput);
@@ -135,6 +136,8 @@ export class SessionPersistence {
             const existing = initial.accounts.find(
               (a) => a.serverProfileId === profileId && a.serverUserId === user.id,
             );
+            if (expectedAccountId && existing?.id !== expectedAccountId)
+              throw new StorageError("conflict");
             const pending = initial.authOperations.find(
               (op) => op.profileId === profileId && op.userId === user.id,
             );
@@ -146,6 +149,7 @@ export class SessionPersistence {
                 await this.reconcileOne(id, lease);
                 const state = await this.state.load();
                 const current = state.accounts.find((a) => a.id === id);
+                if (existing && !current) throw new StorageError("conflict");
                 const old = state.authOperations.find((op) => op.accountId === id);
                 let storedGeneration = 0;
                 if (current) {

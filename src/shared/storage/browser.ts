@@ -37,7 +37,12 @@ export function browserDocument(
     },
     onExternalChange(listener) {
       const handler = (event: StorageEvent) => {
-        if (event.key !== key && event.key !== null) return;
+        if (
+          event.key !== key &&
+          event.key !== null &&
+          !event.key.startsWith(`${namespace}:secret:`)
+        )
+          return;
         try {
           if (event.storageArea && event.storageArea !== storage()) return;
         } catch {

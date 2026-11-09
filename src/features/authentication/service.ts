@@ -112,6 +112,7 @@ export class AuthenticationService {
   private loginLifetime: AbortController | undefined;
   private readLifetime = new AbortController();
   private flights = new Map<string, Promise<void>>();
+  private cleanupPending = new Set<string>();
   constructor(
     private readonly persistence: SessionPersistence,
     private readonly api: (profile: ServerProfile) => AuthApi,
@@ -199,6 +200,8 @@ export class AuthenticationService {
     return (
       !context.signal.aborted &&
       context.epoch === this.publication &&
+      this.status.kind === "ready" &&
+      this.status.accountId === context.accountId &&
       state.selectedAccountId === context.accountId
     );
   }
@@ -226,6 +229,7 @@ export class AuthenticationService {
   }
   async logoutAccount(id: string): Promise<LogoutOutcome> {
     this.supported();
+    this.cleanupPending.add(id);
     this.invalidateTarget(id);
     // No component signal: once cleanup starts, unmount cannot interrupt durable work.
     const captured = await this.persistence.accountOperation(
@@ -260,6 +264,7 @@ export class AuthenticationService {
       },
       true,
     );
+    this.cleanupPending.delete(id);
     if (!captured || captured.expires - this.now() <= 5_000)
       return { localSignedOut: true, remoteRevocation: "not-attempted" };
     try {
@@ -271,15 +276,22 @@ export class AuthenticationService {
   }
   async removeSavedAccount(id: string) {
     this.supported();
+    this.cleanupPending.add(id);
     this.invalidateTarget(id);
-    return this.persistence.profiles().removeAccount(id);
+    const state = await this.persistence.profiles().removeAccount(id);
+    this.cleanupPending.delete(id);
+    return state;
   }
   async forgetServer(id: string, revision?: number) {
     this.supported();
     const state = await this.persistence.state.load();
+    const ids = state.accounts.filter((a) => a.serverProfileId === id).map((a) => a.id);
+    for (const accountId of ids) this.cleanupPending.add(accountId);
     const selected = state.accounts.find((a) => a.id === state.selectedAccountId);
     if (selected?.serverProfileId === id) this.invalidateTarget(selected.id);
-    return this.persistence.profiles().forgetProfile(id, revision);
+    const next = await this.persistence.profiles().forgetProfile(id, revision);
+    for (const accountId of ids) this.cleanupPending.delete(accountId);
+    return next;
   }
   private supported() {
     if (!this.persistence.locks.supported) throw new SessionIssue("coordination");
@@ -347,7 +359,13 @@ export class AuthenticationService {
       }
       cancelled(operationSignal);
       persistenceStarted = true;
-      const account = await this.persistence.saveLogin(profileId, user, grant, operationSignal);
+      const account = await this.persistence.saveLogin(
+        profileId,
+        user,
+        grant,
+        operationSignal,
+        expectedAccountId,
+      );
       cancelled(operationSignal);
       const latest = await this.persistence.state.load();
       if (
@@ -364,6 +382,7 @@ export class AuthenticationService {
         userId: user.id,
         username: user.username,
       });
+      this.cleanupPending.delete(account.id);
       return this.status;
     } catch (error) {
       if (cleanup && !persistenceStarted) {
@@ -573,6 +592,10 @@ export class AuthenticationService {
       true,
     );
   }
+  reconcileSelected(signal: AbortSignal) {
+    if (this.loginLifetime || this.status.kind === "restoring") return Promise.resolve(this.status);
+    return this.restoreSelected(signal);
+  }
   async restoreSelected(signal: AbortSignal): Promise<SessionStatus> {
     const publication = this.suspend();
     signal = AbortSignal.any([signal, this.readLifetime.signal]);
@@ -581,6 +604,7 @@ export class AuthenticationService {
       cancelled(signal);
       const state = await this.persistence.state.load();
       account = state.accounts.find((a) => a.id === state.selectedAccountId);
+      if (account && this.cleanupPending.has(account.id)) throw new StorageError("write-failed");
       // Reconcile unregistered orphans even when there is no selected account, but
       // never let an unrelated established account error invalidate this identity.
       for (const op of state.authOperations.filter(
