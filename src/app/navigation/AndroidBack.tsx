@@ -48,7 +48,10 @@ export function AndroidBack() {
                 setFailed(true);
               });
             } else if (decision === "back") void go(-1);
-            else void go("/", { replace: true });
+            else
+              void go(route.pathname.startsWith("/conversations/") ? "/conversations" : "/", {
+                replace: true,
+              });
           },
           () => setFailed(true),
         );
