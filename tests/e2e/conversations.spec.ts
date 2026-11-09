@@ -3,6 +3,7 @@ import type { BrowserContext, Page } from "@playwright/test";
 import { AxeBuilder } from "@axe-core/playwright";
 import { grant, user } from "../fixtures/authentication";
 import { problem } from "../fixtures/instance";
+import { resources } from "../../src/shared/i18n";
 
 const first = "019a0000-0000-7000-8000-000000000011";
 const second = "019a0000-0000-7000-8000-000000000012";
@@ -160,7 +161,7 @@ async function isolatedServers(context: BrowserContext, page: Page) {
     "Access-Control-Allow-Headers": "authorization, content-type",
     "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
   };
-  let mode: "normal" | "rate" | "missing" | "hold" = "normal";
+  let mode: "normal" | "rate" | "missing" | "hold" | "large" = "normal";
   let release: (() => void) | undefined;
   let started: (() => void) | undefined;
   let finished: (() => void) | undefined;
@@ -200,6 +201,22 @@ async function isolatedServers(context: BrowserContext, page: Page) {
         path: url.pathname,
         authorization: request.headers().authorization,
       });
+      if (mode === "large" && url.pathname.endsWith("/conversations")) {
+        const cursor = url.searchParams.get("cursor");
+        const rows = Array.from({ length: cursor ? 3 : 50 }, (_, index) => {
+          const n = index + (cursor ? 51 : 1);
+          const id = `019a0000-0000-7000-8000-${n.toString(16).padStart(12, "0")}`;
+          return conversation(id, `Conversation ${String(n).padStart(2, "0")}`);
+        });
+        return route.fulfill({
+          headers,
+          json: {
+            items: rows,
+            has_more: !cursor,
+            ...(cursor ? {} : { next_cursor: "opaque-next" }),
+          },
+        });
+      }
       const held = mode === "hold";
       if (held) {
         mode = "normal";
@@ -271,6 +288,45 @@ async function isolatedServers(context: BrowserContext, page: Page) {
     finished: () => requestFinished,
     release: () => release?.(),
   };
+}
+
+test("50-item first page, next cursor and direct detail link preserve server order", async ({
+  page,
+  context,
+}) => {
+  const f = await isolatedServers(context, page);
+  await f.add("one");
+  f.setMode("large");
+  await page.goto(`/#/conversations/${first}`);
+  await expect(page.getByRole("heading", { name: "Server one private" })).toBeVisible();
+  await page.getByRole("link", { name: "Back to inbox" }).click();
+  await expect(page.getByRole("listitem")).toHaveCount(50);
+  await expect(page.getByRole("listitem").first()).toContainText("Conversation 01");
+  await expect(page.getByRole("listitem").last()).toContainText("Conversation 50");
+  await page.getByRole("button", { name: "Load more" }).click();
+  await expect(page.getByRole("listitem")).toHaveCount(53);
+  await expect(page.getByRole("listitem").last()).toContainText("Conversation 53");
+  await expect(page.getByRole("button", { name: "Load more" })).toHaveCount(0);
+});
+
+for (const locale of ["en", "pt-BR", "es", "de"] as const) {
+  test(`${locale}: inbox and detail use localized labels at 320px`, async ({ page, context }) => {
+    const f = await isolatedServers(context, page);
+    await f.add("one");
+    await page.setViewportSize({ width: 320, height: 800 });
+    await page.getByRole("link", { name: "Preferences", exact: true }).click();
+    await page.locator("select").first().selectOption(locale);
+    const strings = resources[locale].common.conversations;
+    await page.getByRole("link", { name: strings.inbox, exact: true }).click();
+    await expect(page.getByRole("heading", { name: strings.inbox })).toBeVisible();
+    await expect(page.getByText(strings.noMessages)).toBeVisible();
+    await page.getByRole("link", { name: "Server one private" }).click();
+    await expect(page.getByRole("heading", { name: strings.summary })).toBeVisible();
+    await expect(page.getByText(strings.notice)).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+      true,
+    );
+  });
 }
 
 test("inbox and detail recover safely from 429 and inaccessible 404", async ({ page, context }) => {
