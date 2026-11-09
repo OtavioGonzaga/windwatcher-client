@@ -141,7 +141,9 @@ test("authoritative registration closure overrides an open inspection", async ({
   await page.getByLabel("Password", { exact: true }).fill("synthetic password");
   await page.getByLabel("Confirm password").fill("synthetic password");
   await page.getByRole("button", { name: "Create account", exact: true }).click();
-  await expect(page.getByText(/The server has closed registration/)).toBeVisible();
+  await expect
+    .poll(async () => (await page.getByRole("status").allTextContents()).join(" | "))
+    .toContain("The server has closed registration");
   await expect(page.getByRole("button", { name: "Create account", exact: true })).toBeDisabled();
   await expect(page.getByRole("link", { name: "Go to sign in" })).toBeVisible();
 });
