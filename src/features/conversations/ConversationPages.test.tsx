@@ -151,4 +151,44 @@ describe("scoped inbox", () => {
     );
     expect(screen.queryByText("Last message")).not.toBeInTheDocument();
   });
+  it.each([
+    ["timeout", "The request timed out. Try again."],
+    ["transport", "Could not load conversations. Check your connection and try again."],
+  ] as const)(
+    "recovers inbox from %s without presenting an empty result",
+    async (category, label) => {
+      mocked.owner.listConversations
+        .mockRejectedValueOnce(new ApiError(category))
+        .mockResolvedValueOnce({
+          items: [row("1", "Recovered inbox")],
+          has_more: false,
+        });
+      render(view());
+      expect(await screen.findByText(label)).toBeInTheDocument();
+      expect(screen.queryByText("No conversations yet.")).not.toBeInTheDocument();
+      fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+      expect(await screen.findByText("Recovered inbox")).toBeInTheDocument();
+    },
+  );
+  it.each([
+    ["timeout", "The request timed out. Try again."],
+    ["transport", "Could not load conversations. Check your connection and try again."],
+  ] as const)("recovers detail from %s without stale content", async (category, label) => {
+    mocked.owner.getConversation
+      .mockRejectedValueOnce(new ApiError(category))
+      .mockResolvedValueOnce(row("1", "Recovered detail"));
+    render(
+      <I18nextProvider i18n={createI18n("en")}>
+        <MemoryRouter initialEntries={["/conversations/1"]}>
+          <Routes>
+            <Route path="/conversations/:conversationId" element={<ConversationDetailPage />} />
+          </Routes>
+        </MemoryRouter>
+      </I18nextProvider>,
+    );
+    expect(await screen.findByText(label)).toBeInTheDocument();
+    expect(screen.queryByText("Last message")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(await screen.findByText("Recovered detail")).toBeInTheDocument();
+  });
 });

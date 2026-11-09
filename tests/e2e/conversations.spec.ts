@@ -161,8 +161,15 @@ async function isolatedServers(context: BrowserContext, page: Page) {
     "Access-Control-Allow-Headers": "authorization, content-type",
     "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
   };
-  let mode: "normal" | "rate" | "missing" | "hold" | "hold-next" | "invalid-cursor" | "large" =
-    "normal";
+  let mode:
+    | "normal"
+    | "rate"
+    | "missing"
+    | "hold"
+    | "hold-next"
+    | "invalid-cursor"
+    | "large"
+    | "offline" = "normal";
   let release: (() => void) | undefined;
   let started: (() => void) | undefined;
   let finished: (() => void) | undefined;
@@ -226,6 +233,9 @@ async function isolatedServers(context: BrowserContext, page: Page) {
         await new Promise<void>((resolve) => {
           release = resolve;
         });
+      } else if (mode === "offline") {
+        mode = "normal";
+        return route.abort("failed");
       } else if (mode === "invalid-cursor") {
         mode = "normal";
         return route.fulfill({
@@ -248,7 +258,11 @@ async function isolatedServers(context: BrowserContext, page: Page) {
           json: problem(404, "conversation.not_found"),
         });
       }
-      const title = url.hostname.startsWith("one.") ? "Server one private" : "Server two private";
+      const title = held
+        ? "Old context private"
+        : url.hostname.startsWith("one.")
+          ? "Server one private"
+          : "Server two private";
       try {
         return await route.fulfill({
           headers,
@@ -397,6 +411,71 @@ test("inbox and detail recover safely from 429 and inaccessible 404", async ({ p
   await page.getByRole("link", { name: "Back to inbox" }).click();
   await expect(page.getByRole("link", { name: "Server one private" })).toBeVisible();
 });
+
+test("inbox and detail recover from transport failure without displaying stale data", async ({
+  page,
+  context,
+}) => {
+  const f = await isolatedServers(context, page);
+  await f.add("one");
+  f.setMode("offline");
+  await page.getByRole("link", { name: "Inbox", exact: true }).click();
+  await expect(page.getByText(/Could not load conversations/)).toBeVisible();
+  await page.getByRole("button", { name: "Try again" }).click();
+  await expect(page.getByRole("link", { name: "Server one private" })).toBeVisible();
+  f.setMode("offline");
+  await page.getByRole("link", { name: "Server one private" }).click();
+  await expect(page.getByText(/Could not load conversations/)).toBeVisible();
+  await expect(page.getByText("Server one private")).toHaveCount(0);
+  await page.getByRole("button", { name: "Try again" }).click();
+  await expect(page.getByRole("heading", { name: "Server one private" })).toBeVisible();
+});
+
+for (const action of ["reauthenticate", "forget-server"] as const) {
+  test(`${action} cannot publish a pending detail from the previous context`, async ({
+    page,
+    context,
+  }) => {
+    const f = await isolatedServers(context, page);
+    await f.add("one");
+    await page.getByRole("link", { name: "Inbox", exact: true }).click();
+    await expect(page.getByRole("link", { name: "Server one private" })).toBeVisible();
+    f.setMode("hold");
+    await page.getByRole("link", { name: "Server one private" }).click();
+    await f.started();
+    await page.getByRole("link", { name: "Home", exact: true }).click();
+    if (action === "reauthenticate") {
+      await page
+        .getByRole("link", { name: "Sign in https://one.inbox-isolation.test/", exact: true })
+        .click();
+      await page.getByLabel("Username").fill("alice");
+      await page.getByLabel("Password", { exact: true }).fill("synthetic password");
+      await page.getByRole("button", { name: "Sign in and save session" }).click();
+      await expect(page.getByText("Signed in as alice", { exact: true })).toBeVisible();
+      await page.getByRole("link", { name: "Inbox", exact: true }).click();
+      await expect(page.getByRole("link", { name: "Server one private" })).toBeVisible();
+    } else {
+      await page
+        .getByRole("button", {
+          name: "Forget server https://one.inbox-isolation.test/",
+          exact: true,
+        })
+        .click();
+      await page
+        .getByRole("button", {
+          name: "Confirm forget https://one.inbox-isolation.test/",
+          exact: true,
+        })
+        .click();
+      await expect(page.getByText("No servers saved yet.")).toBeVisible();
+      await page.getByRole("link", { name: "Inbox", exact: true }).click();
+      await expect(page.getByText("Select a signed-in account to see its inbox.")).toBeVisible();
+    }
+    f.release();
+    await f.finished();
+    await expect(page.getByText("Old context private")).toHaveCount(0);
+  });
+}
 
 test("cross-tab server selection drops a late detail response and isolates bearers", async ({
   page,

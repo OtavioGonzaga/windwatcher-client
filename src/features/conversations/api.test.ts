@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { ApiClient } from "../../shared/api/client";
 import { ConversationsApi } from "./api";
 
@@ -7,6 +7,29 @@ const user = "01890f3e-7b12-7123-8123-123456789abc";
 const id = (n: number) => `01890f3e-7b12-7123-8123-${n.toString(16).padStart(12, "0")}`;
 
 describe("conversation response budgets", () => {
+  it.each(["list", "detail"] as const)(
+    "times out a stalled %s GET even if the transport ignores abort",
+    async (operation) => {
+      vi.useFakeTimers();
+      try {
+        const api = new ConversationsApi(
+          new ApiClient({
+            baseUrl: "https://example.test/",
+            transport: () => new Promise<Response>(() => {}),
+          }),
+        );
+        const pending =
+          operation === "list"
+            ? api.list("fixture.token.signature", undefined, {})
+            : api.get("fixture.token.signature", id(1), {});
+        const rejected = expect(pending).rejects.toMatchObject({ category: "timeout" });
+        await vi.advanceTimersByTimeAsync(15_000);
+        await rejected;
+      } finally {
+        vi.useRealTimers();
+      }
+    },
+  );
   it("accepts 50 worst-case escaped 128 KiB messages and shallow replies", async () => {
     // Each control byte expands to six JSON bytes. Two 128 KiB fields per row
     // produce about 75 MiB, close to the list's 84 MiB streaming budget.
