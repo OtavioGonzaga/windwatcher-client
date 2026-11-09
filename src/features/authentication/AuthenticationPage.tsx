@@ -12,33 +12,7 @@ import type { ServerProfile } from "../server-profiles/schema";
 import { authenticationService } from "./platform-authentication";
 import { sessionError } from "./service";
 import type { SessionError } from "./service";
-
-function errorKey(category: SessionError) {
-  if (category === "invalid-credentials") return "credentials";
-  if (category === "disabled") return "disabled";
-  if (category === "username-taken") return "usernameTaken";
-  if (category === "invalid-username") return "username";
-  if (category === "invalid-password") return "password";
-  if (category === "identity") return "identity";
-  if (category === "recovery-required") return "recovery";
-  if (category === "expired") return "expired";
-  if (category === "missing") return "missing";
-  if (category === "coordination") return "coordination";
-  if (category === "clock") return "clock";
-  if (category === "storage-locked") return "locked";
-  if (category === "storage-too-large") return "capacity";
-  if (category.startsWith("storage-")) return "storage";
-  if (category === "invalid-access" || category === "invalid-refresh") return "session";
-  if (category === "malformed") return "malformed";
-  if (category === "too-large") return "requestTooLarge";
-  if (
-    category === "bad-request" ||
-    category === "invalid-input" ||
-    category === "registration-closed"
-  )
-    return "request";
-  return "unknown";
-}
+import { errorKey } from "./error-key";
 
 export function AuthenticationPage({ registration = false }: { registration?: boolean }) {
   const { t } = useTranslation();
@@ -154,6 +128,7 @@ export function AuthenticationPage({ registration = false }: { registration?: bo
       if (active.current !== controller) return;
       const category = sessionError(error);
       setFailure(category);
+      if (registration && category === "registration-closed") setPolicy("closed");
       if (registration && ["network", "timeout", "cancelled", "malformed"].includes(category))
         setAmbiguous(true);
       if (error instanceof ApiError && error.metadata.retryAfterMs !== undefined)

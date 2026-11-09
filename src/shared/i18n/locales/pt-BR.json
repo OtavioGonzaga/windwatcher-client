@@ -62,6 +62,12 @@
       "confirmationMismatch": "As senhas não coincidem.",
       "passwordPolicy": "Use pelo menos 8 pontos de código Unicode e no máximo 1024 bytes UTF-8, sem substitutos Unicode isolados.",
       "errors": {
+        "registrationClosed": "O servidor fechou o cadastro. Contas existentes ou criadas pelo administrador ainda podem entrar.",
+        "network": "Não foi possível conectar ao servidor. Verifique a conexão e as configurações de CORS e TLS e tente novamente.",
+        "timeout": "O servidor não respondeu a tempo. Verifique a conexão e tente novamente.",
+        "redirect": "O servidor redirecionou a solicitação. A autenticação foi interrompida sem encaminhar credenciais.",
+        "rate-limited": "O servidor está limitando solicitações. Aguarde antes de tentar novamente.",
+        "server": "O servidor não conseguiu concluir a solicitação. Tente novamente mais tarde.",
         "credentials": "Nome de usuário ou senha incorretos.",
         "disabled": "Este usuário está desativado. Contate o administrador do servidor.",
         "usernameTaken": "Este nome de usuário já está em uso. Escolha outro ou entre.",

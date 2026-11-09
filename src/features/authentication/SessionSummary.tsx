@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { Button } from "../../shared/components/Button";
 import { authenticationService } from "./platform-authentication";
 import type { SessionStatus } from "./service";
+import { errorKey } from "./error-key";
 
 export function SessionSummary() {
   const { t } = useTranslation();
@@ -61,15 +62,10 @@ export function SessionSummary() {
       )}
       {status.kind === "error" && (
         <>
-          <p>
-            {t(
-              status.category === "coordination"
-                ? "auth.errors.coordination"
-                : status.category === "storage-locked"
-                  ? "auth.errors.locked"
-                  : "auth.errors.storage",
-            )}
-          </p>
+          <p>{t(`auth.errors.${errorKey(status.category)}`)}</p>
+          {status.retryAfterMs !== undefined && (
+            <p>{t("auth.retryAfter", { seconds: Math.ceil(status.retryAfterMs / 1000) })}</p>
+          )}
           <Button onClick={() => setRetry((value) => value + 1)}>{t("auth.retry")}</Button>
         </>
       )}

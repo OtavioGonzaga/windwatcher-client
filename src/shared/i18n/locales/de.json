@@ -62,6 +62,12 @@
       "confirmationMismatch": "Die Passwörter stimmen nicht überein.",
       "passwordPolicy": "Verwenden Sie mindestens 8 Unicode-Codepunkte und höchstens 1024 UTF-8-Bytes, ohne einzelne Unicode-Surrogate.",
       "errors": {
+        "registrationClosed": "Der Server hat die Registrierung geschlossen. Bestehende oder administrativ erstellte Konten können sich weiterhin anmelden.",
+        "network": "Der Server konnte nicht erreicht werden. Prüfen Sie Verbindung sowie CORS- und TLS-Einstellungen und versuchen Sie es erneut.",
+        "timeout": "Der Server hat nicht rechtzeitig geantwortet. Prüfen Sie die Verbindung und versuchen Sie es erneut.",
+        "redirect": "Der Server hat die Anfrage umgeleitet. Die Authentifizierung wurde ohne Weitergabe der Zugangsdaten gestoppt.",
+        "rate-limited": "Der Server begrenzt Anfragen. Warten Sie vor dem nächsten Versuch.",
+        "server": "Der Server konnte die Anfrage nicht abschließen. Versuchen Sie es später erneut.",
         "credentials": "Benutzername oder Passwort ist falsch.",
         "disabled": "Dieser Benutzer ist deaktiviert. Kontaktieren Sie die Serveradministration.",
         "usernameTaken": "Dieser Benutzername ist bereits vergeben. Wählen Sie einen anderen oder melden Sie sich an.",

@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { AxeBuilder } from "@axe-core/playwright";
 import { grant, user } from "../fixtures/authentication";
+import { problem } from "../fixtures/instance";
 
 test("register, sign in, persist and restore a verified session", async ({ page }) => {
   const calls: string[] = [];
@@ -102,4 +103,45 @@ test("closed registration never submits credentials and still permits sign-in", 
   await page.getByRole("link", { name: "Go to sign in" }).click();
   await expect(page.getByRole("button", { name: "Sign in and save session" })).toBeEnabled();
   expect(posts).toBe(0);
+});
+
+test("authoritative registration closure overrides an open inspection", async ({ page }) => {
+  await page.route("https://closing-auth.test/**", async (route) => {
+    const request = route.request();
+    const headers = {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Headers": "content-type",
+      "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+    };
+    if (request.method() === "OPTIONS") return route.fulfill({ status: 204, headers });
+    if (request.method() === "POST")
+      return route.fulfill({
+        status: 403,
+        headers: { ...headers, "Content-Type": "application/problem+json" },
+        json: problem(403, "registration.closed"),
+      });
+    return route.fulfill({
+      headers,
+      json: {
+        service: "windwatcher",
+        api_versions: ["v1"],
+        auth_methods: ["password"],
+        registration: "open",
+      },
+    });
+  });
+  await page.goto("/#/connect");
+  await page.getByLabel("Server URL").fill("https://closing-auth.test/");
+  await page.getByRole("button", { name: "Check server", exact: true }).click();
+  await page.getByRole("button", { name: "Save server", exact: true }).click();
+  await page.goto("/#/");
+  await page.getByRole("link", { name: /Sign in https:\/\/closing-auth.test/ }).click();
+  await page.getByRole("link", { name: "Create an account on this server" }).click();
+  await page.getByLabel("Username").fill("alice");
+  await page.getByLabel("Password", { exact: true }).fill("synthetic password");
+  await page.getByLabel("Confirm password").fill("synthetic password");
+  await page.getByRole("button", { name: "Create account", exact: true }).click();
+  await expect(page.getByText(/The server has closed registration/)).toBeVisible();
+  await expect(page.getByRole("button", { name: "Create account", exact: true })).toBeDisabled();
+  await expect(page.getByRole("link", { name: "Go to sign in" })).toBeVisible();
 });

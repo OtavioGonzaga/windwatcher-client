@@ -28,6 +28,11 @@ write/read/overwrite/remove lifecycle against an isolated GNOME Secret Service
 session. This is native provider evidence, not a test of the complete Linux
 Tauri login and refresh UI.
 
+The operator subsequently reported that the Linux application works in their
+environment and identified a duplicated registration-success link, which was
+corrected. The report did not specify a complete interruption or refresh matrix;
+it should not be treated as evidence for those individual scenarios.
+
 ## Pinned contract
 
 The source is released Server **0.1.1**, commit
