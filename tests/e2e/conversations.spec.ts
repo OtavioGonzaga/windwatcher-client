@@ -477,6 +477,68 @@ for (const action of ["reauthenticate", "forget-server"] as const) {
   });
 }
 
+for (const action of ["reauthenticate", "forget-server"] as const) {
+  test(`${action} waits for an active detail read in another tab and releases its locks`, async ({
+    page,
+    context,
+  }) => {
+    const f = await isolatedServers(context, page);
+    await f.add("one");
+    await page.goto("/#/");
+    await expect(page.getByText("Signed in as alice", { exact: true })).toBeVisible();
+    const reader = await context.newPage();
+    await reader.goto("/#/conversations");
+    await expect(reader.getByRole("link", { name: "Server one private" })).toBeVisible();
+    f.setMode("hold");
+    await reader.getByRole("link", { name: "Server one private" }).click();
+    await f.started();
+    if (action === "reauthenticate") {
+      await page
+        .getByRole("link", { name: "Sign in https://one.inbox-isolation.test/", exact: true })
+        .click();
+      await page.getByLabel("Username").fill("alice");
+      await page.getByLabel("Password", { exact: true }).fill("synthetic password");
+      await page.getByRole("button", { name: "Sign in and save session" }).click();
+    } else {
+      await page
+        .getByRole("button", {
+          name: "Forget server https://one.inbox-isolation.test/",
+          exact: true,
+        })
+        .click();
+      await page
+        .getByRole("button", {
+          name: "Confirm forget https://one.inbox-isolation.test/",
+          exact: true,
+        })
+        .click();
+    }
+    const profileLocks = () =>
+      page.evaluate(async () => {
+        const state = await navigator.locks.query();
+        return {
+          held:
+            state.held?.filter((lock) => lock.name?.includes(":operation:profile-")).length ?? 0,
+          pending:
+            state.pending?.filter((lock) => lock.name?.includes(":operation:profile-")).length ?? 0,
+        };
+      });
+    await expect.poll(profileLocks).toMatchObject({ held: 1, pending: 1 });
+    f.release();
+    await f.finished();
+    if (action === "reauthenticate") {
+      await expect(page.getByText("Signed in as alice", { exact: true })).toBeVisible();
+      await expect(reader.getByRole("heading", { name: "Server one private" })).toBeVisible();
+    } else {
+      await expect(page.getByText("No servers saved yet.")).toBeVisible();
+      await expect(reader.getByText("Select a signed-in account to see its inbox.")).toBeVisible();
+    }
+    await expect(reader.getByText("Old context private")).toHaveCount(0);
+    await expect.poll(profileLocks).toEqual({ held: 0, pending: 0 });
+    await reader.close();
+  });
+}
+
 test("cross-tab server selection drops a late detail response and isolates bearers", async ({
   page,
   context,
