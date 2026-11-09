@@ -612,46 +612,92 @@ export class AuthenticationService {
     cancelled(lifetime);
     if (!this.conversations || !(await this.isCurrent(active))) throw new ApiError("cancelled");
     const factory = this.conversations;
-    const result = await this.persistence.accountOperation(
-      active.accountId,
-      async (lease) => {
-        await checkpoint(lease, lifetime);
-        const context = await this.context(active.accountId, lease);
-        if (
-          context.profile.id !== active.profileId ||
-          context.account.serverUserId !== active.userId ||
-          !(await this.isCurrent(active))
-        )
-          throw new ApiError("cancelled");
-        let envelope = context.envelope;
-        let refreshed = false;
-        if (Date.parse(envelope.grant.access_token_expires_at) - this.now() <= 5_000) {
-          envelope = await this.rotate(context.account, context.profile, envelope, lease, lifetime);
-          refreshed = true;
-        }
-        await checkpoint(lease, lifetime);
-        let response: T;
-        try {
-          response = await operation(
-            factory(context.profile),
-            envelope.grant.access_token,
-            lifetime,
-          );
-        } catch (error) {
-          if (!qualifying401(error) || refreshed) throw error;
-          envelope = await this.rotate(context.account, context.profile, envelope, lease, lifetime);
+    let result: T;
+    try {
+      result = await this.persistence.accountOperation(
+        active.accountId,
+        async (lease) => {
           await checkpoint(lease, lifetime);
-          response = await operation(
-            factory(context.profile),
-            envelope.grant.access_token,
-            lifetime,
-          );
+          const context = await this.context(active.accountId, lease);
+          if (
+            context.profile.id !== active.profileId ||
+            context.account.serverUserId !== active.userId ||
+            !(await this.isCurrent(active))
+          )
+            throw new ApiError("cancelled");
+          let envelope = context.envelope;
+          let refreshed = false;
+          if (Date.parse(envelope.grant.access_token_expires_at) - this.now() <= 5_000) {
+            envelope = await this.rotate(
+              context.account,
+              context.profile,
+              envelope,
+              lease,
+              lifetime,
+            );
+            refreshed = true;
+          }
+          await checkpoint(lease, lifetime);
+          let response: T;
+          try {
+            response = await operation(
+              factory(context.profile),
+              envelope.grant.access_token,
+              lifetime,
+            );
+          } catch (error) {
+            if (!qualifying401(error) || refreshed) throw error;
+            envelope = await this.rotate(
+              context.account,
+              context.profile,
+              envelope,
+              lease,
+              lifetime,
+            );
+            await checkpoint(lease, lifetime);
+            response = await operation(
+              factory(context.profile),
+              envelope.grant.access_token,
+              lifetime,
+            );
+          }
+          await checkpoint(lease, lifetime);
+          return response;
+        },
+        true,
+      );
+    } catch (error) {
+      // Publish only account-specific, verified session failures; transport errors
+      // remain feature errors. A sent refresh journal always takes precedence.
+      if (!lifetime.aborted && (await this.isCurrent(active))) {
+        const state = await this.persistence.state.load();
+        if (await this.isCurrent(active)) {
+          const pending = state.authOperations.some((op) => op.accountId === active.accountId);
+          const failure = authFailure(error);
+          const reason = pending
+            ? "recovery-required"
+            : error instanceof SessionIssue &&
+                error.reason !== "clock" &&
+                error.reason !== "coordination"
+              ? error.reason
+              : failure === "invalid-refresh" || failure === "invalid-access"
+                ? "invalid"
+                : failure === "disabled"
+                  ? "disabled"
+                  : undefined;
+          if (reason) {
+            this.suspend();
+            this.publish({
+              kind: "needs-login",
+              accountId: active.accountId,
+              profileId: active.profileId,
+              reason,
+            });
+          }
         }
-        await checkpoint(lease, lifetime);
-        return response;
-      },
-      true,
-    );
+      }
+      throw error;
+    }
     if (!(await this.isCurrent(active))) throw new ApiError("cancelled");
     cancelled(lifetime);
     return result;
