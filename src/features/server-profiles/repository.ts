@@ -107,6 +107,7 @@ export class ProfileRepository {
         // oxlint-disable-next-line no-await-in-loop -- Stop on the first cleanup failure; retain metadata for retry.
         await this.accountOperation(accountId, async (lease) => {
           await stateLease?.check();
+          this.state.invalidateAccount(accountId);
           await this.secrets.remove(accountId, lease);
         });
       const removed = new Set(
@@ -158,6 +159,7 @@ export class ProfileRepository {
       ensure(draft.accounts.some((a) => a.id === id));
       await this.accountOperation(id, async (lease) => {
         await stateLease?.check();
+        this.state.invalidateAccount(id);
         await this.secrets.remove(id, lease);
       });
       draft.accounts = draft.accounts.filter((a) => a.id !== id);

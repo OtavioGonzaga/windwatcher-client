@@ -18,6 +18,16 @@ function setup(
 }
 
 describe("server-bound authentication API", () => {
+  it("cleans only an explicit fresh bearer session with one bodyless DELETE/204", async () => {
+    const { api, transport } = setup(() => new Response(null, { status: 204 }));
+    await api.revokeUncommitted(grant.access_token);
+    const [url, request] = transport.mock.calls[0]!;
+    expect(url.href).toBe("https://example.test/proxy/v1/sessions/current");
+    expect(request.method).toBe("DELETE");
+    expect(request.body).toBeUndefined();
+    expect(request.headers.get("Authorization")).toBe(`Bearer ${grant.access_token}`);
+    expect(transport).toHaveBeenCalledOnce();
+  });
   it.each(["https://example.test/proxy/", "http://127.0.0.1:8080/", "http://[::1]:8080/prefix/"])(
     "uses exact public request bodies, paths and statuses for %s",
     async (root) => {
