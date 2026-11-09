@@ -11,6 +11,7 @@
       "summary": "Resumen de la conversación",
       "unavailable": "Esta conversación no está disponible.",
       "error": "No se pudieron cargar las conversaciones. Comprueba tu conexión y vuelve a intentarlo.",
+      "timeout": "La solicitud agotó el tiempo de espera. Vuelve a intentarlo.",
       "invalid": "El servidor devolvió una respuesta no válida.",
       "cursor": "Esta página ha caducado. Reinicia la bandeja de entrada.",
       "restart": "Reiniciar bandeja",

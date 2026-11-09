@@ -11,7 +11,10 @@ import type { Conversation } from "./validation";
 
 type Context = NonNullable<ReturnType<AuthenticationService["activeContext"]>>;
 type Scope = { owner: AuthenticationService; context: Context };
-type Failure = { kind: "error" | "invalid" | "cursor" | "unavailable" | "rate"; until?: number };
+type Failure = {
+  kind: "error" | "invalid" | "cursor" | "unavailable" | "rate" | "timeout";
+  until?: number;
+};
 
 function failure(error: unknown, detail = false): Failure {
   if (error instanceof ApiError) {
@@ -21,6 +24,7 @@ function failure(error: unknown, detail = false): Failure {
       return { kind: "cursor" };
     if (error.metadata.status === 429)
       return { kind: "rate", until: Date.now() + (error.metadata.retryAfterMs ?? 1000) };
+    if (error.category === "timeout") return { kind: "timeout" };
     if (error.category === "invalid-response" || error.category === "response-too-large")
       return { kind: "invalid" };
   }
@@ -63,10 +67,10 @@ function FailureNotice({ value, retry }: { value: Failure; retry: () => void }) 
   const { t } = useTranslation();
   const [now, setNow] = useState(Date.now);
   useEffect(() => {
-    if (!value.until || value.until <= Date.now()) return undefined;
-    const timer = setTimeout(() => setNow(Date.now()), value.until - Date.now());
+    if (!value.until || value.until <= now) return undefined;
+    const timer = setTimeout(() => setNow(Date.now()), Math.min(value.until - now, 2_147_483_647));
     return () => clearTimeout(timer);
-  }, [value.until]);
+  }, [value.until, now]);
   const waiting = value.until !== undefined && value.until > now;
   return (
     <div className="flex flex-col items-start gap-2 break-words">

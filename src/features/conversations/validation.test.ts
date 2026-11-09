@@ -60,4 +60,17 @@ describe("conversation response validation", () => {
       expect(() => decodeConversation({ ...conversation, unread_count })).toThrow();
     expect(() => decodeConversation({ ...conversation, membership: { role: "root" } })).toThrow();
   });
+  it("preserves large escaped Unicode previews and validates shallow replies", () => {
+    const content = '🌬\n"\\'.repeat(12_000);
+    const result = decodeConversation({
+      ...conversation,
+      last_message: {
+        ...message,
+        content,
+        reply_to: { id: other, sender_id: other, sender_username: "Zoë", content: "↩" },
+      },
+    });
+    expect(result.last_message?.content).toBe(content);
+    expect(result.last_message?.reply_to?.sender_username).toBe("Zoë");
+  });
 });

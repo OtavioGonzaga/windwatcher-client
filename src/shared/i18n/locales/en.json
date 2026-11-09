@@ -11,6 +11,7 @@
       "summary": "Conversation summary",
       "unavailable": "This conversation is unavailable.",
       "error": "Could not load conversations. Check your connection and try again.",
+      "timeout": "The request timed out. Try again.",
       "invalid": "The server returned an invalid response.",
       "cursor": "This page has expired. Restart the inbox from the beginning.",
       "restart": "Restart inbox",

@@ -11,6 +11,7 @@
       "summary": "Unterhaltungsübersicht",
       "unavailable": "Diese Unterhaltung ist nicht verfügbar.",
       "error": "Unterhaltungen konnten nicht geladen werden. Prüfe deine Verbindung und versuche es erneut.",
+      "timeout": "Die Anfrage hat zu lange gedauert. Versuche es erneut.",
       "invalid": "Der Server hat eine ungültige Antwort zurückgegeben.",
       "cursor": "Diese Seite ist abgelaufen. Starte den Posteingang erneut.",
       "restart": "Posteingang neu laden",

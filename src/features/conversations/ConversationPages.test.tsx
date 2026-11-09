@@ -1,11 +1,11 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { I18nextProvider } from "react-i18next";
-import { MemoryRouter } from "react-router";
+import { MemoryRouter, Route, Routes } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createI18n } from "../../shared/i18n";
 import { ApiError } from "../../shared/api/error";
 import type { ConversationPage } from "./validation";
-import { InboxPage } from "./ConversationPages";
+import { ConversationDetailPage, InboxPage } from "./ConversationPages";
 
 const mocked = vi.hoisted(() => ({
   context: {
@@ -15,7 +15,12 @@ const mocked = vi.hoisted(() => ({
     epoch: 1,
     signal: new AbortController().signal,
   },
-  owner: { activeContext: vi.fn(), listConversations: vi.fn(), isCurrent: vi.fn() },
+  owner: {
+    activeContext: vi.fn(),
+    listConversations: vi.fn(),
+    getConversation: vi.fn(),
+    isCurrent: vi.fn(),
+  },
 }));
 vi.mock("../authentication/SessionOwner", () => ({
   useSession: () => ({ owner: mocked.owner, status: { kind: "ready" } }),
@@ -125,5 +130,25 @@ describe("scoped inbox", () => {
     await screen.findByText("Restarted");
     expect(mocked.owner.listConversations.mock.calls[2]?.[1]).toBeUndefined();
     expect(screen.queryByText("First")).not.toBeInTheDocument();
+  });
+  it("renders a safe unavailable state for an inaccessible detail", async () => {
+    mocked.owner.getConversation.mockRejectedValueOnce(
+      new ApiError("http", { status: 404, code: "conversation.not_found" }),
+    );
+    render(
+      <I18nextProvider i18n={createI18n("en")}>
+        <MemoryRouter initialEntries={["/conversations/1"]}>
+          <Routes>
+            <Route path="/conversations/:conversationId" element={<ConversationDetailPage />} />
+          </Routes>
+        </MemoryRouter>
+      </I18nextProvider>,
+    );
+    expect(await screen.findByText("This conversation is unavailable.")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Back to inbox" })).toHaveAttribute(
+      "href",
+      "/conversations",
+    );
+    expect(screen.queryByText("Last message")).not.toBeInTheDocument();
   });
 });

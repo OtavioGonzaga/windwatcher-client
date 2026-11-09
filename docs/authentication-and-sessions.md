@@ -35,9 +35,10 @@ before accepting results. Discard results when it returns false. Do not retain a
 global Authorization header or reuse data across contexts. The session owner
 resolves the matching envelope under profile/account ownership, rotates using the
 existing journal and permits one replay only for a qualifying invalid-access GET.
-The conversation feature never receives the token. A refresh started after the
-sent marker is not cancelled by the visual consumer. There is no persistent query
-cache or realtime connection.
+The conversation feature never receives the token. Once its POST has started,
+consumer cancellation cannot discard a valid rotated grant; an interruption after
+the sent marker but before transmission is conservatively recovered without replay.
+There is no persistent query cache or realtime connection.
 
 **Log out** first invalidates the target's UI context, serializes with refresh under
 profile/account ownership, reads only a bound current envelope, deletes/verifies
