@@ -148,3 +148,45 @@ test("authoritative registration closure overrides an open inspection", async ({
   await expect(page.getByRole("button", { name: "Create account", exact: true })).toBeDisabled();
   await expect(page.getByRole("link", { name: "Go to sign in" })).toBeVisible();
 });
+
+test("changing profile in the login route clears credentials without reloading", async ({
+  page,
+}) => {
+  await page.route("https://*.profile-auth.test/**", async (route) => {
+    await route.fulfill({
+      headers: { "Access-Control-Allow-Origin": "*" },
+      json: {
+        service: "windwatcher",
+        api_versions: ["v1"],
+        auth_methods: ["password"],
+        registration: "open",
+      },
+    });
+  });
+  async function saveProfile(hostname: string) {
+    await page.goto("/#/connect");
+    await page.getByLabel("Server URL").fill(`https://${hostname}/`);
+    await page.getByRole("button", { name: "Check server", exact: true }).click();
+    await page.getByRole("button", { name: "Save server", exact: true }).click();
+  }
+  await saveProfile("one.profile-auth.test");
+  await saveProfile("two.profile-auth.test");
+  await page.goto("/#/");
+  await page.getByRole("link", { name: /Sign in https:\/\/one.profile-auth.test/ }).click();
+  await page.getByLabel("Username").fill("alice");
+  await page.getByLabel("Password", { exact: true }).fill("synthetic password");
+  const ids = await page.evaluate(() => {
+    const entry = Object.entries(localStorage).find(([key]) => key.endsWith(":state"));
+    if (!entry) throw new Error("Missing profile fixture");
+    const state: { serverProfiles: { id: string; canonicalUrl: string }[] } = JSON.parse(entry[1]);
+    return state.serverProfiles.map(({ id, canonicalUrl }) => ({ id, canonicalUrl }));
+  });
+  const next = ids.find((record) => record.canonicalUrl === "https://two.profile-auth.test/");
+  if (!next) throw new Error("Missing second profile fixture");
+  await page.evaluate((id) => {
+    location.hash = `#/servers/${id}/login`;
+  }, next.id);
+  await expect(page.getByText(/two.profile-auth.test/)).toBeVisible();
+  await expect(page.getByLabel("Username")).toHaveValue("");
+  await expect(page.getByLabel("Password", { exact: true })).toHaveValue("");
+});

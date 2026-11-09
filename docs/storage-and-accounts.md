@@ -219,8 +219,10 @@ kind (`create`, `replace`, `refresh`), phase (`prepared`, `sent`,
 `recovery-required`), expected/target generation and start timestamp. Credential
 bytes and fingerprints never enter it. A fresh login can supersede an unresolved
 intent only with a new operation and a generation above every known reserved or
-persisted value. Entries older than 24 hours cannot complete an established
-session automatically; bounded terminal evidence remains until re-login/removal.
+persisted value. Entries older than 24 hours cannot complete an uncertain
+established-session commit automatically. When metadata and the verified envelope
+already match the exact journal operation and generation, recovery only clears
+the completed intent regardless of age. Bounded terminal evidence remains until re-login/removal.
 
 Recovery runs under the same account owner as writes/removal. Unregistered new
 aliases are cleaned before their intent is cleared. A confirmed newer envelope

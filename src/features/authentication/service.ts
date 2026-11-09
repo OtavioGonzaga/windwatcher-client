@@ -460,10 +460,16 @@ export class AuthenticationService {
       for (const op of state.authOperations.filter(
         (intent) => !state.accounts.some((a) => a.id === intent.accountId),
       )) {
-        // oxlint-disable-next-line no-await-in-loop -- Cross-store reconciliation is intentionally sequential.
-        await this.persistence.locks.run(`account-${op.accountId}`, (lease) =>
-          this.persistence.reconcileOne(op.accountId, lease),
-        );
+        try {
+          // oxlint-disable-next-line no-await-in-loop -- Cross-store reconciliation is intentionally sequential.
+          await this.persistence.locks.run(`account-${op.accountId}`, (lease) =>
+            this.persistence.reconcileOne(op.accountId, lease),
+          );
+        } catch (error) {
+          // An unrelated orphan remains journaled for a later attempt; never let
+          // its vault or lock failure invalidate the selected account.
+          if (!account) throw error;
+        }
       }
       if (!account) {
         if (publication === this.publication && !signal.aborted)

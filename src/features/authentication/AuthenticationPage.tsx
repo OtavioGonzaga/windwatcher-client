@@ -15,6 +15,13 @@ import type { SessionError } from "./service";
 import { errorKey } from "./error-key";
 
 export function AuthenticationPage({ registration = false }: { registration?: boolean }) {
+  const { profileId = "" } = useParams();
+  return (
+    <ProfileAuthenticationPage key={`${profileId}:${registration}`} registration={registration} />
+  );
+}
+
+function ProfileAuthenticationPage({ registration }: { registration: boolean }) {
   const { t } = useTranslation();
   const { profileId = "" } = useParams();
   const [search] = useSearchParams();

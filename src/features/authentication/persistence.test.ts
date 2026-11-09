@@ -302,6 +302,32 @@ describe("persistent synthetic crash snapshots", () => {
     expect((await setup().store.load()).authOperations[0]?.phase).toBe("recovery-required");
     expect(await f.secrets.get(f.id)).not.toBeNull();
   });
+  it.each(["create", "replace", "refresh"] as const)(
+    "clears an old fully committed %s journal without changing the account",
+    async (kind) => {
+      const f = await snapshot(kind, kind === "refresh" ? "sent" : "prepared", "new", true);
+      await f.store.update((draft) => {
+        draft.authOperations[0]!.startedAt = "2020-01-01T00:00:00.000Z";
+      });
+      const before = (await f.store.load()).accounts[0];
+      const bytes = await f.secrets.get(f.id);
+      await setup().persistence.reconcileAll();
+      const after = await setup().store.load();
+      expect(after.authOperations).toEqual([]);
+      expect(after.accounts[0]).toEqual(before);
+      expect(await f.secrets.get(f.id)).toEqual(bytes);
+    },
+  );
+  it("does not clear an old committed journal when the envelope does not match", async () => {
+    const f = await snapshot("refresh", "sent", "old", true);
+    await f.store.update((draft) => {
+      draft.authOperations[0]!.startedAt = "2020-01-01T00:00:00.000Z";
+    });
+    const before = await f.secrets.get(f.id);
+    await setup().persistence.reconcileAll();
+    expect((await setup().store.load()).authOperations[0]?.phase).toBe("recovery-required");
+    expect(await f.secrets.get(f.id)).toEqual(before);
+  });
   it("does not persist a mismatched envelope under another account alias", async () => {
     const f = await snapshot("refresh", "sent", "old");
     const actual = decodeSessionEnvelope((await f.secrets.get(f.id))!, {

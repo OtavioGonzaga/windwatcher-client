@@ -42,7 +42,9 @@ envelope before completing an established account's metadata, or requires login.
 A refresh sent marker must be verified durably **before** the POST. Only a
 prepared refresh with the confirmed old envelope is provably unsent; sent/unknown
 outcomes never authorize replay. Intents older than one day cannot complete an
-established session automatically; terminal evidence remains bounded until fresh
+uncertain established-session commit automatically. If metadata and a verified
+envelope already match the exact operation, session and generation, recovery may
+clear the completed intent regardless of age without replaying the commit. Terminal evidence remains bounded until fresh
 login supersedes it or explicit removal succeeds.
 
 ## Consequences

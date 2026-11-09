@@ -361,6 +361,12 @@ export class SessionPersistence {
       await this.requireRecovery(intent);
       return;
     }
+    if (envelope && matches(envelope, intent) && matchesAccount(envelope, account)) {
+      // Both stores already confirm the exact operation. No metadata replay or
+      // freshness assumption is needed merely to remove the completed journal.
+      await this.clear(intent);
+      return;
+    }
     const age = Date.now() - Date.parse(intent.startedAt);
     if (envelope && matches(envelope, intent) && age >= -300_000 && age <= 86_400_000) {
       await this.commit(intent);

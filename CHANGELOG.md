@@ -48,6 +48,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Clear authentication form state when switching server profiles, isolate orphan
+  cleanup failures from selected-session restoration, and clear verified completed
+  journal entries regardless of age.
 - Show only one sign-in link after successful registration.
 - Distinguish registration closure and network failures from storage failures in
   localized authentication and restoration messages.

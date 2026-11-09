@@ -93,6 +93,47 @@ async function setup() {
 beforeEach(() => localStorage.clear());
 
 describe("authentication orchestration", () => {
+  it("restores the selected account when another profile's orphan cannot be removed", async () => {
+    const f = await setup();
+    await f.login();
+    const accountId = await f.selected();
+    const otherProfile = await f.addProfile("https://orphan.test/");
+    const orphanId = crypto.randomUUID();
+    const operationId = crypto.randomUUID();
+    await f.store.update((state) => {
+      state.authOperations.push({
+        accountId: orphanId,
+        profileId: otherProfile,
+        userId: user.id,
+        sessionId: grant.session_id,
+        operationId,
+        kind: "create",
+        phase: "prepared",
+        expectedGeneration: 0,
+        targetGeneration: 1,
+        startedAt: new Date().toISOString(),
+      });
+    });
+    const remove = vi.spyOn(f.secrets, "remove").mockRejectedValue(new StorageError("locked"));
+    const restarted = new AuthenticationService(f.persistence, f.api, () => f.clock.value);
+    expect(await restarted.restoreSelected(f.signal())).toMatchObject({ kind: "ready", accountId });
+    expect(remove).toHaveBeenCalledOnce();
+    expect((await f.store.load()).authOperations).toMatchObject([
+      { accountId: orphanId, operationId },
+    ]);
+  });
+  it("does not authenticate when the selected account's own vault read fails", async () => {
+    const f = await setup();
+    await f.login();
+    const accountId = await f.selected();
+    vi.spyOn(f.secrets, "get").mockRejectedValue(new StorageError("locked"));
+    const restarted = new AuthenticationService(f.persistence, f.api, () => f.clock.value);
+    expect(await restarted.restoreSelected(f.signal())).toMatchObject({
+      kind: "error",
+      category: "storage-locked",
+      accountId,
+    });
+  });
   it("registration creates only a remote identity and preserves exact password bytes", async () => {
     const f = await setup();
     const password = "  e\u0301 👩‍💻 synthetic password  ";
