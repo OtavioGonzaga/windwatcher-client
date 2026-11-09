@@ -161,7 +161,8 @@ async function isolatedServers(context: BrowserContext, page: Page) {
     "Access-Control-Allow-Headers": "authorization, content-type",
     "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
   };
-  let mode: "normal" | "rate" | "missing" | "hold" | "large" = "normal";
+  let mode: "normal" | "rate" | "missing" | "hold" | "hold-next" | "invalid-cursor" | "large" =
+    "normal";
   let release: (() => void) | undefined;
   let started: (() => void) | undefined;
   let finished: (() => void) | undefined;
@@ -217,12 +218,20 @@ async function isolatedServers(context: BrowserContext, page: Page) {
           },
         });
       }
-      const held = mode === "hold";
+      const heldNext = mode === "hold-next";
+      const held = mode === "hold" || heldNext;
       if (held) {
         mode = "normal";
         started?.();
         await new Promise<void>((resolve) => {
           release = resolve;
+        });
+      } else if (mode === "invalid-cursor") {
+        mode = "normal";
+        return route.fulfill({
+          status: 400,
+          headers: { ...headers, "Content-Type": "application/problem+json" },
+          json: problem(400, "pagination.invalid_cursor"),
         });
       } else if (mode === "rate") {
         mode = "normal";
@@ -244,7 +253,10 @@ async function isolatedServers(context: BrowserContext, page: Page) {
         return await route.fulfill({
           headers,
           json: url.pathname.endsWith("/conversations")
-            ? { items: [conversation(first, title)], has_more: false }
+            ? {
+                items: [conversation(first, heldNext ? "Late continuation" : title)],
+                has_more: false,
+              }
             : conversation(first, title),
         });
       } catch {
@@ -275,7 +287,7 @@ async function isolatedServers(context: BrowserContext, page: Page) {
     calls,
     setMode: (value: typeof mode) => {
       mode = value;
-      if (value === "hold") {
+      if (value === "hold" || value === "hold-next") {
         requestStarted = new Promise<void>((resolve) => {
           started = resolve;
         });
@@ -307,6 +319,44 @@ test("50-item first page, next cursor and direct detail link preserve server ord
   await expect(page.getByRole("listitem")).toHaveCount(53);
   await expect(page.getByRole("listitem").last()).toContainText("Conversation 53");
   await expect(page.getByRole("button", { name: "Load more" })).toHaveCount(0);
+});
+
+test("refresh replaces a pending continuation and ignores its late response", async ({
+  page,
+  context,
+}) => {
+  const f = await isolatedServers(context, page);
+  await f.add("one");
+  f.setMode("large");
+  await page.getByRole("link", { name: "Inbox", exact: true }).click();
+  await expect(page.getByRole("listitem")).toHaveCount(50);
+  f.setMode("hold-next");
+  await page.getByRole("button", { name: "Load more" }).click();
+  await f.started();
+  await page.getByRole("button", { name: "Refresh" }).click();
+  await expect(page.getByText("Server one private")).toBeVisible();
+  f.release();
+  await f.finished();
+  await expect(page.getByText("Late continuation")).toHaveCount(0);
+  await expect(page.getByText("Conversation 01")).toHaveCount(0);
+  await expect(page.getByRole("listitem")).toHaveCount(1);
+});
+
+test("invalid cursor offers an explicit restart instead of retrying the cursor", async ({
+  page,
+  context,
+}) => {
+  const f = await isolatedServers(context, page);
+  await f.add("one");
+  f.setMode("large");
+  await page.getByRole("link", { name: "Inbox", exact: true }).click();
+  await expect(page.getByRole("listitem")).toHaveCount(50);
+  f.setMode("invalid-cursor");
+  await page.getByRole("button", { name: "Load more" }).click();
+  await expect(page.getByText(/This page has expired/)).toBeVisible();
+  await page.getByRole("button", { name: "Restart inbox" }).click();
+  await expect(page.getByText("Server one private")).toBeVisible();
+  await expect(page.getByText("Conversation 01")).toHaveCount(0);
 });
 
 for (const locale of ["en", "pt-BR", "es", "de"] as const) {
@@ -399,6 +449,9 @@ for (const action of ["Log out", "Remove saved account"] as const) {
     await f.add("one");
     await page.getByRole("link", { name: "Inbox", exact: true }).click();
     await expect(page.getByText("Server one private")).toBeVisible();
+    const other = await context.newPage();
+    await other.goto("/#/conversations");
+    await expect(other.getByText("Server one private")).toBeVisible();
     f.setMode("hold");
     await page.getByRole("button", { name: "Refresh" }).click();
     await f.started();
@@ -414,6 +467,9 @@ for (const action of ["Log out", "Remove saved account"] as const) {
     f.release();
     await f.finished();
     await expect(page.getByText("Server one private")).toHaveCount(0);
+    await expect(other.getByText("Server one private")).toHaveCount(0);
     await expect(page.getByText("Select a signed-in account to see its inbox.")).toBeVisible();
+    await expect(other.getByText("Select a signed-in account to see its inbox.")).toBeVisible();
+    await other.close();
   });
 }
