@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useParams } from "react-router";
 import { ApiError } from "../../shared/api/error";
@@ -31,7 +31,10 @@ function Gate({ detail }: { detail?: boolean }) {
   const { owner, status } = useSession();
   const { conversationId = "" } = useParams();
   const { t } = useTranslation();
-  const context = status.kind === "ready" ? owner?.activeContext() : null;
+  const context = useMemo(
+    () => (status.kind === "ready" ? owner?.activeContext() : null),
+    [owner, status],
+  );
   if (!owner || !context)
     return (
       <section>
