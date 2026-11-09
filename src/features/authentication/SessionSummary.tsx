@@ -23,11 +23,11 @@ export function SessionSummary() {
                   ? "auth.errors.disabled"
                   : status.reason === "identity"
                     ? "auth.errors.identity"
-                      : status.reason === "missing"
-                        ? "auth.errors.missing"
-                        : status.reason === "invalid"
-                          ? "auth.errors.session"
-                          : "auth.errors.recovery",
+                    : status.reason === "missing"
+                      ? "auth.errors.missing"
+                      : status.reason === "invalid"
+                        ? "auth.errors.session"
+                        : "auth.errors.recovery",
             )}
           </p>
           <Link
