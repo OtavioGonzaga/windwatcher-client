@@ -580,7 +580,8 @@ export class AuthenticationService {
         if (user.disabled_at) throw new SessionIssue("disabled");
         if (user.username !== context.account.username) {
           await this.persistence.state.load();
-          await this.persistence.state.update((draft) => {
+          await this.persistence.state.update(async (draft) => {
+            await lease.check();
             const row = draft.accounts.find((a) => a.id === accountId);
             if (!row || !matchesAccount(envelope, row)) throw new StorageError("conflict");
             row.username = user.username;

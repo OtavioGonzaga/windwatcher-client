@@ -40,6 +40,43 @@ async function profile() {
 beforeEach(() => localStorage.clear());
 
 describe("secret-first coordinated session persistence", () => {
+  it("does not publish a login after its enclosing profile lease expires", async () => {
+    const f = await profile();
+    let expired = false;
+    const locks = {
+      supported: true,
+      run: <T>(key: string, action: Parameters<typeof f.locks.run<T>>[1], wait?: boolean) =>
+        f.locks.run(
+          key,
+          (lease) =>
+            action(
+              key.startsWith("profile-")
+                ? {
+                    ...lease,
+                    async check() {
+                      if (expired) throw new StorageError("conflict");
+                      await lease.check();
+                    },
+                  }
+                : lease,
+            ),
+          wait,
+        ),
+    };
+    const persistence = new SessionPersistence(f.store, f.secrets, locks);
+    const put = f.secrets.put.bind(f.secrets);
+    vi.spyOn(f.secrets, "put").mockImplementation(async (...args) => {
+      await put(...args);
+      expired = true;
+    });
+    await expect(persistence.saveLogin(f.profileId, user, grant)).rejects.toMatchObject({
+      category: "conflict",
+    });
+    const state = await f.store.load();
+    expect(state.accounts).toEqual([]);
+    expect(state.selectedAccountId).toBeNull();
+    expect(state.authOperations).toHaveLength(1);
+  });
   it("prepares one UUID, journals first, verifies the secret, commits that UUID, then selects", async () => {
     const f = await profile();
     const events: string[] = [];

@@ -61,6 +61,15 @@ does not replace the selected account's verified UI with its remote result.
 
 ## Android integration evidence
 
+For PR 9, an isolated read-only x86_64 Android emulator ran the debug app against
+a loopback synthetic server. Two accounts were signed in on the same profile,
+switched, and one was logged out; the other restored after force-stop/relaunch,
+while the signed-out account record remained. Android Back closed the selector.
+This exercises the Android host and credential adapter, not real-server logout,
+physical devices, OEM behavior, every interruption point or Windows. The subsequent
+profile-lease fencing review fix was validated by unit and browser tests, not by
+repeating this emulator flow.
+
 On 2026-11-09, an x86_64 Android emulator ran the normal debug APK from client
 head `4dbd931` against an isolated Server 0.1.1 instance (`d83d5d9`) with a
 disposable database and short access-token lifetime. Registration and login

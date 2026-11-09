@@ -15,6 +15,17 @@ export async function checkpoint(lease: OperationLease, signal?: AbortSignal) {
   await lease.check();
   if (signal?.aborted) throw new ApiError("cancelled");
 }
+/** Preserve the account token while fencing every checkpoint by its enclosing profile owner. */
+function profileFencedLease(account: OperationLease, profile: OperationLease): OperationLease {
+  return {
+    key: account.key,
+    ...(account.token ? { token: account.token } : {}),
+    async check() {
+      await profile.check();
+      await account.check();
+    },
+  };
+}
 function freshId(state: ClientStateV2, extra: string[] = []) {
   const ids = new Set([
     ...extra,
@@ -92,7 +103,11 @@ export class SessionPersistence {
       `profile-${profileId}`,
       async (profileLease) => {
         await profileLease.check();
-        return this.locks.run(`account-${id}`, action, wait);
+        return this.locks.run(
+          `account-${id}`,
+          (lease) => action(profileFencedLease(lease, profileLease)),
+          wait,
+        );
       },
       wait,
     );
@@ -125,7 +140,7 @@ export class SessionPersistence {
     if (user.disabled_at) throw new ApiError("http", { status: 403, code: "auth.user_disabled" });
     return this.locks.run(
       `profile-${profileId}`,
-      () =>
+      (profileLease) =>
         this.locks.run(
           `identity-${profileId}-${user.id}`,
           async (identityLease) => {
@@ -144,7 +159,8 @@ export class SessionPersistence {
             const id = existing?.id ?? pending?.accountId ?? freshId(initial);
             return this.locks.run(
               `account-${id}`,
-              async (lease) => {
+              async (accountLease) => {
+                const lease = profileFencedLease(accountLease, profileLease);
                 await checkpoint(lease, signal);
                 await this.reconcileOne(id, lease);
                 const state = await this.state.load();
@@ -180,7 +196,8 @@ export class SessionPersistence {
                   targetGeneration: generation,
                   startedAt: new Date().toISOString(),
                 };
-                await this.state.update((draft) => {
+                await this.state.update(async (draft) => {
+                  await lease.check();
                   if (
                     signal?.aborted ||
                     draft.serverProfiles.find((p) => p.id === profileId)?.canonicalUrl !==
@@ -219,7 +236,8 @@ export class SessionPersistence {
                       row?.session?.operationId === intent.operationId &&
                       row.session.generation === intent.targetGeneration;
                     if (signal?.aborted && completed) {
-                      await this.state.update((draft) => {
+                      await this.state.update(async (draft) => {
+                        await lease.check();
                         if (
                           draft.selectedAccountId === id &&
                           draft.accounts.find((a) => a.id === id)?.session?.operationId ===
@@ -239,9 +257,9 @@ export class SessionPersistence {
                       latest.authOperations.some((op) => sameIntent(op, intent))
                     ) {
                       await this.secrets.remove(id, lease);
-                      await this.clear(intent);
+                      await this.clear(intent, lease);
                     } else if (!completed) {
-                      if (signal?.aborted) await this.requireRecovery(intent);
+                      if (signal?.aborted) await this.requireRecovery(intent, lease);
                       else await this.reconcileOne(id, lease);
                     }
                   } catch {
@@ -277,7 +295,8 @@ export class SessionPersistence {
       targetGeneration: envelope.generation + 1,
       startedAt: new Date().toISOString(),
     };
-    await this.state.update((draft) => {
+    await this.state.update(async (draft) => {
+      await lease.check();
       const row = draft.accounts.find((a) => a.id === account.id);
       if (
         !row ||
@@ -291,16 +310,18 @@ export class SessionPersistence {
   }
   async markSent(intent: AuthIntent, lease: OperationLease) {
     await lease.check();
-    await this.state.update((draft) => {
+    await this.state.update(async (draft) => {
+      await lease.check();
       const op = draft.authOperations.find((item) => sameIntent(item, intent));
       if (!op || op.kind !== "refresh" || op.phase !== "prepared")
         throw new StorageError("conflict");
       op.phase = "sent";
     });
   }
-  async requireRecovery(intent: AuthIntent) {
+  async requireRecovery(intent: AuthIntent, lease: OperationLease) {
     await this.state.load();
-    await this.state.update((draft) => {
+    await this.state.update(async (draft) => {
+      await lease.check();
       const op = draft.authOperations.find((item) => sameIntent(item, intent));
       if (op) op.phase = "recovery-required";
     });
@@ -333,20 +354,22 @@ export class SessionPersistence {
       verified?.fill(0);
       if (!same) throw new StorageError("write-failed");
       await checkpoint(lease, signal);
-      await this.commit(intent, username, intent.kind !== "refresh", signal);
-      await this.clear(intent);
+      await this.commit(intent, lease, username, intent.kind !== "refresh", signal);
+      await this.clear(intent, lease);
     } finally {
       encoded.fill(0);
     }
   }
   private async commit(
     intent: AuthIntent,
+    lease: OperationLease,
     username?: string,
     select = false,
     signal?: AbortSignal,
   ) {
     await this.state.load();
-    await this.state.update((draft) => {
+    await this.state.update(async (draft) => {
+      await lease.check();
       if (signal?.aborted) throw new StorageError("conflict");
       const op = draft.authOperations.find((item) => sameIntent(item, intent));
       if (!op || op.phase === "recovery-required") throw new StorageError("conflict");
@@ -386,9 +409,10 @@ export class SessionPersistence {
       if (select) draft.selectedAccountId = row.id;
     });
   }
-  private async clear(intent: AuthIntent) {
+  private async clear(intent: AuthIntent, lease: OperationLease) {
     await this.state.load();
-    await this.state.update((draft) => {
+    await this.state.update(async (draft) => {
+      await lease.check();
       draft.authOperations = draft.authOperations.filter((op) => !sameIntent(op, intent));
     });
   }
@@ -401,7 +425,7 @@ export class SessionPersistence {
     if (!account) {
       if (intent.kind !== "create") throw new StorageError("corrupt");
       await this.secrets.remove(id, lease);
-      await this.clear(intent);
+      await this.clear(intent, lease);
       return;
     }
     if (intent.phase === "recovery-required") return;
@@ -410,19 +434,19 @@ export class SessionPersistence {
       envelope = await this.read(account, lease);
     } catch (error) {
       if (!(error instanceof StorageError) || error.category !== "corrupt") throw error;
-      await this.requireRecovery(intent);
+      await this.requireRecovery(intent, lease);
       return;
     }
     if (envelope && matches(envelope, intent) && matchesAccount(envelope, account)) {
       // Both stores already confirm the exact operation. No metadata replay or
       // freshness assumption is needed merely to remove the completed journal.
-      await this.clear(intent);
+      await this.clear(intent, lease);
       return;
     }
     const age = Date.now() - Date.parse(intent.startedAt);
     if (envelope && matches(envelope, intent) && age >= -300_000 && age <= 86_400_000) {
-      await this.commit(intent);
-      await this.clear(intent);
+      await this.commit(intent, lease);
+      await this.clear(intent, lease);
       return;
     }
     if (
@@ -432,10 +456,10 @@ export class SessionPersistence {
       matchesAccount(envelope, account)
     ) {
       // The durable sent marker always precedes the POST; this token was not consumed.
-      await this.clear(intent);
+      await this.clear(intent, lease);
       return;
     }
-    await this.requireRecovery(intent);
+    await this.requireRecovery(intent, lease);
   }
   async reconcileAll() {
     const state = await this.state.load();
