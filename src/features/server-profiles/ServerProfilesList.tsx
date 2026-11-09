@@ -6,7 +6,7 @@ import { TextField } from "../../shared/components/TextField";
 import { profileRepository } from "../../shared/storage/platform-storage";
 import { formatDate } from "../../shared/i18n/format";
 import { resolveLocale } from "../../shared/i18n/locale";
-import type { ClientStateV1, ServerProfile } from "./schema";
+import type { ClientStateV2, ServerProfile } from "./schema";
 import { StorageNotice } from "./StorageNotice";
 
 function ProfileRow({
@@ -54,6 +54,13 @@ function ProfileRow({
         </time>
       </p>
       <p>{t(profile.discovery.kind === "legacy" ? "profiles.legacy" : "profiles.supported")}</p>
+      <Link
+        className="inline-flex min-h-11 items-center underline"
+        to={`/servers/${profile.id}/login`}
+        aria-labelledby={`${prefix}-login ${addressId}`}
+      >
+        <span id={`${prefix}-login`}>{t("auth.signIn")}</span>
+      </Link>
       <Link
         className="inline-flex min-h-11 items-center underline"
         to={`/connect?server=${encodeURIComponent(profile.canonicalUrl)}`}
@@ -129,7 +136,7 @@ function ProfileRow({
 
 export function ServerProfilesList() {
   const { t } = useTranslation();
-  const [state, setState] = useState<ClientStateV1>();
+  const [state, setState] = useState<ClientStateV2>();
   const [error, setError] = useState<unknown>();
   const [busy, setBusy] = useState(false);
   const [success, setSuccess] = useState(false);

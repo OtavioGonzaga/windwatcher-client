@@ -1,12 +1,26 @@
 //! Opt-in OS-backend smoke; never a production command, route or diagnostic.
+#[cfg(not(windows))]
+#[path = "../../src-tauri/src/operation_locks.rs"]
+mod operation_locks;
 #[allow(dead_code)]
+#[cfg(not(windows))]
 #[path = "../../src-tauri/src/storage.rs"]
 mod storage;
+#[cfg(windows)]
+#[path = "../windows-secrets/main.rs"]
+mod windows_smoke;
+#[cfg(not(windows))]
 use std::{
     io::{Read, Write},
     process::{Command, Stdio},
 };
 
+#[cfg(windows)]
+fn main() {
+    windows_smoke::main();
+}
+
+#[cfg(not(windows))]
 fn main() {
     if let Err(category) = run() {
         eprintln!("native storage smoke failed: {category}");
@@ -14,6 +28,7 @@ fn main() {
     }
 }
 
+#[cfg(not(windows))]
 fn run() -> Result<(), &'static str> {
     let args: Vec<String> = std::env::args().collect();
     if args.len() == 3 {
@@ -23,17 +38,17 @@ fn run() -> Result<(), &'static str> {
             .read_to_end(&mut bytes)
             .map_err(|_| "stdin")?;
         return match args[1].as_str() {
-            "put" => storage::put_account_secret(id, bytes),
+            "put" => storage::put_secret_raw(&id, &bytes),
             "get" => {
-                if storage::get_account_secret(id)? == Some(bytes) {
+                if storage::get_secret_raw(&id)? == Some(bytes) {
                     Ok(())
                 } else {
                     Err("mismatch")
                 }
             }
-            "remove" => storage::remove_account_secret(id),
+            "remove" => storage::remove_secret_raw(&id),
             "missing" => {
-                if storage::get_account_secret(id)?.is_none() {
+                if storage::get_secret_raw(&id)?.is_none() {
                     Ok(())
                 } else {
                     Err("retained")
@@ -76,7 +91,7 @@ fn run() -> Result<(), &'static str> {
         }
         Ok(())
     })();
-    storage::remove_account_secret(id)?;
+    storage::remove_secret_raw(&id)?;
     result?;
     println!(
         "OS secret write/restart/read/overwrite/remove/idempotence passed (no secret bytes logged)."

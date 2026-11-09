@@ -1,15 +1,30 @@
 //! Fixed app-data document and Rust-only OS credential access. Never log backend errors.
+use crate::operation_locks::OperationLocks;
 use std::{
     fs::{self, File, OpenOptions},
     io::{Read, Write},
     path::PathBuf,
 };
 use tauri::Manager;
+#[cfg(not(windows))]
 use tauri_plugin_keyring_store::{Error, KeyringStore};
+#[cfg(windows)]
+#[path = "storage/windows_dpapi.rs"]
+mod windows_dpapi;
 
 type StorageResult<T> = Result<T, &'static str>;
 const MAX_DOCUMENT: u64 = 1_048_576;
 const MAX_SECRET: usize = 16_384;
+
+fn validate_write_size(length: usize) -> StorageResult<()> {
+    if length == 0 {
+        return Err("corrupt");
+    }
+    if length > MAX_SECRET {
+        return Err("too-large");
+    }
+    Ok(())
+}
 #[cfg(not(feature = "storage-smoke"))]
 const SERVICE: &str = "io.github.otaviogonzaga.windwatcher.client.sessions.v1";
 #[cfg(feature = "storage-smoke")]
@@ -26,6 +41,7 @@ fn alias(account_id: &str) -> StorageResult<String> {
     Ok(format!("windwatcher-client:v1:{id}"))
 }
 
+#[cfg(not(windows))]
 fn safe_error(error: Error) -> &'static str {
     match error {
         Error::KeychainLocked => "locked",
@@ -34,10 +50,10 @@ fn safe_error(error: Error) -> &'static str {
     }
 }
 
-#[tauri::command(async)]
-pub fn get_account_secret(account_id: String) -> StorageResult<Option<Vec<u8>>> {
+#[cfg(not(windows))]
+pub(crate) fn get_secret_raw(account_id: &str) -> StorageResult<Option<Vec<u8>>> {
     let record = KeyringStore::new(SERVICE)
-        .get_bytes(&alias(&account_id)?)
+        .get_bytes(&alias(account_id)?)
         .map_err(safe_error)?;
     if record
         .as_ref()
@@ -48,21 +64,122 @@ pub fn get_account_secret(account_id: String) -> StorageResult<Option<Vec<u8>>> 
     Ok(record)
 }
 
-#[tauri::command(async)]
-pub fn put_account_secret(account_id: String, record: Vec<u8>) -> StorageResult<()> {
-    if record.is_empty() || record.len() > MAX_SECRET {
-        return Err("corrupt");
-    }
+#[cfg(not(windows))]
+pub(crate) fn put_secret_raw(account_id: &str, record: &[u8]) -> StorageResult<()> {
+    validate_write_size(record.len())?;
     KeyringStore::new(SERVICE)
-        .set_bytes(&alias(&account_id)?, &record)
+        .set_bytes(&alias(account_id)?, record)
         .map_err(safe_error)
 }
 
-#[tauri::command(async)]
-pub fn remove_account_secret(account_id: String) -> StorageResult<()> {
+#[cfg(not(windows))]
+pub(crate) fn remove_secret_raw(account_id: &str) -> StorageResult<()> {
     KeyringStore::new(SERVICE)
-        .delete(&alias(&account_id)?)
+        .delete(&alias(account_id)?)
         .map_err(safe_error)
+}
+
+#[cfg(windows)]
+fn windows_secrets(app: &tauri::AppHandle) -> StorageResult<windows_dpapi::RecordStore> {
+    let root = app.path().app_local_data_dir().map_err(|_| "unavailable")?;
+    #[cfg(feature = "storage-smoke")]
+    let root = root.join("storage-smoke");
+    windows_dpapi::RecordStore::new(root.join("account-secrets-dpapi-v1"), SERVICE)
+}
+
+#[tauri::command(async)]
+pub fn get_account_secret(
+    app: tauri::AppHandle,
+    locks: tauri::State<'_, OperationLocks>,
+    account_id: String,
+    lease_id: Option<String>,
+) -> StorageResult<Option<Vec<u8>>> {
+    alias(&account_id)?;
+    let _guard = locks.guard(
+        &directory(&app)?,
+        &format!("account-{account_id}"),
+        lease_id.as_deref(),
+    )?;
+    #[cfg(windows)]
+    {
+        windows_secrets(&app)?.get(&account_id)
+    }
+    #[cfg(not(windows))]
+    {
+        get_secret_raw(&account_id)
+    }
+}
+
+#[tauri::command(async)]
+pub fn put_account_secret(
+    app: tauri::AppHandle,
+    locks: tauri::State<'_, OperationLocks>,
+    account_id: String,
+    record: Vec<u8>,
+    lease_id: Option<String>,
+) -> StorageResult<()> {
+    alias(&account_id)?;
+    let record = zeroize::Zeroizing::new(record);
+    validate_write_size(record.len())?;
+    let _guard = locks.guard(
+        &directory(&app)?,
+        &format!("account-{account_id}"),
+        lease_id.as_deref(),
+    )?;
+    #[cfg(windows)]
+    {
+        windows_secrets(&app)?.put(&account_id, &record)
+    }
+    #[cfg(not(windows))]
+    {
+        put_secret_raw(&account_id, &record)
+    }
+}
+
+#[tauri::command(async)]
+pub fn remove_account_secret(
+    app: tauri::AppHandle,
+    locks: tauri::State<'_, OperationLocks>,
+    account_id: String,
+    lease_id: Option<String>,
+) -> StorageResult<()> {
+    alias(&account_id)?;
+    let _guard = locks.guard(
+        &directory(&app)?,
+        &format!("account-{account_id}"),
+        lease_id.as_deref(),
+    )?;
+    #[cfg(windows)]
+    {
+        windows_secrets(&app)?.remove(&account_id)
+    }
+    #[cfg(not(windows))]
+    {
+        remove_secret_raw(&account_id)
+    }
+}
+
+#[tauri::command(async)]
+pub fn acquire_storage_operation(
+    app: tauri::AppHandle,
+    locks: tauri::State<'_, OperationLocks>,
+    key: String,
+) -> StorageResult<String> {
+    locks.acquire(&directory(&app)?, &key)
+}
+#[tauri::command(async)]
+pub fn check_storage_operation(
+    locks: tauri::State<'_, OperationLocks>,
+    lease_id: String,
+) -> StorageResult<()> {
+    locks.check(&lease_id)
+}
+#[tauri::command(async)]
+pub fn release_storage_operation(
+    locks: tauri::State<'_, OperationLocks>,
+    lease_id: String,
+) -> StorageResult<()> {
+    locks.release(&lease_id)
 }
 
 fn directory(app: &tauri::AppHandle) -> StorageResult<PathBuf> {
@@ -114,9 +231,12 @@ pub fn read_client_state(app: tauri::AppHandle) -> StorageResult<Option<String>>
 #[tauri::command(async)]
 pub fn write_client_state(
     app: tauri::AppHandle,
+    locks: tauri::State<'_, OperationLocks>,
     expected: Option<String>,
     document: String,
+    lease_id: Option<String>,
 ) -> StorageResult<()> {
+    let _guard = locks.guard(&directory(&app)?, "state", lease_id.as_deref())?;
     write_document(directory(&app)?, expected, document)
 }
 
@@ -132,7 +252,7 @@ fn write_document(dir: PathBuf, expected: Option<String>, document: String) -> S
         return Err("conflict");
     }
     let value: serde_json::Value = serde_json::from_str(&document).map_err(|_| "corrupt")?;
-    if value["schemaVersion"] != 1 {
+    if value["schemaVersion"] != 1 && value["schemaVersion"] != 2 {
         return Err("version-unsupported");
     }
     validate_nonsecret_keys(&value)?;
@@ -141,7 +261,10 @@ fn write_document(dir: PathBuf, expected: Option<String>, document: String) -> S
         Some(text) => {
             let previous =
                 serde_json::from_str::<serde_json::Value>(text).map_err(|_| "corrupt")?;
-            if previous["schemaVersion"] != 1 {
+            if previous["schemaVersion"] != 1 && previous["schemaVersion"] != 2 {
+                return Err("version-unsupported");
+            }
+            if previous["schemaVersion"] == 2 && value["schemaVersion"] == 1 {
                 return Err("version-unsupported");
             }
             validate_nonsecret_keys(&previous)?;
@@ -176,16 +299,31 @@ fn validate_nonsecret_keys(value: &serde_json::Value) -> StorageResult<()> {
         }
         Ok(())
     }
-    keys(
-        value,
-        &[
-            "schemaVersion",
-            "revision",
-            "serverProfiles",
-            "accounts",
-            "selectedAccountId",
-        ],
-    )?;
+    let v2 = value["schemaVersion"] == 2;
+    if v2 {
+        keys(
+            value,
+            &[
+                "schemaVersion",
+                "revision",
+                "serverProfiles",
+                "accounts",
+                "selectedAccountId",
+                "authOperations",
+            ],
+        )?;
+    } else {
+        keys(
+            value,
+            &[
+                "schemaVersion",
+                "revision",
+                "serverProfiles",
+                "accounts",
+                "selectedAccountId",
+            ],
+        )?;
+    }
     let profiles = value["serverProfiles"].as_array().ok_or("corrupt")?;
     let accounts = value["accounts"].as_array().ok_or("corrupt")?;
     if profiles.len() > 100 || accounts.len() > 500 {
@@ -216,17 +354,105 @@ fn validate_nonsecret_keys(value: &serde_json::Value) -> StorageResult<()> {
         )?;
     }
     for account in accounts {
-        keys(
-            account,
-            &[
-                "id",
-                "serverProfileId",
-                "serverUserId",
-                "username",
-                "createdAt",
-                "updatedAt",
-            ],
-        )?;
+        let mut allowed = vec![
+            "id",
+            "serverProfileId",
+            "serverUserId",
+            "username",
+            "createdAt",
+            "updatedAt",
+        ];
+        if v2 {
+            allowed.push("session");
+        }
+        keys(account, &allowed)?;
+        if let Some(session) = account.get("session") {
+            keys(session, &["generation", "sessionId", "operationId"])?;
+            validate_generation(&session["generation"], false)?;
+            validate_uuid(&session["sessionId"], false)?;
+            validate_uuid(&session["operationId"], true)?;
+        }
+    }
+    if v2 {
+        let intents = value["authOperations"].as_array().ok_or("corrupt")?;
+        if intents.len() > 500 {
+            return Err("corrupt");
+        }
+        for intent in intents {
+            keys(
+                intent,
+                &[
+                    "accountId",
+                    "profileId",
+                    "userId",
+                    "sessionId",
+                    "operationId",
+                    "kind",
+                    "phase",
+                    "expectedGeneration",
+                    "targetGeneration",
+                    "startedAt",
+                ],
+            )?;
+            for name in ["accountId", "profileId", "operationId"] {
+                validate_uuid(&intent[name], true)?;
+            }
+            for name in ["userId", "sessionId"] {
+                validate_uuid(&intent[name], false)?;
+            }
+            if !matches!(
+                intent["kind"].as_str(),
+                Some("create" | "replace" | "refresh")
+            ) || !matches!(
+                intent["phase"].as_str(),
+                Some("prepared" | "sent" | "recovery-required")
+            ) {
+                return Err("corrupt");
+            }
+            validate_generation(&intent["expectedGeneration"], true)?;
+            validate_generation(&intent["targetGeneration"], false)?;
+            if intent["targetGeneration"].as_u64() <= intent["expectedGeneration"].as_u64() {
+                return Err("corrupt");
+            }
+            let at = intent["startedAt"].as_str().ok_or("corrupt")?;
+            if at.len() != 24
+                || !at.bytes().enumerate().all(|(i, c)| match i {
+                    4 | 7 => c == b'-',
+                    10 => c == b'T',
+                    13 | 16 => c == b':',
+                    19 => c == b'.',
+                    23 => c == b'Z',
+                    _ => c.is_ascii_digit(),
+                })
+            {
+                return Err("corrupt");
+            }
+            if !profiles.iter().any(|p| p["id"] == intent["profileId"]) {
+                return Err("corrupt");
+            }
+        }
+    }
+    Ok(())
+}
+fn validate_uuid(value: &serde_json::Value, local: bool) -> StorageResult<()> {
+    let text = value.as_str().ok_or("corrupt")?;
+    let id = uuid::Uuid::parse_str(text).map_err(|_| "corrupt")?;
+    if id.to_string() != text
+        || id.get_variant() != uuid::Variant::RFC4122
+        || if local {
+            id.get_version_num() != 4
+        } else {
+            !(1..=8).contains(&id.get_version_num())
+        }
+    {
+        return Err("corrupt");
+    }
+    Ok(())
+}
+fn validate_generation(value: &serde_json::Value, zero: bool) -> StorageResult<()> {
+    let n = value.as_u64().ok_or("corrupt")?;
+    if n > 9_007_199_254_740_991 || (!zero && n == 0) {
+        return Err("corrupt");
     }
     Ok(())
 }
@@ -234,6 +460,38 @@ fn validate_nonsecret_keys(value: &serde_json::Value) -> StorageResult<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn version_two_intents_are_nonsecret_and_downgrades_preserve_state() {
+        let dir =
+            std::env::temp_dir().join(format!("windwatcher-v2-test-{}", uuid::Uuid::new_v4()));
+        fs::create_dir(&dir).unwrap();
+        let v1 = serde_json::json!({"schemaVersion":1,"revision":1,"serverProfiles":[],"accounts":[],"selectedAccountId":null}).to_string();
+        write_document(dir.clone(), None, v1.clone()).unwrap();
+        let v2 = serde_json::json!({"schemaVersion":2,"revision":2,"serverProfiles":[],"accounts":[],"selectedAccountId":null,"authOperations":[]}).to_string();
+        write_document(dir.clone(), Some(v1), v2.clone()).unwrap();
+        let downgrade = serde_json::json!({"schemaVersion":1,"revision":3,"serverProfiles":[],"accounts":[],"selectedAccountId":null}).to_string();
+        assert_eq!(
+            write_document(dir.clone(), Some(v2.clone()), downgrade),
+            Err("version-unsupported")
+        );
+        assert_eq!(
+            read_document(dir.join("client-state-v1.json")).unwrap(),
+            Some(v2)
+        );
+        let mut secret = serde_json::json!({"schemaVersion":2,"revision":3,"serverProfiles":[],"accounts":[],"selectedAccountId":null,"authOperations":[{"refreshToken":"synthetic"}]});
+        assert_eq!(validate_nonsecret_keys(&secret), Err("corrupt"));
+        secret["authOperations"] = serde_json::json!([]);
+        assert!(validate_nonsecret_keys(&secret).is_ok());
+        fs::remove_dir_all(dir).unwrap();
+    }
+    #[test]
+    fn native_opaque_record_size_is_checked_before_provider_writes() {
+        assert_eq!(validate_write_size(0), Err("corrupt"));
+        assert_eq!(validate_write_size(961), Ok(()));
+        assert_eq!(validate_write_size(MAX_SECRET), Ok(()));
+        assert_eq!(validate_write_size(MAX_SECRET + 1), Err("too-large"));
+        assert_eq!(validate_write_size(usize::MAX), Err("too-large"));
+    }
     #[test]
     fn aliases_reject_paths_and_noncanonical_ids() {
         assert!(alias("../credentials").is_err());

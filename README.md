@@ -7,10 +7,10 @@ One React application targets the web and Tauri 2 on Linux, Windows and Android.
 ## Status
 
 This repository contains the shared toolchain, a typed HTTP foundation and a
-responsive shell, accessible visual tokens, working language/appearance choices
-and manual server inspection with optional Linux-native local suggestions.
-Saved server profiles, accounts and messaging
-are **not implemented yet**.
+responsive shell, accessible visual tokens, working language/appearance choices,
+manual server inspection with optional Linux-native local suggestions, saved
+server profiles, registration, sign-in and recoverable sessions. Messaging and
+full account switching are **not implemented yet**.
 There are no published client releases or supported installation packages.
 `0.0.1-dev.0` in build manifests is an unpublished development placeholder, not a release.
 
@@ -20,7 +20,10 @@ The pinned OpenAPI snapshot and browser/native HTTP adapters are documented in
 the [transport guide](docs/network-transport.md). Inspection contacts only the
 server the user supplies, except for a bounded Linux-native check of the two
 documented loopback defaults. [Local suggestions](docs/local-discovery.md)
-require explicit address selection; neither path authenticates or saves a profile.
+require explicit address selection; inspection alone neither authenticates nor
+saves a profile. After explicitly saving a server, users can register where
+allowed and sign in. See [authentication and sessions](docs/authentication-and-sessions.md)
+for credential-storage and platform limitations.
 
 ## Development
 

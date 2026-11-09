@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ProfileRepository } from "./repository";
 import { decodeState, emptyState } from "./schema";
-import type { ClientStateV1 } from "./schema";
+import type { ClientStateV2 } from "./schema";
 import { ClientStateStore } from "../../shared/storage/state-store";
 import { browserDocument, browserNamespace, browserSecrets } from "../../shared/storage/browser";
 import { StorageError } from "../../shared/storage/errors";
@@ -221,9 +221,9 @@ describe("profile/account repository", () => {
   });
 });
 
-describe("strict V1 decoding", () => {
+describe("strict V1/V2 decoding", () => {
   it("classifies unknown future documents before applying V1 field rules", () => {
-    expect(() => decodeState('{"schemaVersion":2,"futureField":true}')).toThrow(
+    expect(() => decodeState('{"schemaVersion":3,"futureField":true}')).toThrow(
       expect.objectContaining({ category: "version-unsupported" }),
     );
   });
@@ -233,27 +233,27 @@ describe("strict V1 decoding", () => {
     "null",
     "{}",
     '{"schemaVersion":0}',
-    JSON.stringify({ ...emptyState(), schemaVersion: 2 }),
+    JSON.stringify({ ...emptyState(), schemaVersion: 3 }),
   ])("never resets malformed/future documents %j", (document) => {
     expect(() => decodeState(document)).toThrow(StorageError);
   });
   it.each([
-    (s: ClientStateV1) => {
+    (s: ClientStateV2) => {
       s.serverProfiles[0]!.id = "invalid";
     },
-    (s: ClientStateV1) => {
+    (s: ClientStateV2) => {
       s.serverProfiles[0]!.canonicalUrl = "https://example.test/v1";
     },
-    (s: ClientStateV1) => {
+    (s: ClientStateV2) => {
       s.serverProfiles.push(s.serverProfiles[0]!);
     },
-    (s: ClientStateV1) => {
+    (s: ClientStateV2) => {
       s.selectedAccountId = crypto.randomUUID();
     },
-    (s: ClientStateV1) => {
+    (s: ClientStateV2) => {
       s.revision = -1;
     },
-    (s: ClientStateV1) => {
+    (s: ClientStateV2) => {
       s.serverProfiles[0]!.discovery.apiVersions = ["v2"];
     },
   ])("rejects damaged references and invariants", async (damage) => {

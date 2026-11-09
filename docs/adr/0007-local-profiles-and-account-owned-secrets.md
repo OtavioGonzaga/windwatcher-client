@@ -3,6 +3,9 @@
 - Status: Accepted
 - Date: 2026-11-06
 
+The Windows provider decision below is superseded by
+[ADR 0008](0008-windows-user-scoped-dpapi-records.md). Other storage boundaries remain in force.
+
 ## Context
 
 Several server roots and user identities must survive restart without conflating

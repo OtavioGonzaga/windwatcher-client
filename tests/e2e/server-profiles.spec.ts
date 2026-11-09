@@ -41,6 +41,7 @@ test("explicit inspect/save/reload/dedupe/rename/reinspect/confirmed-forget has 
   expect(state.selectedAccountId).toBeNull();
   expect(Object.keys(state).sort()).toEqual([
     "accounts",
+    "authOperations",
     "revision",
     "schemaVersion",
     "selectedAccountId",
