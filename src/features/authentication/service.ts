@@ -359,8 +359,8 @@ export class AuthenticationService {
     let flight = this.flights.get(key);
     if (!flight) {
       const publication = this.publication;
-      const work = this.persistence.locks.run(
-        `account-${accountId}`,
+      const work = this.persistence.accountOperation(
+        accountId,
         async (lease) => {
           const context = await this.context(accountId, lease);
           // A different tab/process may already have confirmed and persisted renewal.
@@ -405,8 +405,8 @@ export class AuthenticationService {
   async currentUser(accountId: string, signal?: AbortSignal): Promise<UserIdentity> {
     this.supported();
     cancelled(signal);
-    return this.persistence.locks.run(
-      `account-${accountId}`,
+    return this.persistence.accountOperation(
+      accountId,
       async (lease) => {
         await checkpoint(lease, signal);
         const context = await this.context(accountId, lease);
@@ -462,7 +462,7 @@ export class AuthenticationService {
       )) {
         try {
           // oxlint-disable-next-line no-await-in-loop -- Cross-store reconciliation is intentionally sequential.
-          await this.persistence.locks.run(`account-${op.accountId}`, (lease) =>
+          await this.persistence.accountOperation(op.accountId, (lease) =>
             this.persistence.reconcileOne(op.accountId, lease),
           );
         } catch (error) {

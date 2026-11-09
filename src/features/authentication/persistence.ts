@@ -56,6 +56,27 @@ export class SessionPersistence {
     readonly locks: OperationLocks,
   ) {}
 
+  /** Profile gate bounds bulk cleanup to one profile, one account and one state lease. */
+  async accountOperation<T>(
+    id: string,
+    action: (lease: OperationLease) => Promise<T>,
+    wait = false,
+  ): Promise<T> {
+    const state = await this.state.load();
+    const profileId =
+      state.accounts.find((a) => a.id === id)?.serverProfileId ??
+      state.authOperations.find((op) => op.accountId === id)?.profileId;
+    if (!profileId) throw new StorageError("conflict");
+    return this.locks.run(
+      `profile-${profileId}`,
+      async (profileLease) => {
+        await profileLease.check();
+        return this.locks.run(`account-${id}`, action, wait);
+      },
+      wait,
+    );
+  }
+
   async read(account: AccountRecord, lease: OperationLease): Promise<SessionEnvelope | null> {
     await lease.check();
     const bytes = await this.secrets.get(account.id, lease);
@@ -81,128 +102,134 @@ export class SessionPersistence {
     const grant = decodeSessionGrant(grantInput);
     if (user.disabled_at) throw new ApiError("http", { status: 403, code: "auth.user_disabled" });
     return this.locks.run(
-      `identity-${profileId}-${user.id}`,
-      async (identityLease) => {
-        await checkpoint(identityLease, signal);
-        const initial = await this.state.load();
-        const profile = initial.serverProfiles.find((p) => p.id === profileId);
-        if (!profile) throw new StorageError("conflict");
-        const existing = initial.accounts.find(
-          (a) => a.serverProfileId === profileId && a.serverUserId === user.id,
-        );
-        const pending = initial.authOperations.find(
-          (op) => op.profileId === profileId && op.userId === user.id,
-        );
-        const id = existing?.id ?? pending?.accountId ?? freshId(initial);
-        return this.locks.run(
-          `account-${id}`,
-          async (lease) => {
-            await checkpoint(lease, signal);
-            await this.reconcileOne(id, lease);
-            const state = await this.state.load();
-            const current = state.accounts.find((a) => a.id === id);
-            const old = state.authOperations.find((op) => op.accountId === id);
-            let storedGeneration = 0;
-            if (current) {
-              try {
-                storedGeneration = (await this.read(current, lease))?.generation ?? 0;
-              } catch (error) {
-                if (!(error instanceof StorageError) || error.category !== "corrupt") throw error;
-              }
-            }
-            await checkpoint(lease, signal);
-            const generation =
-              Math.max(
-                current?.session?.generation ?? 0,
-                old?.targetGeneration ?? 0,
-                storedGeneration,
-              ) + 1;
-            if (!Number.isSafeInteger(generation)) throw new StorageError("conflict");
-            const intent: AuthIntent = {
-              accountId: id,
-              profileId,
-              userId: user.id,
-              sessionId: grant.session_id,
-              operationId: freshId(state, [id]),
-              kind: current ? "replace" : "create",
-              phase: "prepared",
-              expectedGeneration: current?.session?.generation ?? 0,
-              targetGeneration: generation,
-              startedAt: new Date().toISOString(),
-            };
-            await this.state.update((draft) => {
-              if (
-                signal?.aborted ||
-                draft.serverProfiles.find((p) => p.id === profileId)?.canonicalUrl !==
-                  profile.canonicalUrl
-              )
-                throw new StorageError("conflict");
-              const pair = draft.accounts.find(
-                (a) => a.serverProfileId === profileId && a.serverUserId === user.id,
-              );
-              if (pair && pair.id !== id) throw new StorageError("conflict");
-              if ((pair?.session?.generation ?? 0) !== intent.expectedGeneration)
-                throw new StorageError("conflict");
-              draft.authOperations = draft.authOperations.filter((op) => op.accountId !== id);
-              draft.authOperations.push(intent);
-            });
-            const envelope: SessionEnvelope = {
-              accountId: id,
-              profileId,
-              userId: user.id,
-              operationId: intent.operationId,
-              generation,
-              grant,
-            };
-            try {
-              await this.persist(intent, envelope, lease, user.username, signal);
-              const result = (await this.state.load()).accounts.find((a) => a.id === id);
-              await checkpoint(lease, signal);
-              if (!result) throw new StorageError("conflict");
-              return result;
-            } catch (error) {
-              // Only a proven new orphan may be deleted. A committed or existing row is never compensated away.
-              try {
-                const latest = await this.state.load();
-                const row = latest.accounts.find((a) => a.id === id);
-                const completed =
-                  row?.session?.operationId === intent.operationId &&
-                  row.session.generation === intent.targetGeneration;
-                if (signal?.aborted && completed) {
-                  await this.state.update((draft) => {
+      `profile-${profileId}`,
+      () =>
+        this.locks.run(
+          `identity-${profileId}-${user.id}`,
+          async (identityLease) => {
+            await checkpoint(identityLease, signal);
+            const initial = await this.state.load();
+            const profile = initial.serverProfiles.find((p) => p.id === profileId);
+            if (!profile) throw new StorageError("conflict");
+            const existing = initial.accounts.find(
+              (a) => a.serverProfileId === profileId && a.serverUserId === user.id,
+            );
+            const pending = initial.authOperations.find(
+              (op) => op.profileId === profileId && op.userId === user.id,
+            );
+            const id = existing?.id ?? pending?.accountId ?? freshId(initial);
+            return this.locks.run(
+              `account-${id}`,
+              async (lease) => {
+                await checkpoint(lease, signal);
+                await this.reconcileOne(id, lease);
+                const state = await this.state.load();
+                const current = state.accounts.find((a) => a.id === id);
+                const old = state.authOperations.find((op) => op.accountId === id);
+                let storedGeneration = 0;
+                if (current) {
+                  try {
+                    storedGeneration = (await this.read(current, lease))?.generation ?? 0;
+                  } catch (error) {
+                    if (!(error instanceof StorageError) || error.category !== "corrupt")
+                      throw error;
+                  }
+                }
+                await checkpoint(lease, signal);
+                const generation =
+                  Math.max(
+                    current?.session?.generation ?? 0,
+                    old?.targetGeneration ?? 0,
+                    storedGeneration,
+                  ) + 1;
+                if (!Number.isSafeInteger(generation)) throw new StorageError("conflict");
+                const intent: AuthIntent = {
+                  accountId: id,
+                  profileId,
+                  userId: user.id,
+                  sessionId: grant.session_id,
+                  operationId: freshId(state, [id]),
+                  kind: current ? "replace" : "create",
+                  phase: "prepared",
+                  expectedGeneration: current?.session?.generation ?? 0,
+                  targetGeneration: generation,
+                  startedAt: new Date().toISOString(),
+                };
+                await this.state.update((draft) => {
+                  if (
+                    signal?.aborted ||
+                    draft.serverProfiles.find((p) => p.id === profileId)?.canonicalUrl !==
+                      profile.canonicalUrl
+                  )
+                    throw new StorageError("conflict");
+                  const pair = draft.accounts.find(
+                    (a) => a.serverProfileId === profileId && a.serverUserId === user.id,
+                  );
+                  if (pair && pair.id !== id) throw new StorageError("conflict");
+                  if ((pair?.session?.generation ?? 0) !== intent.expectedGeneration)
+                    throw new StorageError("conflict");
+                  draft.authOperations = draft.authOperations.filter((op) => op.accountId !== id);
+                  draft.authOperations.push(intent);
+                });
+                const envelope: SessionEnvelope = {
+                  accountId: id,
+                  profileId,
+                  userId: user.id,
+                  operationId: intent.operationId,
+                  generation,
+                  grant,
+                };
+                try {
+                  await this.persist(intent, envelope, lease, user.username, signal);
+                  const result = (await this.state.load()).accounts.find((a) => a.id === id);
+                  await checkpoint(lease, signal);
+                  if (!result) throw new StorageError("conflict");
+                  return result;
+                } catch (error) {
+                  // Only a proven new orphan may be deleted. A committed or existing row is never compensated away.
+                  try {
+                    const latest = await this.state.load();
+                    const row = latest.accounts.find((a) => a.id === id);
+                    const completed =
+                      row?.session?.operationId === intent.operationId &&
+                      row.session.generation === intent.targetGeneration;
+                    if (signal?.aborted && completed) {
+                      await this.state.update((draft) => {
+                        if (
+                          draft.selectedAccountId === id &&
+                          draft.accounts.find((a) => a.id === id)?.session?.operationId ===
+                            intent.operationId
+                        )
+                          draft.selectedAccountId =
+                            initial.selectedAccountId &&
+                            draft.accounts.some((a) => a.id === initial.selectedAccountId)
+                              ? initial.selectedAccountId
+                              : null;
+                        // The saved value is retained; cancelled completion never publishes a ready context.
+                      });
+                    }
                     if (
-                      draft.selectedAccountId === id &&
-                      draft.accounts.find((a) => a.id === id)?.session?.operationId ===
-                        intent.operationId
-                    )
-                      draft.selectedAccountId =
-                        initial.selectedAccountId &&
-                        draft.accounts.some((a) => a.id === initial.selectedAccountId)
-                          ? initial.selectedAccountId
-                          : null;
-                    // The saved value is retained; cancelled completion never publishes a ready context.
-                  });
+                      !latest.accounts.some((a) => a.id === id) &&
+                      intent.kind === "create" &&
+                      latest.authOperations.some((op) => sameIntent(op, intent))
+                    ) {
+                      await this.secrets.remove(id, lease);
+                      await this.clear(intent);
+                    } else if (!completed) {
+                      if (signal?.aborted) await this.requireRecovery(intent);
+                      else await this.reconcileOne(id, lease);
+                    }
+                  } catch {
+                    /* Keep the durable intent if compensation/lease/storage fails. */
+                  }
+                  throw error;
                 }
-                if (
-                  !latest.accounts.some((a) => a.id === id) &&
-                  intent.kind === "create" &&
-                  latest.authOperations.some((op) => sameIntent(op, intent))
-                ) {
-                  await this.secrets.remove(id, lease);
-                  await this.clear(intent);
-                } else if (!completed) {
-                  if (signal?.aborted) await this.requireRecovery(intent);
-                  else await this.reconcileOne(id, lease);
-                }
-              } catch {
-                /* Keep the durable intent if compensation/lease/storage fails. */
-              }
-              throw error;
-            }
+              },
+              true,
+            );
           },
           true,
-        );
-      },
+        ),
       true,
     );
   }
@@ -389,9 +416,7 @@ export class SessionPersistence {
     const state = await this.state.load();
     for (const op of state.authOperations) {
       // oxlint-disable-next-line no-await-in-loop -- Never run vault/crash reconciliation batches concurrently.
-      await this.locks.run(`account-${op.accountId}`, (lease) =>
-        this.reconcileOne(op.accountId, lease),
-      );
+      await this.accountOperation(op.accountId, (lease) => this.reconcileOne(op.accountId, lease));
     }
   }
 }

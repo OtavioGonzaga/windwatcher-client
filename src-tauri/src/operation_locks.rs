@@ -93,6 +93,11 @@ fn validate_key(key: &str) -> Result<()> {
     if key == "state" {
         return Ok(());
     }
+    if let Some(id) = key.strip_prefix("profile-")
+        && canonical_uuid(id, true)
+    {
+        return Ok(());
+    }
     if let Some(id) = key.strip_prefix("account-")
         && canonical_uuid(id, true)
     {
