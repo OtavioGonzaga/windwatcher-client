@@ -2,11 +2,13 @@
 
 ## Implementation status
 
-The server-bound HTTP boundary, runtime decoders and coordinated session persistence
-are implemented and tested. There is **no production login/registration UI, refresh
-coordinator or automatic session restoration yet**. The profile/account registry alone
-does not establish authentication. `SessionPersistence` is composed above the ports,
-but no end-user flow invokes login persistence until the remaining integration gates pass.
+The server-bound HTTP boundary, runtime decoders, coordinated session persistence,
+refresh coordinator and saved-server login and registration routes are implemented.
+Home restores the selected account and only displays an authenticated identity after
+the server confirms it. The profile/account registry alone does not establish
+authentication. Registration creates a remote user but does not create a session.
+Browser credential storage is unencrypted and the UI warns about HTTP and browser
+storage; Web Locks are required for coordinated writes.
 
 ## Pinned contract
 

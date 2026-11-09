@@ -56,6 +56,13 @@ function ProfileRow({
       <p>{t(profile.discovery.kind === "legacy" ? "profiles.legacy" : "profiles.supported")}</p>
       <Link
         className="inline-flex min-h-11 items-center underline"
+        to={`/servers/${profile.id}/login`}
+        aria-labelledby={`${prefix}-login ${addressId}`}
+      >
+        <span id={`${prefix}-login`}>{t("auth.signIn")}</span>
+      </Link>
+      <Link
+        className="inline-flex min-h-11 items-center underline"
         to={`/connect?server=${encodeURIComponent(profile.canonicalUrl)}`}
         aria-labelledby={`${prefix}-inspect ${addressId}`}
       >

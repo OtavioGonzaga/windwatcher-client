@@ -22,7 +22,8 @@ backend. See [ADR 0001](adr/0001-shared-react-and-tauri-application.md).
 The Home route displays supplied artwork and a truthful product description;
 Preferences offers real language/appearance controls. Both share responsive
 navigation. A Home CTA opens manual server inspection with explicit profile save;
-Home lists persisted profiles. There is no authentication or conversation UI. New boundaries
+Home lists persisted profiles and the verified selected session; saved profiles link to
+sign-in and conditional registration. There is no conversation UI. New boundaries
 should be introduced only when used.
 
 ## Presentation and localization

@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router";
 import { ServerProfilesList } from "../../features/server-profiles/ServerProfilesList";
+import { SessionSummary } from "../../features/authentication/SessionSummary";
 
 export function HomePage() {
   const { t: foundation } = useTranslation("foundation");
@@ -18,6 +19,7 @@ export function HomePage() {
         Windwatcher
       </h1>
       <p className="text-secondary">{foundation("description")}</p>
+      <SessionSummary />
       <Link
         to="/connect"
         className="inline-flex min-h-11 items-center self-start rounded-sm bg-action px-4 text-on-action"

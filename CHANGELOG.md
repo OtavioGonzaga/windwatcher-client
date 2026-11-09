@@ -11,7 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Coordinated session storage foundation: explicit V1-to-V2 metadata migration,
   bounded nonsecret recovery intents, exact-ID secret-first verification and
-  fenced browser/native operation ownership. Authentication UI is not enabled yet.
+  fenced browser/native operation ownership.
+- Saved-server registration and sign-in, verified session restoration and safe
+  one-use refresh coordination, with browser-storage and HTTP warnings.
 - Explicitly saved, durable server profiles with canonical address deduplication,
   local labels, historical inspection snapshots, reinspection and confirmed forget.
 - Validated V1 nonsecret storage and account registry with independent local IDs,
