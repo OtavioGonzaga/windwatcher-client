@@ -14,6 +14,7 @@ import { SessionPersistence } from "./persistence";
 import { grant, user } from "../../../tests/fixtures/authentication";
 import { problem } from "../../../tests/fixtures/instance";
 import type { SessionGrant } from "./validation";
+import { ConversationsApi } from "../conversations/api";
 
 async function setup() {
   const clock = { value: Date.parse("2026-11-06T12:00:00Z") };
@@ -46,7 +47,12 @@ async function setup() {
   });
   const api = (profile: { canonicalUrl: string }) =>
     new AuthApi(new ApiClient({ baseUrl: profile.canonicalUrl, transport }));
-  const service = new AuthenticationService(persistence, api, () => clock.value);
+  const service = new AuthenticationService(
+    persistence,
+    api,
+    () => clock.value,
+    (profile) => new ConversationsApi(new ApiClient({ baseUrl: profile.canonicalUrl, transport })),
+  );
   const addProfile = async (root: string) =>
     (
       await profiles.saveInspection(
@@ -93,6 +99,81 @@ async function setup() {
 beforeEach(() => localStorage.clear());
 
 describe("authentication orchestration", () => {
+  it("refreshes a near-expiry session before a conversation GET", async () => {
+    const f = await setup();
+    await f.login();
+    f.clock.value += 56_000;
+    f.transport.mockClear();
+    f.transport.mockImplementationOnce(async () => Response.json(f.makeGrant()));
+    f.transport.mockImplementationOnce(async () => Response.json({ items: [], has_more: false }));
+    await expect(f.service.listConversations(f.service.activeContext()!)).resolves.toMatchObject({
+      items: [],
+    });
+    expect(f.transport.mock.calls.map(([url]) => url.pathname)).toEqual([
+      "/proxy/v1/sessions/refresh",
+      "/proxy/v1/conversations",
+    ]);
+  });
+  it("never refreshes a conversation request for a 404", async () => {
+    const f = await setup();
+    await f.login();
+    f.transport.mockClear();
+    f.transport.mockImplementationOnce(async () =>
+      Response.json(problem(404, "conversation.not_found"), {
+        status: 404,
+        headers: { "Content-Type": "application/problem+json" },
+      }),
+    );
+    await expect(
+      f.service.getConversation(f.service.activeContext()!, user.id),
+    ).rejects.toMatchObject({ metadata: { status: 404 } });
+    expect(f.refreshCalls()).toHaveLength(0);
+  });
+  it("binds conversation reads to the selected server and refreshes on qualifying 401 once", async () => {
+    const f = await setup();
+    await f.login();
+    f.transport.mockClear();
+    f.transport.mockImplementationOnce(async () =>
+      Response.json(problem(401, "auth.invalid_access_token"), {
+        status: 401,
+        headers: { "Content-Type": "application/problem+json" },
+      }),
+    );
+    f.transport.mockImplementationOnce(async () => Response.json(f.makeGrant()));
+    f.transport.mockImplementationOnce(async () => Response.json({ items: [], has_more: false }));
+    await expect(f.service.listConversations(f.service.activeContext()!)).resolves.toEqual({
+      items: [],
+      has_more: false,
+    });
+    expect(f.transport.mock.calls.map(([url]) => url.pathname)).toEqual([
+      "/proxy/v1/conversations",
+      "/proxy/v1/sessions/refresh",
+      "/proxy/v1/conversations",
+    ]);
+    expect(f.transport.mock.calls[0]![0].searchParams.get("limit")).toBe("50");
+    expect(f.refreshCalls()).toHaveLength(1);
+  });
+  it("drops an abandoned conversation read even if the transport resolves after abort", async () => {
+    const f = await setup();
+    await f.login();
+    let finish!: (response: Response) => void;
+    let started!: () => void;
+    const pending = new Promise<void>((resolve) => {
+      started = resolve;
+    });
+    f.transport.mockImplementationOnce(async () => {
+      started();
+      return new Promise<Response>((resolve) => {
+        finish = resolve;
+      });
+    });
+    const read = f.service.listConversations(f.service.activeContext()!);
+    const rejected = expect(read).rejects.toMatchObject({ category: "cancelled" });
+    await pending;
+    await f.service.switchAccount(null);
+    finish(Response.json({ items: [], has_more: false }));
+    await rejected;
+  });
   it.each([false, true])(
     "revalidates the selected session after invalid credentials (account-specific: %s)",
     async (reauthenticate) => {
