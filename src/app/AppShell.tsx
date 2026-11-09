@@ -4,6 +4,7 @@ import { NavLink, Outlet, useLocation } from "react-router";
 import { RouteEffects } from "./navigation/RouteEffects";
 import { RouteErrorBoundary } from "./RouteErrorBoundary";
 import { AndroidBack } from "./navigation/AndroidBack";
+import { SessionSummary } from "../features/authentication/SessionSummary";
 
 export function AppShell() {
   const { t } = useTranslation();
@@ -45,6 +46,7 @@ export function AppShell() {
       >
         <div className="mx-auto w-full max-w-2xl">
           <AndroidBack />
+          <SessionSummary />
           <RouteErrorBoundary key={location.key}>
             <Outlet />
           </RouteErrorBoundary>

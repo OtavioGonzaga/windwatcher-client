@@ -105,14 +105,17 @@ export function AuthenticationPage({ registration = false }: { registration?: bo
     const secret = password.current?.value ?? "";
     if (!name) {
       setValidation("username");
+      username.current?.focus();
       return;
     }
     if (!secret) {
       setValidation("password");
+      password.current?.focus();
       return;
     }
     if (registration && secret !== confirmation.current?.value) {
       setValidation("confirmation");
+      confirmation.current?.focus();
       return;
     }
     if (
@@ -122,6 +125,7 @@ export function AuthenticationPage({ registration = false }: { registration?: bo
         /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/u.test(secret))
     ) {
       setValidation("policy");
+      password.current?.focus();
       return;
     }
     const controller = new AbortController();
