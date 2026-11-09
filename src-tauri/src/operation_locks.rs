@@ -235,6 +235,8 @@ mod tests {
         for key in [
             "../state",
             "account-../secret",
+            "profile-../secret",
+            "profile-invalid",
             "identity-invalid",
             "state/other",
             "",
