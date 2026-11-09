@@ -29,6 +29,11 @@ export function AndroidBack() {
         if (lifetime.signal.aborted) return;
         dispose = adapter.subscribeBack(
           (canGoBack) => {
+            const dialog = document.querySelector<HTMLDialogElement>("dialog[open]");
+            if (dialog) {
+              dialog.close();
+              return;
+            }
             if (busy.current) return;
             busy.current = true;
             const { location: route, navigate: go } = current.current;

@@ -1,5 +1,38 @@
 {
   "common": {
+    "accounts": {
+      "title": "Konten und Server",
+      "close": "Schließen",
+      "empty": "Keine gespeicherten Konten. Füge einen Server hinzu oder melde dich unten mit einem anderen Konto an.",
+      "clear": "Kein Konto verwenden",
+      "select": "Wechseln",
+      "logout": "Abmelden",
+      "remove": "Gespeichertes Konto entfernen",
+      "add": "Weiteres Konto auf diesem Server hinzufügen",
+      "addServer": "Server hinzufügen",
+      "confirm": "Bestätigen",
+      "switchLabel": "Zu {{username}} auf {{server}} wechseln",
+      "signInLabel": "Erneut als {{username}} auf {{server}} anmelden",
+      "logoutLabel": "{{username}} auf {{server}} abmelden",
+      "removeLabel": "Gespeichertes Konto {{username}} auf {{server}} entfernen",
+      "addLabel": "Weiteres Konto auf {{server}} hinzufügen",
+      "confirmLogout": "{{username}} auf {{server}} abmelden?",
+      "confirmRemove": "{{username}} auf {{server}} entfernen?",
+      "logoutWarning": "Dies löscht die gespeicherten Zugangsdaten auf diesem Gerät und versucht, diese Serversitzung zu widerrufen. Der entfernte Widerruf kann unbestätigt bleiben. Bereits ausgestellte Zugriffstoken können bis zu ihrem Ablauf gültig bleiben.",
+      "removeWarning": "Dies entfernt unwiderruflich nur dieses gespeicherte Konto und seine lokalen Zugangsdaten. Der Server und andere Konten bleiben erhalten. Die entfernte Sitzung wird nicht widerrufen; melde dich zuerst ab, wenn du auch den Widerruf versuchen möchtest.",
+      "forgetWarning": "Alle lokalen Konten und Zugangsdaten dieses Servers werden entfernt. Der Widerruf entfernter Sitzungen ist nicht garantiert.",
+      "logoutConfirmed": "{{username}} ist lokal abgemeldet. Der Server hat den Widerruf zukünftiger Erneuerungen bestätigt. Bereits ausgestellte Zugriffstoken können bis zu ihrem Ablauf gültig bleiben.",
+      "logoutUnconfirmed": "{{username}} ist lokal abgemeldet. Der entfernte Widerruf wurde nicht bestätigt; der Server kann weiterhin eine gültige Sitzung halten. Bereits ausgestellte Zugriffstoken können bis zu ihrem Ablauf gültig bleiben. Es gibt keinen automatischen Wiederholungsversuch.",
+      "removed": "Das gespeicherte Konto {{username}} wurde lokal entfernt. Es wurde kein entfernter Widerruf angefordert.",
+      "status": {
+        "saved": "Gespeicherte Sitzung — derzeit nicht überprüft",
+        "signedOut": "Abgemeldet — zur Verwendung anmelden",
+        "verified": "Aktiv — überprüft",
+        "needsLogin": "Anmeldung erforderlich",
+        "unavailable": "Verbindung oder Speicher nicht verfügbar — erneut versuchen",
+        "checking": "Ausgewähltes Konto wird überprüft"
+      }
+    },
     "navigation": {
       "nativeBackError": "Die Zurück-Navigation des Systems ist nicht verfügbar. Verwende die Navigationslinks.",
       "home": "Startseite",

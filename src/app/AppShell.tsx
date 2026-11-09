@@ -6,6 +6,7 @@ import { RouteErrorBoundary } from "./RouteErrorBoundary";
 import { AndroidBack } from "./navigation/AndroidBack";
 import { SessionSummary } from "../features/authentication/SessionSummary";
 import { SessionOwner } from "../features/authentication/SessionOwner";
+import { AccountSwitcher } from "../features/accounts/AccountSwitcher";
 
 export function AppShell() {
   const { t } = useTranslation();
@@ -26,7 +27,10 @@ export function AppShell() {
         </a>
         <RouteEffects />
         <header className="min-w-0 border-b border-border px-5 py-4 font-medium md:col-span-2">
-          Windwatcher
+          <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
+            <span>Windwatcher</span>
+            <AccountSwitcher />
+          </div>
         </header>
         <nav
           aria-label={t("navigation.label")}

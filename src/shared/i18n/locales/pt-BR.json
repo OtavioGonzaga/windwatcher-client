@@ -1,5 +1,38 @@
 {
   "common": {
+    "accounts": {
+      "title": "Contas e servidores",
+      "close": "Fechar",
+      "empty": "Nenhuma conta salva. Adicione um servidor ou entre em outra conta abaixo.",
+      "clear": "Não usar nenhuma conta",
+      "select": "Mudar para",
+      "logout": "Sair da conta",
+      "remove": "Remover conta salva",
+      "add": "Adicionar outra conta neste servidor",
+      "addServer": "Adicionar servidor",
+      "confirm": "Confirmar",
+      "switchLabel": "Mudar para {{username}} em {{server}}",
+      "signInLabel": "Entrar novamente como {{username}} em {{server}}",
+      "logoutLabel": "Sair de {{username}} em {{server}}",
+      "removeLabel": "Remover conta salva {{username}} em {{server}}",
+      "addLabel": "Adicionar outra conta em {{server}}",
+      "confirmLogout": "Sair de {{username}} em {{server}}?",
+      "confirmRemove": "Remover {{username}} em {{server}}?",
+      "logoutWarning": "Isso exclui as credenciais salvas neste dispositivo e tenta revogar essa sessão no servidor. A revogação remota pode não ser confirmada. Tokens de acesso já emitidos podem continuar válidos até expirarem.",
+      "removeWarning": "Isso esquece irreversivelmente apenas esta conta salva e suas credenciais locais. O servidor e as outras contas permanecem. A sessão remota não é revogada; saia da conta primeiro se também quiser tentar a revogação.",
+      "forgetWarning": "Todas as contas e credenciais locais deste servidor serão esquecidas. A revogação das sessões remotas não é garantida.",
+      "logoutConfirmed": "{{username}} saiu localmente. O servidor confirmou a revogação de futuras renovações. Tokens de acesso já emitidos podem continuar válidos até expirarem.",
+      "logoutUnconfirmed": "{{username}} saiu localmente. A revogação remota não foi confirmada; o servidor ainda pode manter uma sessão válida. Tokens de acesso já emitidos podem continuar válidos até expirarem. Não haverá tentativa automática.",
+      "removed": "A conta salva {{username}} foi removida localmente. Nenhuma revogação remota foi solicitada.",
+      "status": {
+        "saved": "Sessão salva — não verificada agora",
+        "signedOut": "Desconectada — entre para usar",
+        "verified": "Ativa — verificada",
+        "needsLogin": "É necessário entrar",
+        "unavailable": "Conexão ou armazenamento indisponível — tente novamente",
+        "checking": "Verificando conta selecionada"
+      }
+    },
     "navigation": {
       "nativeBackError": "A navegação de voltar do sistema está indisponível. Use os links de navegação.",
       "home": "Início",

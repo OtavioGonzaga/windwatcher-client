@@ -37,6 +37,14 @@ export class ProfileRepository {
   subscribe(listener: () => void) {
     return this.state.subscribe(listener);
   }
+  watch(listener: () => void) {
+    const external = this.state.subscribe(listener);
+    const committed = this.state.subscribeCommitted(listener);
+    return () => {
+      external();
+      committed();
+    };
+  }
   private accountOperation<T>(id: string, action: (lease?: OperationLease) => Promise<T>) {
     return this.locks?.supported ? this.locks.run(`account-${id}`, action) : action();
   }

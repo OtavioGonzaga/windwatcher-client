@@ -8,6 +8,7 @@ import { formatDate } from "../../shared/i18n/format";
 import { resolveLocale } from "../../shared/i18n/locale";
 import type { ClientStateV2, ServerProfile } from "./schema";
 import { StorageNotice } from "./StorageNotice";
+import { authenticationService } from "../authentication/platform-authentication";
 
 function ProfileRow({
   profile,
@@ -103,6 +104,7 @@ function ProfileRow({
           aria-labelledby={`${prefix}-confirm ${addressId}`}
           className="flex flex-col gap-3"
         >
+          <p>{t("accounts.forgetWarning")}</p>
           <p>
             {t(accounts > 0 ? "profiles.confirmAccounts" : "profiles.confirm", { count: accounts })}
           </p>
@@ -177,7 +179,7 @@ export function ServerProfilesList() {
       const repository = await profileRepository();
       const next = await (action === "rename"
         ? repository.renameProfile(id, label, state.revision)
-        : repository.forgetProfile(id, state.revision));
+        : (await authenticationService()).forgetServer(id, state.revision));
       setState(next);
       setSuccess(true);
       if (action === "forget") heading.current?.focus();
