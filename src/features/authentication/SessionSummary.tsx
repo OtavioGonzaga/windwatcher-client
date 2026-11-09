@@ -1,36 +1,12 @@
-import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import { useTranslation } from "react-i18next";
 import { Button } from "../../shared/components/Button";
-import { authenticationService } from "./platform-authentication";
-import type { SessionStatus } from "./service";
+import { useSession } from "./SessionOwner";
 import { errorKey } from "./error-key";
 
 export function SessionSummary() {
   const { t } = useTranslation();
-  const [status, setStatus] = useState<SessionStatus>();
-  const [retry, setRetry] = useState(0);
-  useEffect(() => {
-    const controller = new AbortController();
-    let unsubscribe: (() => void) | undefined;
-    void authenticationService()
-      .then((owner) => {
-        if (controller.signal.aborted) return;
-        const update = () => setStatus(owner.getSnapshot());
-        unsubscribe = owner.subscribe(update);
-        update();
-        void owner.restoreSelected(controller.signal);
-      })
-      .catch(() => {
-        if (!controller.signal.aborted)
-          setStatus({ kind: "error", category: "storage-unavailable" });
-      });
-    return () => {
-      controller.abort();
-      unsubscribe?.();
-    };
-    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- Retry explicitly starts a new restoration attempt.
-  }, [retry]);
+  const { status, retry } = useSession();
 
   if (!status || status.kind === "signed-out") return null;
   return (
@@ -49,7 +25,9 @@ export function SessionSummary() {
                     ? "auth.errors.identity"
                     : status.reason === "missing"
                       ? "auth.errors.missing"
-                      : "auth.errors.recovery",
+                      : status.reason === "invalid"
+                        ? "auth.errors.session"
+                        : "auth.errors.recovery",
             )}
           </p>
           <Link
@@ -66,7 +44,7 @@ export function SessionSummary() {
           {status.retryAfterMs !== undefined && (
             <p>{t("auth.retryAfter", { seconds: Math.ceil(status.retryAfterMs / 1000) })}</p>
           )}
-          <Button onClick={() => setRetry((value) => value + 1)}>{t("auth.retry")}</Button>
+          <Button onClick={retry}>{t("auth.retry")}</Button>
         </>
       )}
     </section>

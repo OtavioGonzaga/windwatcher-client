@@ -93,6 +93,314 @@ async function setup() {
 beforeEach(() => localStorage.clear());
 
 describe("authentication orchestration", () => {
+  it.each([false, true])(
+    "revalidates the selected session after invalid credentials (account-specific: %s)",
+    async (reauthenticate) => {
+      const f = await setup();
+      await f.login();
+      const id = await f.selected();
+      f.transport.mockClear();
+      f.transport.mockResolvedValueOnce(
+        Response.json(problem(401, "auth.invalid_credentials"), {
+          status: 401,
+          headers: { "Content-Type": "application/problem+json" },
+        }),
+      );
+      await expect(
+        f.service.login(
+          f.profileId,
+          reauthenticate ? "alice" : "bob",
+          "wrong",
+          f.signal(),
+          reauthenticate ? id : undefined,
+        ),
+      ).rejects.toMatchObject({ category: "http" });
+      expect(f.service.getSnapshot()).toMatchObject({ kind: "ready", accountId: id });
+      expect((await f.store.load()).selectedAccountId).toBe(id);
+      expect(
+        f.transport.mock.calls.filter(([url]) => url.pathname.endsWith("/users/me")),
+      ).toHaveLength(1);
+    },
+  );
+  it("does not restore the previous session when a newer selection wins during failed login", async () => {
+    const f = await setup();
+    await f.login();
+    const a = await f.selected();
+    const profile = await f.addProfile("https://other.test/");
+    await f.service.login(profile, "alice", "synthetic", f.signal());
+    const b = await f.selected();
+    await f.service.switchAccount(a);
+    let finish!: (response: Response) => void;
+    let started!: () => void;
+    const submitted = new Promise<void>((resolve) => {
+      started = resolve;
+    });
+    f.transport.mockImplementationOnce(async () => {
+      started();
+      return new Promise<Response>((resolve) => {
+        finish = resolve;
+      });
+    });
+    const login = f.service.login(f.profileId, "bob", "wrong", f.signal());
+    const failed = expect(login).rejects.toBeInstanceOf(Error);
+    await submitted;
+    await f.service.switchAccount(b);
+    finish(Response.json(problem(401, "auth.invalid_credentials"), { status: 401 }));
+    await failed;
+    expect(f.service.getSnapshot()).toMatchObject({ kind: "ready", accountId: b });
+    expect((await f.store.load()).selectedAccountId).toBe(b);
+  });
+  it("does not let a late logout response replace a newly selected account", async () => {
+    const f = await setup();
+    await f.login();
+    const a = await f.selected();
+    const profile = await f.addProfile("https://other.test/");
+    await f.service.login(profile, "alice", "synthetic", f.signal());
+    const b = await f.selected();
+    await f.service.switchAccount(a);
+    let finish!: (response: Response) => void;
+    let started!: () => void;
+    const submitted = new Promise<void>((resolve) => {
+      started = resolve;
+    });
+    f.transport.mockImplementationOnce(async () => {
+      started();
+      return new Promise<Response>((resolve) => {
+        finish = resolve;
+      });
+    });
+    const logout = f.service.logoutAccount(a);
+    await submitted;
+    await f.service.switchAccount(b);
+    finish(new Response(null, { status: 204 }));
+    await logout;
+    expect(f.service.getSnapshot()).toMatchObject({ kind: "ready", accountId: b });
+    expect((await f.store.load()).selectedAccountId).toBe(b);
+  });
+  it("does not let a concurrent login escape a server forget", async () => {
+    const f = await setup();
+    await f.login();
+    const id = await f.selected();
+    const remove = f.secrets.remove.bind(f.secrets);
+    let release!: () => void;
+    let started!: () => void;
+    const submitted = new Promise<void>((resolve) => {
+      started = resolve;
+    });
+    vi.spyOn(f.secrets, "remove").mockImplementationOnce(async (...args) => {
+      started();
+      await new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      await remove(...args);
+    });
+    const forget = f.service.forgetServer(f.profileId);
+    await submitted;
+    const login = f.login();
+    const rejected = expect(login).rejects.toBeInstanceOf(StorageError);
+    release();
+    await forget;
+    await rejected;
+    expect(await f.secrets.get(id)).toBeNull();
+    expect(await f.store.load()).toMatchObject({
+      accounts: [],
+      serverProfiles: [],
+      authOperations: [],
+      selectedAccountId: null,
+    });
+  });
+  it("finishes a sent refresh only for its old account after a context switch", async () => {
+    const f = await setup();
+    await f.login();
+    const a = await f.selected();
+    const other = await f.addProfile("https://other.test/");
+    await f.service.login(other, "alice", "synthetic", f.signal());
+    const b = await f.selected();
+    await f.service.switchAccount(a);
+    let finish!: (response: Response) => void;
+    let started!: () => void;
+    const submitted = new Promise<void>((resolve) => {
+      started = resolve;
+    });
+    f.transport.mockImplementationOnce(async () => {
+      started();
+      return new Promise<Response>((resolve) => {
+        finish = resolve;
+      });
+    });
+    const refresh = f.service.refreshAccount(a);
+    await submitted;
+    await f.service.switchAccount(b);
+    finish(Response.json(f.makeGrant()));
+    await refresh;
+    expect(f.service.getSnapshot()).toMatchObject({ kind: "ready", accountId: b });
+    const state = await f.store.load();
+    expect(state.selectedAccountId).toBe(b);
+    expect(state.accounts.find((row) => row.id === a)?.session?.generation).toBe(2);
+    expect(state.accounts.find((row) => row.id === b)?.session?.generation).toBe(1);
+  });
+  it("serializes logout after refresh and revokes the latest bound bearer", async () => {
+    const f = await setup();
+    await f.login();
+    const id = await f.selected();
+    const renewed = f.makeGrant();
+    let finish!: (response: Response) => void;
+    let started!: () => void;
+    const submitted = new Promise<void>((resolve) => {
+      started = resolve;
+    });
+    f.transport.mockImplementationOnce(async () => {
+      started();
+      return new Promise<Response>((resolve) => {
+        finish = resolve;
+      });
+    });
+    const refresh = f.service.refreshAccount(id);
+    await submitted;
+    const logout = f.service.logoutAccount(id);
+    finish(Response.json(renewed));
+    await refresh;
+    expect(await logout).toMatchObject({ remoteRevocation: "confirmed" });
+    const request = f.transport.mock.calls.find(([url]) =>
+      url.pathname.endsWith("/sessions/current"),
+    );
+    expect(request?.[1].headers.get("Authorization")).toBe(`Bearer ${renewed.access_token}`);
+    expect(await f.secrets.get(id)).toBeNull();
+    expect((await f.store.load()).selectedAccountId).toBeNull();
+  });
+  it("keeps metadata recoverable after logout secret deletion but failed metadata commit", async () => {
+    const f = await setup();
+    await f.login();
+    const id = await f.selected();
+    vi.spyOn(f.port, "write").mockRejectedValueOnce(new StorageError("quota"));
+    await expect(f.service.logoutAccount(id)).rejects.toMatchObject({ category: "quota" });
+    expect(await f.secrets.get(id)).toBeNull();
+    expect((await f.store.load()).accounts[0]?.session).toBeDefined();
+    expect(await f.service.restoreSelected(f.signal())).toMatchObject({
+      kind: "error",
+      category: "storage-write-failed",
+    });
+    const restarted = new AuthenticationService(f.persistence, f.api, () => f.clock.value);
+    expect(await restarted.restoreSelected(f.signal())).toMatchObject({
+      kind: "needs-login",
+      reason: "missing",
+    });
+    expect(await f.service.logoutAccount(id)).toMatchObject({
+      localSignedOut: true,
+      remoteRevocation: "not-attempted",
+    });
+  });
+  it.each([204, 401, 429, 500])(
+    "logs out locally without refresh and reports remote HTTP %s honestly",
+    async (status) => {
+      const f = await setup();
+      await f.login();
+      const id = await f.selected();
+      f.transport.mockClear();
+      f.transport.mockResolvedValueOnce(new Response(null, { status }));
+      expect(await f.service.logoutAccount(id)).toEqual({
+        localSignedOut: true,
+        remoteRevocation: status === 204 ? "confirmed" : "unconfirmed",
+      });
+      expect(await f.secrets.get(id)).toBeNull();
+      expect(await f.store.load()).toMatchObject({
+        selectedAccountId: null,
+        accounts: [{ id }],
+        authOperations: [],
+      });
+      expect((await f.store.load()).accounts[0]?.session).toBeUndefined();
+      expect(f.transport).toHaveBeenCalledOnce();
+      expect(f.refreshCalls()).toHaveLength(0);
+      expect(await f.service.switchAccount(id)).toMatchObject({
+        kind: "needs-login",
+        reason: "missing",
+      });
+      expect(await f.service.logoutAccount(id)).toMatchObject({
+        remoteRevocation: "not-attempted",
+      });
+    },
+  );
+  it("keeps another active account verified when logging out an inactive session", async () => {
+    const f = await setup();
+    await f.login();
+    const a = await f.selected();
+    const profileId = await f.addProfile("https://other.test/");
+    await f.service.login(profileId, "alice", "synthetic", f.signal());
+    const b = await f.selected();
+    const before = f.service.getSnapshot();
+    f.transport.mockClear();
+    await f.service.logoutAccount(a);
+    expect(f.service.getSnapshot()).toEqual(before);
+    expect((await f.store.load()).selectedAccountId).toBe(b);
+    expect(await f.secrets.get(b)).not.toBeNull();
+    expect(f.transport.mock.calls[0]![0].origin).toBe("https://example.test");
+  });
+  it("does not report local logout success when deletion cannot be verified", async () => {
+    const f = await setup();
+    await f.login();
+    const id = await f.selected();
+    vi.spyOn(f.secrets, "remove").mockRejectedValueOnce(new StorageError("locked"));
+    f.transport.mockClear();
+    await expect(f.service.logoutAccount(id)).rejects.toMatchObject({ category: "locked" });
+    expect(f.service.getSnapshot().kind).not.toBe("ready");
+    expect((await f.store.load()).accounts[0]?.session).toBeDefined();
+    expect(f.transport).not.toHaveBeenCalled();
+  });
+  it("does not refresh an expired bearer solely for logout", async () => {
+    const f = await setup();
+    await f.login();
+    const id = await f.selected();
+    f.clock.value += 120_000;
+    f.transport.mockClear();
+    expect(await f.service.logoutAccount(id)).toMatchObject({ remoteRevocation: "not-attempted" });
+    expect(f.transport).not.toHaveBeenCalled();
+  });
+  it("removes only the requested saved account without remote logout", async () => {
+    const f = await setup();
+    await f.login();
+    const id = await f.selected();
+    f.transport.mockClear();
+    await f.service.removeSavedAccount(id);
+    expect((await f.store.load()).accounts).toEqual([]);
+    expect((await f.store.load()).serverProfiles).toHaveLength(1);
+    expect(f.transport).not.toHaveBeenCalled();
+    expect(f.service.getSnapshot().kind).toBe("signed-out");
+  });
+  it("switches persisted accounts without deleting inactive credentials and fences old contexts", async () => {
+    const f = await setup();
+    await f.login();
+    const a = await f.selected();
+    const old = f.service.activeContext()!;
+    const profile = await f.addProfile("https://second.test/");
+    await f.service.login(profile, "alice", "synthetic password", f.signal());
+    const b = await f.selected();
+    expect(await f.service.isCurrent(old)).toBe(false);
+    expect(await f.service.switchAccount(a)).toMatchObject({ kind: "ready", accountId: a });
+    expect(await f.service.switchAccount(b)).toMatchObject({ kind: "ready", accountId: b });
+    await f.service.switchAccount(null);
+    expect(f.service.getSnapshot()).toEqual({ kind: "signed-out" });
+    expect((await f.store.load()).selectedAccountId).toBeNull();
+    expect(await f.secrets.get(a)).not.toBeNull();
+    expect(await f.secrets.get(b)).not.toBeNull();
+  });
+  it("selects a saved signed-out account for reauthentication", async () => {
+    const f = await setup();
+    const state = await f.profiles.registerAccount(f.profileId, user.id, user.username);
+    const id = state.accounts[0]!.id;
+    expect(await f.service.switchAccount(id)).toMatchObject({
+      kind: "needs-login",
+      accountId: id,
+      reason: "missing",
+    });
+    expect((await f.store.load()).selectedAccountId).toBe(id);
+  });
+  it("fails closed when a selection write fails", async () => {
+    const f = await setup();
+    await f.login();
+    vi.spyOn(f.port, "write").mockRejectedValueOnce(new StorageError("quota"));
+    await expect(f.service.switchAccount(null)).rejects.toMatchObject({ category: "quota" });
+    expect(f.service.getSnapshot()).toMatchObject({ kind: "error", category: "storage-quota" });
+  });
   it("restores the selected account when another profile's orphan cannot be removed", async () => {
     const f = await setup();
     await f.login();

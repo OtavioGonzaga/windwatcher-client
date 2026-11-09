@@ -1,5 +1,38 @@
 {
   "common": {
+    "accounts": {
+      "title": "Accounts and servers",
+      "close": "Close",
+      "empty": "No saved accounts. Add a server or sign in to another account below.",
+      "clear": "Use no account",
+      "select": "Switch to",
+      "logout": "Log out",
+      "remove": "Remove saved account",
+      "add": "Add another account on this server",
+      "addServer": "Add a server",
+      "confirm": "Confirm",
+      "switchLabel": "Switch to {{username}} on {{server}}",
+      "signInLabel": "Sign in again as {{username}} on {{server}}",
+      "logoutLabel": "Log out {{username}} on {{server}}",
+      "removeLabel": "Remove saved account {{username}} on {{server}}",
+      "addLabel": "Add another account on {{server}}",
+      "confirmLogout": "Log out {{username}} on {{server}}?",
+      "confirmRemove": "Remove {{username}} on {{server}}?",
+      "logoutWarning": "This deletes this device's saved credentials and attempts to revoke that server session. Remote revocation may not be confirmed. Already-issued access tokens can remain usable until expiry.",
+      "removeWarning": "This irreversibly forgets only this saved account and its local credentials. The server and other accounts remain. This does not revoke the remote session; log out first if you also want to attempt revocation.",
+      "forgetWarning": "All local accounts and credentials for this server will be forgotten. Remote session revocation is not guaranteed.",
+      "logoutConfirmed": "{{username}} is signed out locally. The server confirmed revocation of future refresh. Already-issued access tokens may remain usable until expiry.",
+      "logoutUnconfirmed": "{{username}} is signed out locally. Remote revocation was not confirmed; the server may still hold a valid session. Already-issued access tokens may remain usable until expiry. No automatic retry will run.",
+      "removed": "The saved account {{username}} was removed locally. No remote revocation was requested.",
+      "status": {
+        "saved": "Saved session — not currently checked",
+        "signedOut": "Signed out — sign in to use",
+        "verified": "Active — verified",
+        "needsLogin": "Sign-in required",
+        "unavailable": "Connection or storage unavailable — retry",
+        "checking": "Checking selected account"
+      }
+    },
     "navigation": {
       "nativeBackError": "System back navigation is unavailable. Use the navigation links.",
       "home": "Home",

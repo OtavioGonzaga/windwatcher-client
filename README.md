@@ -9,8 +9,8 @@ One React application targets the web and Tauri 2 on Linux, Windows and Android.
 This repository contains the shared toolchain, a typed HTTP foundation and a
 responsive shell, accessible visual tokens, working language/appearance choices,
 manual server inspection with optional Linux-native local suggestions, saved
-server profiles, registration, sign-in and recoverable sessions. Messaging and
-full account switching are **not implemented yet**.
+server profiles, registration, sign-in, recoverable sessions and multi-account
+switching. Messaging is **not implemented yet**.
 There are no published client releases or supported installation packages.
 `0.0.1-dev.0` in build manifests is an unpublished development placeholder, not a release.
 
@@ -24,6 +24,14 @@ require explicit address selection; inspection alone neither authenticates nor
 saves a profile. After explicitly saving a server, users can register where
 allowed and sign in. See [authentication and sessions](docs/authentication-and-sessions.md)
 for credential-storage and platform limitations.
+
+Open **Accounts and servers** in the header to choose one saved account, sign in
+again, or add another account on the same server. Choosing no account preserves
+all saved sessions. **Log out** deletes one account's local credentials and attempts
+to revoke that server session; an unconfirmed result is explicitly reported.
+**Remove saved account** only forgets local credentials and the account record.
+**Forget server** removes that server's local accounts, not remote users or sessions.
+No action automatically selects a replacement account.
 
 ## Development
 

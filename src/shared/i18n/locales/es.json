@@ -1,5 +1,38 @@
 {
   "common": {
+    "accounts": {
+      "title": "Cuentas y servidores",
+      "close": "Cerrar",
+      "empty": "No hay cuentas guardadas. Añade un servidor o inicia sesión con otra cuenta abajo.",
+      "clear": "No usar ninguna cuenta",
+      "select": "Cambiar a",
+      "logout": "Cerrar sesión",
+      "remove": "Eliminar cuenta guardada",
+      "add": "Añadir otra cuenta en este servidor",
+      "addServer": "Añadir servidor",
+      "confirm": "Confirmar",
+      "switchLabel": "Cambiar a {{username}} en {{server}}",
+      "signInLabel": "Volver a iniciar sesión como {{username}} en {{server}}",
+      "logoutLabel": "Cerrar sesión de {{username}} en {{server}}",
+      "removeLabel": "Eliminar cuenta guardada {{username}} en {{server}}",
+      "addLabel": "Añadir otra cuenta en {{server}}",
+      "confirmLogout": "¿Cerrar sesión de {{username}} en {{server}}?",
+      "confirmRemove": "¿Eliminar {{username}} en {{server}}?",
+      "logoutWarning": "Esto elimina las credenciales guardadas en este dispositivo e intenta revocar esa sesión en el servidor. La revocación remota puede no confirmarse. Los tokens de acceso ya emitidos pueden seguir siendo válidos hasta que caduquen.",
+      "removeWarning": "Esto olvida irreversiblemente solo esta cuenta guardada y sus credenciales locales. El servidor y las demás cuentas permanecen. No revoca la sesión remota; cierra sesión primero si también deseas intentar la revocación.",
+      "forgetWarning": "Se olvidarán todas las cuentas y credenciales locales de este servidor. No se garantiza la revocación de las sesiones remotas.",
+      "logoutConfirmed": "{{username}} cerró sesión localmente. El servidor confirmó la revocación de futuras renovaciones. Los tokens de acceso ya emitidos pueden seguir siendo válidos hasta que caduquen.",
+      "logoutUnconfirmed": "{{username}} cerró sesión localmente. La revocación remota no se confirmó; el servidor aún puede mantener una sesión válida. Los tokens de acceso ya emitidos pueden seguir siendo válidos hasta que caduquen. No habrá reintentos automáticos.",
+      "removed": "La cuenta guardada {{username}} se eliminó localmente. No se solicitó revocación remota.",
+      "status": {
+        "saved": "Sesión guardada — sin verificar ahora",
+        "signedOut": "Sesión cerrada — inicia sesión para usarla",
+        "verified": "Activa — verificada",
+        "needsLogin": "Es necesario iniciar sesión",
+        "unavailable": "Conexión o almacenamiento no disponible — reintentar",
+        "checking": "Verificando cuenta seleccionada"
+      }
+    },
     "navigation": {
       "nativeBackError": "La navegación atrás del sistema no está disponible. Usa los enlaces de navegación.",
       "home": "Inicio",

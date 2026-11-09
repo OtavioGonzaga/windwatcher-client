@@ -71,6 +71,10 @@ export class AuthApi {
   }
   /** Best-effort cleanup of a freshly created, never-persisted login; not a logout UI. */
   revokeUncommitted(token: string, lifetime: RequestLifetime = {}) {
+    return this.revokeSession(token, lifetime);
+  }
+  /** Revokes only the server session bound to this bearer; never refreshes or retries. */
+  revokeSession(token: string, lifetime: RequestLifetime = {}) {
     return this.client.request({
       method: "DELETE",
       path: ["sessions", "current"],

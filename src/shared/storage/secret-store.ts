@@ -5,6 +5,23 @@ export interface SecretStore {
   get(accountId: string, lease?: OperationLease): Promise<Uint8Array | null>;
   remove(accountId: string, lease?: OperationLease): Promise<void>;
 }
+/** A provider error may follow a completed delete; only readback establishes absence. */
+export async function removeVerified(store: SecretStore, id: string, lease?: OperationLease) {
+  await lease?.check();
+  let failure: unknown;
+  try {
+    await store.remove(id, lease);
+  } catch (error) {
+    failure = error;
+  }
+  await lease?.check();
+  const remaining = await store.get(id, lease);
+  if (remaining) {
+    remaining.fill(0);
+    throw failure ?? new StorageError("write-failed");
+  }
+  await lease?.check();
+}
 export const LOCAL_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 export const MAX_SECRET_BYTES = 16_384;
 /** Web Crypto only, including browsers without randomUUID on an HTTP origin. */

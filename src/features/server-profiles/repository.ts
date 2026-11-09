@@ -1,7 +1,7 @@
 import type { DiscoveryResult } from "../server-discovery/discover-server";
 import type { ClientStateStore } from "../../shared/storage/state-store";
 import type { SecretStore } from "../../shared/storage/secret-store";
-import { randomLocalId } from "../../shared/storage/secret-store";
+import { randomLocalId, removeVerified } from "../../shared/storage/secret-store";
 import { StorageError } from "../../shared/storage/errors";
 import { displayText, ensure } from "./schema";
 import type { ClientStateV2, ServerProfile } from "./schema";
@@ -37,8 +37,20 @@ export class ProfileRepository {
   subscribe(listener: () => void) {
     return this.state.subscribe(listener);
   }
+  watch(listener: () => void) {
+    const external = this.state.subscribe(listener);
+    const committed = this.state.subscribeCommitted(listener);
+    return () => {
+      external();
+      committed();
+    };
+  }
   private accountOperation<T>(id: string, action: (lease?: OperationLease) => Promise<T>) {
     return this.locks?.supported ? this.locks.run(`account-${id}`, action) : action();
+  }
+  private profileOperation<T>(id: string, action: (lease?: OperationLease) => Promise<T>) {
+    if (this.locks && !this.locks.supported) throw new StorageError("unavailable");
+    return this.locks ? this.locks.run(`profile-${id}`, action, true) : action();
   }
   saveInspection(
     result: DiscoveryResult,
@@ -96,29 +108,37 @@ export class ProfileRepository {
     }, revision);
   }
   forgetProfile(id: string, revision?: number) {
-    return this.state.update(async (draft, stateLease) => {
-      ensure(draft.serverProfiles.some((p) => p.id === id));
+    return this.profileOperation(id, async (profileLease) => {
+      const snapshot = await this.state.load();
+      ensure(snapshot.serverProfiles.some((p) => p.id === id));
+      if (revision !== undefined && snapshot.revision !== revision)
+        throw new StorageError("conflict");
       // Keep ALL metadata on any cleanup failure, including partial deletion, for retry.
       const ids = new Set([
-        ...draft.accounts.filter((a) => a.serverProfileId === id).map((a) => a.id),
-        ...draft.authOperations.filter((op) => op.profileId === id).map((op) => op.accountId),
+        ...snapshot.accounts.filter((a) => a.serverProfileId === id).map((a) => a.id),
+        ...snapshot.authOperations.filter((op) => op.profileId === id).map((op) => op.accountId),
       ]);
-      for (const accountId of ids)
+      for (const accountId of [...ids].sort())
         // oxlint-disable-next-line no-await-in-loop -- Stop on the first cleanup failure; retain metadata for retry.
         await this.accountOperation(accountId, async (lease) => {
-          await stateLease?.check();
+          await profileLease?.check();
           this.state.invalidateAccount(accountId);
-          await this.secrets.remove(accountId, lease);
+          await removeVerified(this.secrets, accountId, lease);
+          await profileLease?.check();
         });
-      const removed = new Set(
-        draft.accounts.filter((a) => a.serverProfileId === id).map((a) => a.id),
-      );
-      draft.accounts = draft.accounts.filter((a) => !removed.has(a.id));
-      if (draft.selectedAccountId && removed.has(draft.selectedAccountId))
-        draft.selectedAccountId = null;
-      draft.serverProfiles = draft.serverProfiles.filter((p) => p.id !== id);
-      draft.authOperations = draft.authOperations.filter((op) => op.profileId !== id);
-    }, revision);
+      await profileLease?.check();
+      return this.state.update(async (draft) => {
+        await profileLease?.check();
+        const removed = new Set(
+          draft.accounts.filter((a) => a.serverProfileId === id).map((a) => a.id),
+        );
+        draft.accounts = draft.accounts.filter((a) => !removed.has(a.id));
+        if (draft.selectedAccountId && removed.has(draft.selectedAccountId))
+          draft.selectedAccountId = null;
+        draft.serverProfiles = draft.serverProfiles.filter((p) => p.id !== id);
+        draft.authOperations = draft.authOperations.filter((op) => op.profileId !== id);
+      }, snapshot.revision);
+    });
   }
   /**
    * Metadata-only registry operation; not a session-persistence entry point.
@@ -127,24 +147,26 @@ export class ProfileRepository {
    * cross-store prerequisite in docs/storage-and-accounts.md before storing tokens.
    */
   registerAccount(serverProfileId: string, serverUserId: string, username: string) {
-    return this.state.update((draft) => {
-      ensure(draft.serverProfiles.some((p) => p.id === serverProfileId));
-      if (
-        draft.accounts.some(
-          (a) => a.serverProfileId === serverProfileId && a.serverUserId === serverUserId,
+    return this.profileOperation(serverProfileId, () =>
+      this.state.update((draft) => {
+        ensure(draft.serverProfiles.some((p) => p.id === serverProfileId));
+        if (
+          draft.accounts.some(
+            (a) => a.serverProfileId === serverProfileId && a.serverUserId === serverUserId,
+          )
         )
-      )
-        throw new StorageError("duplicate");
-      const now = new Date().toISOString();
-      draft.accounts.push({
-        id: newId(draft),
-        serverProfileId,
-        serverUserId,
-        username,
-        createdAt: now,
-        updatedAt: now,
-      });
-    });
+          throw new StorageError("duplicate");
+        const now = new Date().toISOString();
+        draft.accounts.push({
+          id: newId(draft),
+          serverProfileId,
+          serverUserId,
+          username,
+          createdAt: now,
+          updatedAt: now,
+        });
+      }),
+    );
   }
   updateAccount(id: string, username: string) {
     return this.state.update((draft) => {
@@ -154,23 +176,29 @@ export class ProfileRepository {
       account.updatedAt = new Date().toISOString();
     });
   }
-  removeAccount(id: string) {
-    return this.state.update(async (draft, stateLease) => {
-      ensure(draft.accounts.some((a) => a.id === id));
-      await this.accountOperation(id, async (lease) => {
-        await stateLease?.check();
+  async removeAccount(id: string) {
+    const initial = await this.state.load();
+    const account = initial.accounts.find((a) => a.id === id);
+    ensure(account);
+    return this.profileOperation(account.serverProfileId, () =>
+      this.accountOperation(id, async (lease) => {
+        const snapshot = await this.state.load();
+        ensure(snapshot.accounts.some((a) => a.id === id));
         this.state.invalidateAccount(id);
-        await this.secrets.remove(id, lease);
-      });
-      draft.accounts = draft.accounts.filter((a) => a.id !== id);
-      if (draft.selectedAccountId === id) draft.selectedAccountId = null;
-      draft.authOperations = draft.authOperations.filter((op) => op.accountId !== id);
-    });
+        await removeVerified(this.secrets, id, lease);
+        return this.state.update(async (draft) => {
+          await lease?.check();
+          draft.accounts = draft.accounts.filter((a) => a.id !== id);
+          if (draft.selectedAccountId === id) draft.selectedAccountId = null;
+          draft.authOperations = draft.authOperations.filter((op) => op.accountId !== id);
+        }, snapshot.revision);
+      }),
+    );
   }
-  selectAccount(id: string | null) {
+  selectAccount(id: string | null, revision?: number) {
     return this.state.update((draft) => {
       ensure(id === null || draft.accounts.some((a) => a.id === id));
       draft.selectedAccountId = id;
-    });
+    }, revision);
   }
 }

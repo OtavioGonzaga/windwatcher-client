@@ -17,6 +17,9 @@ const mock = vi.hoisted(() => ({
   subscribe: vi.fn(),
 }));
 vi.mock("../../shared/storage/platform-storage", () => ({ profileRepository: async () => mock }));
+vi.mock("../authentication/platform-authentication", () => ({
+  authenticationService: async () => ({ forgetServer: mock.forgetProfile }),
+}));
 const result: DiscoveryResult = {
   kind: "supported",
   root: "https://example.test/",

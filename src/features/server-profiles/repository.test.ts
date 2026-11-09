@@ -7,6 +7,7 @@ import { browserDocument, browserNamespace, browserSecrets } from "../../shared/
 import { StorageError } from "../../shared/storage/errors";
 import { LOCAL_ID, randomLocalId } from "../../shared/storage/secret-store";
 import type { DiscoveryResult } from "../server-discovery/discover-server";
+import { inMemoryOperationLocks } from "../../shared/storage/operation-lock";
 
 const inspection = (root = "https://example.test/"): DiscoveryResult => ({
   kind: "supported",
@@ -29,6 +30,53 @@ function fixture() {
 beforeEach(() => localStorage.clear());
 
 describe("profile/account repository", () => {
+  it("does not hold the state queue while waiting for account cleanup", async () => {
+    const locks = inMemoryOperationLocks();
+    const store = new ClientStateStore(browserDocument("ordered"), locks);
+    const secrets = browserSecrets("ordered");
+    const repository = new ProfileRepository(store, secrets, locks);
+    const profile = (await repository.saveInspection(inspection(), "One", false))
+      .serverProfiles[0]!;
+    const account = (await repository.registerAccount(profile.id, user1, "alice")).accounts[0]!;
+    let finish!: () => void;
+    let entered!: () => void;
+    const started = new Promise<void>((resolve) => {
+      entered = resolve;
+    });
+    const held = locks.run(`account-${account.id}`, async () => {
+      entered();
+      await new Promise<void>((resolve) => {
+        finish = resolve;
+      });
+      await store.update(() => {});
+    });
+    await started;
+    await expect(repository.removeAccount(account.id)).rejects.toMatchObject({
+      category: "conflict",
+    });
+    finish();
+    await held;
+    expect((await repository.removeAccount(account.id)).accounts).toEqual([]);
+  });
+  it("forgets more than the native simultaneous lease budget without nesting account owners", async () => {
+    const locks = inMemoryOperationLocks();
+    const store = new ClientStateStore(browserDocument("bulk"), locks);
+    const repository = new ProfileRepository(store, browserSecrets("bulk"), locks);
+    const profile = (await repository.saveInspection(inspection(), "One", false))
+      .serverProfiles[0]!;
+    await store.update((state) => {
+      for (let i = 0; i < 80; i++)
+        state.accounts.push({
+          id: crypto.randomUUID(),
+          serverProfileId: profile.id,
+          serverUserId: crypto.randomUUID(),
+          username: `user-${i}`,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        });
+    });
+    expect((await repository.forgetProfile(profile.id)).accounts).toEqual([]);
+  });
   it("uses secure getRandomValues when randomUUID is unavailable", () => {
     const secure = crypto.getRandomValues.bind(crypto);
     vi.stubGlobal("crypto", { getRandomValues: secure });
@@ -153,7 +201,14 @@ describe("profile/account repository", () => {
       .mockRejectedValueOnce(new StorageError("locked"));
     await expect(repository.forgetProfile(first.id)).rejects.toMatchObject({ category: "locked" });
     expect((await repository.load()).accounts).toHaveLength(3);
-    expect(await secrets.get(state.accounts[0]!.id)).toBeNull();
+    expect(
+      await secrets.get(
+        state.accounts
+          .slice(0, 2)
+          .map((a) => a.id)
+          .sort()[0]!,
+      ),
+    ).toBeNull();
     remove.mockRestore();
     const after = await repository.forgetProfile(first.id);
     expect(after.accounts).toEqual([state.accounts[2]]);

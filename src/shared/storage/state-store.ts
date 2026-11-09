@@ -8,7 +8,7 @@ export interface DocumentPort {
   write(expected: string | null, document: string, lease?: OperationLease): Promise<void>;
   onExternalChange?(listener: () => void): () => void;
 }
-/** One queue owns read/modify/write AND cross-store deletion sequences. */
+/** One queue owns short metadata mutations; acquire profile/account ownership outside it. */
 export class ClientStateStore {
   private queue: Promise<unknown> = Promise.resolve();
   private stale = false;
