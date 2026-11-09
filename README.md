@@ -10,7 +10,8 @@ This repository contains the shared toolchain, a typed HTTP foundation and a
 responsive shell, accessible visual tokens, working language/appearance choices,
 manual server inspection with optional Linux-native local suggestions, saved
 server profiles, registration, sign-in, recoverable sessions and multi-account
-switching. Messaging is **not implemented yet**.
+switching, and a read-only conversation inbox and summary. Full message history,
+sending, read-state changes and realtime updates are **not implemented yet**.
 There are no published client releases or supported installation packages.
 `0.0.1-dev.0` in build manifests is an unpublished development placeholder, not a release.
 
@@ -32,6 +33,11 @@ to revoke that server session; an unconfirmed result is explicitly reported.
 **Remove saved account** only forgets local credentials and the account record.
 **Forget server** removes that server's local accounts, not remote users or sessions.
 No action automatically selects a replacement account.
+
+Select a signed-in account and open **Inbox** to browse that server's conversations.
+Use **Load more** for the next cursor page and **Refresh** to restart from the
+latest first page. Open a conversation for its independently fetched summary.
+This does not mark messages read; the list is not realtime or available offline.
 
 ## Development
 

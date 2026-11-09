@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Account-scoped read-only inbox and conversation summaries, with cursor pagination,
+  explicit refresh, localized empty/error states and safe deleted-message previews.
 - Shared account/server selector with persisted single-account selection,
   reauthentication, explicit no-account mode and four-locale accessible actions.
 - Local-first account logout with truthful best-effort remote revocation results,
