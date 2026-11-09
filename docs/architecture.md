@@ -22,7 +22,8 @@ backend. See [ADR 0001](adr/0001-shared-react-and-tauri-application.md).
 The Home route displays supplied artwork and a truthful product description;
 Preferences offers real language/appearance controls. Both share responsive
 navigation. A Home CTA opens manual server inspection with explicit profile save;
-Home lists persisted profiles and the verified selected session; saved profiles link to
+Home lists persisted profiles and the verified selected session; the shared header
+offers account switching, logout and local removal. Saved profiles link to
 sign-in and conditional registration. There is no conversation UI. New boundaries
 should be introduced only when used.
 
@@ -82,7 +83,8 @@ not validate untrusted JSON by themselves. There is no separate SDK package or
 generated endpoint service implementation.
 `src/features/authentication` wraps this client with public registration/login/refresh
 and explicit-bearer current-user operations, bounded runtime DTO decoders and safe
-error categories. It is not wired into production UI or credential persistence;
+error categories. The single authentication owner coordinates production UI,
+credential persistence and account lifecycle;
 see [authentication and sessions](authentication-and-sessions.md).
 Instance advertisements use a derived runtime metadata type with open-ended
 string lists, preserving unknown API/auth capabilities without mutating the
@@ -102,7 +104,11 @@ strict V1-to-V2 migration and serialized nonsecret updates. V2 carries bounded
 nonsecret operation intents; the coordinating session service prepares/reuses the
 exact local account ID, verifies one bound secret envelope and then commits account
 metadata. Web Locks and fenced native OS-lock owners coordinate metadata/session
-operations with account removal, without a distributed-transaction claim.
+operations with account removal, without a distributed-transaction claim. A narrow
+profile gate precedes identity/account/state ownership so bulk server cleanup can
+verify aliases sequentially without exhausting native leases. `SessionOwner`
+owns initial restoration and focus/visibility reconciliation; `SessionSummary`
+and `AccountSwitcher` subscribe rather than starting independent restores.
 Web localStorage and narrow
 native app-data commands persist metadata separately from account-owned secret
 adapters. Native secret access uses Rust-only keyring APIs on Linux/Android and
@@ -111,6 +117,7 @@ export/procedure commands. See [storage and accounts](storage-and-accounts.md),
 [ADR 0007](adr/0007-local-profiles-and-account-owned-secrets.md),
 [ADR 0008](adr/0008-windows-user-scoped-dpapi-records.md),
 [ADR 0009](adr/0009-coordinated-session-commits-and-recovery-intents.md),
+[ADR 0010](adr/0010-profile-gates-and-local-first-logout.md),
 [HTTP behavior and smoke](network-transport.md), [contract provenance](api-contract.md)
 and [ADR 0002](adr/0002-scoped-native-http-and-server-bound-clients.md).
 
@@ -126,7 +133,7 @@ and [ADR 0002](adr/0002-scoped-native-http-and-server-bound-clients.md).
 - Production web output receives a CSP through Vite. Native production CSP is
   configured independently in Tauri; development allows Vite HMR explicitly.
 - No remote scripts/fonts or analytics are introduced. Account-owned secrets use
-  separate browser/OS adapters; no actual authentication credentials exist yet.
+  separate browser/OS adapters; browser secrets remain readable by same-origin code.
   Supplied images are served from the application itself. Browser CSP permits
   HTTP/HTTPS connections; native CSP stays IPC-only. Native plugin grants do not
   authorize arbitrary remote scripts or replace app-level URL validation.

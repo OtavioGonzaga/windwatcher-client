@@ -20,6 +20,14 @@ owners, then commits metadata against the original revision. All metadata remain
 on partial failure. The gate uses the existing scoped acquire/check/release IPC;
 it adds no filesystem or secret-export authority. Profile URLs remain immutable.
 
+Logout is local-first: invalidate the target UI, delete/verify its secret and clear
+its nonsecret session binding under account ownership, then release locks before
+at most one bounded session-bound remote DELETE. Capture a bearer only from the
+latest matching envelope, use it only within its known lifetime with skew, and
+never rotate solely for logout or persist a retry queue. `204` confirms future-
+refresh revocation; all other outcomes are explicitly unconfirmed. Removal and
+server forgetting are separate local-only operations with confirmation.
+
 ## Consequences
 
 Credential work on the same server serializes, including otherwise independent
@@ -29,3 +37,9 @@ retryable conflict, not a promise of cross-store atomicity. A failed partial del
 can leave saved accounts without credentials; retry or reauthentication is explicit.
 All supported writers must use this ordering; older concurrent clients that do not
 participate in the profile gate are unsupported.
+
+Local-first prioritizes preventing credential restoration after a crash. A crash
+between local deletion and remote DELETE can leave a live remote session; even a
+confirmed revocation does not blacklist already-issued access JWTs. Partial local
+failure is never reported as success. No schema change or distributed transaction
+is introduced.

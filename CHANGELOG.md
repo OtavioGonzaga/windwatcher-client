@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Shared account/server selector with persisted single-account selection,
+  reauthentication, explicit no-account mode and four-locale accessible actions.
+- Local-first account logout with truthful best-effort remote revocation results,
+  separate local account removal and explicit server-forget warnings.
 - Coordinated session storage foundation: explicit V1-to-V2 metadata migration,
   bounded nonsecret recovery intents, exact-ID secret-first verification and
   fenced browser/native operation ownership.
@@ -18,7 +22,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   local labels, historical inspection snapshots, reinspection and confirmed forget.
 - Validated V1 nonsecret storage and account registry with independent local IDs,
   account-owned browser/OS credential adapters and failure-aware credential cleanup.
-  Account switching is not implemented.
 - Optional Linux-native loopback server suggestions with identity-first readiness
   checks, explicit address selection and localized dismiss/recheck actions.
 - Manual server inspection with HTTP warnings, capability summaries and explicitly
@@ -48,6 +51,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Remove account/state lock inversion during credential cleanup; coordinate server
+  forgetting with login, refresh and recovery through bounded profile gates.
+- Discard stale account-context reads when selection changes, reconcile browser
+  tabs and native focus/resume, and keep sent refresh rotation account-owned.
 - Clear authentication form state when switching server profiles, isolate orphan
   cleanup failures from selected-session restoration, and clear verified completed
   journal entries regardless of age.

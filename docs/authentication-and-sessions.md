@@ -10,6 +10,55 @@ authentication. Registration creates a remote user but does not create a session
 Browser credential storage is unencrypted and the UI warns about HTTP and browser
 storage; Web Locks are required for coordinated writes.
 
+## Account selection and lifecycle
+
+The shared header's **Accounts and servers** dialog groups accounts by saved
+server label and canonical URL. Several users on one server and identical usernames
+on different servers remain independent. Inactive sessions are labelled saved,
+not connected or verified, and are not automatically validated in the background.
+Choosing no account keeps all credentials. A signed-out account remains selectable
+and links to `/#/servers/<profileId>/login?account=<localId>`; login must confirm its
+exact server user ID. Adding another account omits that expected-account parameter.
+
+`AuthenticationService` remains the single owner. Selection intent aborts old
+cancellable reads and increments an in-memory epoch before storage work. Publication
+checks the epoch and authoritative persisted selection, not a React-local selected
+ID. A sent one-use refresh may finish securely for its old account; switching only
+cancels its consumer and must not reuse the consumed credential. `SessionOwner`
+owns initial restore, explicit retry and focus/visibility reconciliation. Browser
+metadata/secret storage events suspend and reconcile immediately. Native processes
+reconcile on focus/resume; there is no instant native notification or polling claim.
+
+Future account-scoped reads capture `activeContext()` (IDs, epoch and abort signal,
+never a bearer), pass its signal to their transport, and call `isCurrent(context)`
+before accepting results. Discard results when it returns false. Do not retain a
+global Authorization header or reuse data across contexts. PR 9 adds no query
+cache, conversation endpoint or realtime connection.
+
+**Log out** first invalidates the target's UI context, serializes with refresh under
+profile/account ownership, reads only a bound current envelope, deletes/verifies
+its local secret, and commits session/intent cleanup. The account and server stay.
+Only then, outside the locks, it attempts one bounded (3 seconds), cookie-free
+`DELETE /v1/sessions/current` with that old session's access token, if still valid
+with a five-second skew allowance. It never refreshes solely to log out or queues
+a retry. Corrupt/missing envelopes and unresolved intents cannot supply a guessed
+remote bearer. Local failure is an error, not a logout success. Failed cleanup
+also blocks automatic restoration in that owner until explicit cleanup retry or
+fresh login; after restart a missing secret still cannot authenticate.
+
+`204` confirms revocation of future refresh for that session. `401`, timeout,
+offline/CORS, `429`, server errors and no usable bearer all leave revocation
+unconfirmed. Already-issued JWTs may remain valid until expiry even after confirmed
+revocation. A crash after local deletion but before DELETE can leave the server
+session active. No all-device logout or immediate access-token blacklist is claimed.
+
+**Remove saved account** is explicitly local-only and requires confirmation. It
+deletes only that alias, account record and intents. **Forget server** requires
+confirmation with the affected count and removes all local accounts for that
+profile, including orphan intents, without claiming remote revocation. Neither
+operation chooses another account automatically. Logout of an inactive account
+does not replace the selected account's verified UI with its remote result.
+
 ## Android integration evidence
 
 On 2026-11-09, an x86_64 Android emulator ran the normal debug APK from client
@@ -47,6 +96,7 @@ from the [pinned snapshot](api-contract.md).
 | `POST /v1/sessions` with username/password     | 201 session grant                    | Public                 |
 | `POST /v1/sessions/refresh` with refresh_token | 200 rotated session grant            | Public                 |
 | `GET /v1/users/me`                             | 200 user identity, possibly disabled | Explicit access bearer |
+| `DELETE /v1/sessions/current`                  | 204, empty body                      | Session-bound bearer   |
 
 `AuthApi` wraps the existing immutable server-bound `ApiClient`. Lifetimes are
 copied explicitly, so an untyped caller cannot inject bearer defaults through
@@ -56,8 +106,8 @@ not automatically retry any request, create local accounts, or select a session.
 The existing transports omit cookies and reject redirects; browser failures
 never activate the native transport.
 
-Registration does not log in. Login grants contain no user ID; a future coordinator
-must obtain it through `/users/me`. Disabled identities must not become ready.
+Registration does not log in. Login grants contain no user ID; the coordinator
+obtains it through `/users/me`. Disabled identities must not become ready.
 Refresh is one-use CAS rotation, does not extend absolute session expiry, and is
 not safely replayable after a timeout, cancellation or lost response. Default
 access/session lifetimes (15 minutes/30 days) are configurable, not client constants.
@@ -70,7 +120,7 @@ objects. They check RFC-variant server UUIDs including UUIDv7, UTC RFC3339 dates
 with up to nine fractional digits, calendar validity, identity timestamp ordering,
 supported `Bearer` scheme and access expiry no later than session expiry.
 They do not declare an old grant invalid solely from wall-clock time: expiration,
-skew, identity binding and readiness belong to the not-yet-implemented coordinator.
+skew, identity binding and readiness belong to the authentication coordinator.
 
 Access tokens are bounded to 8192 ASCII bytes (matching the pinned official JWT
 codec) and must have three nonempty base64url-shaped segments. This is syntax

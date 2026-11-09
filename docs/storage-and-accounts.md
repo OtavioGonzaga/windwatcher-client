@@ -26,10 +26,10 @@ proxy paths stay distinct. Forget/re-add creates a new ID even at the same addre
 
 Accounts have independent local IDs and a unique `(serverProfileId, serverUserId)`
 pair. The pinned API returns UUID user IDs (including UUIDv7); usernames are only
-mutable display snapshots. PR 8 must obtain the ID from the authoritative server,
-not invent it or substitute the username. There is no production account creation,
-login, selection or switching UI. Nullable selected-account metadata establishes
-no authenticated context. Registration being closed does not prevent later login.
+mutable display snapshots. Login obtains the ID from the authoritative server,
+never from the username. The shell selects exactly one account or none, and only
+publishes verified identity after `/users/me`. Nullable selected-account metadata
+alone establishes no authenticated context. Registration being closed does not prevent login.
 
 ## V1 compatibility and V2 document
 
@@ -63,7 +63,8 @@ future migrations must be explicit sequential transforms with fixture tests and
 must reject unsupported starting versions. No speculative migration resets exist.
 
 The repository exposes purpose-specific operations. A single in-process queue
-serializes full read/modify/write and credential-cleanup sequences. Each write
+serializes short metadata read/modify/write operations, never waits for account
+ownership or performs vault I/O inside a state mutator. Each write
 increments revision; UI edits include their displayed revision. Failed writes do
 not update the UI to success. Reload/retry is explicit on conflicts. Error surfaces
 contain only fixed categories, never backend exceptions, request bodies or bytes.
@@ -94,6 +95,9 @@ invalidates on `storage` events (including origin-wide clear). Observed conflict
 still require reload; there is no automatic lossless merge or unconditional cached
 overwrite. Without Web Locks, production metadata is read-only and authentication
 is unavailable rather than relying on a localStorage/BroadcastChannel imitation.
+Secret-key changes also invalidate the visible browser context. The authentication
+owner immediately suspends stale rendering and reconciles authoritative selection;
+the profile editor still requires explicit reload after an observed conflict.
 Uncooperative same-origin code/XSS is not constrained by these application locks.
 
 ## Native adapters and permissions
@@ -250,6 +254,31 @@ Persistent synthetic fixtures cover pre-secret intent, failed put/readback,
 orphan-cleanup failure, old/new replacement values, prepared/sent refresh states,
 metadata committed before intent clear, and unknown/aged outcomes. They are
 policy/crash-state evidence, not a claim that end-to-end login/refresh UX is enabled.
+
+## Account lifecycle and lock ordering
+
+PR 9 retains the V2 document and existing bound secret envelopes. Cooperating
+credential writers and deletion use `profile-<local UUID>` -> identity (when
+resolving a login) -> account -> short state ownership. No state mutator acquires
+an account/identity lock or makes a network/vault call. All profile gates use the
+same narrow native operation commands; arbitrary names/paths remain rejected.
+
+Forget holds the profile gate, snapshots all account IDs and orphan-intent aliases,
+then removes/verifies them in deterministic order with one account lease at a time.
+The final metadata commit rechecks the profile lease and original document revision.
+This needs at most three simultaneous leases, independent of account count. Same-
+profile login, refresh and recovery participate in the gate; different profiles
+remain independent. A lease expiry, cleanup failure or unrelated revision change
+can leave partial secret deletion, but retains all metadata for explicit retry.
+The operation never reports complete success in that case. Old clients without
+profile gates must not write concurrently. See [ADR 0010](adr/0010-profile-gates-and-local-first-logout.md).
+
+Logout verifies deletion of only the target alias and removes its session binding
+and intents while retaining the account/server. Account removal additionally
+deletes its record; server forgetting deletes only that profile and its accounts.
+Selection is conditionally cleared, never replaced automatically. A deletion
+error followed by verified absent readback is a confirmed local deletion; failed
+or nonempty readback is not success. Credentials never enter result DTOs.
 
 ## Repeatable native smoke
 
