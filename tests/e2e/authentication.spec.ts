@@ -56,7 +56,9 @@ test("register, sign in, persist and restore a verified session", async ({ page 
   await page.getByRole("button", { name: "Create account", exact: true }).click();
   await expect(page.getByText(/Account created\. Registration does not sign you in/)).toBeVisible();
   expect(calls.filter((call) => call === "POST /v1/sessions")).toHaveLength(0);
-  await page.getByRole("link", { name: "Go to sign in" }).first().click();
+  const loginLink = page.getByRole("link", { name: "Go to sign in" });
+  await expect(loginLink).toHaveCount(1);
+  await loginLink.click();
   await page.getByLabel("Username").fill("alice");
   await page.getByLabel("Password", { exact: true }).fill("synthetic password");
   await page.getByRole("button", { name: "Sign in and save session" }).click();

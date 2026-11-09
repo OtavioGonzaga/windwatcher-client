@@ -48,6 +48,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Show only one sign-in link after successful registration.
 - Replace the undersized Windows Credential Manager integration with one
   current-user DPAPI-protected account record, verified readback and required
   real-Windows CI coverage. Interactive Windows UX remains unqualified; authentication

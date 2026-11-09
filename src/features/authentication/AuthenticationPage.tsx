@@ -196,14 +196,9 @@ export function AuthenticationPage({ registration = false }: { registration?: bo
       )}
       {!profile && policy === "failed" && <p>{t("auth.errors.storage")}</p>}
       {success ? (
-        <>
-          <InlineNotice tone="success" announce="polite">
-            {t("auth.registered")}
-          </InlineNotice>
-          <Link className="underline" to={`/servers/${profileId}/login`}>
-            {t("auth.loginLink")}
-          </Link>
-        </>
+        <InlineNotice tone="success" announce="polite">
+          {t("auth.registered")}
+        </InlineNotice>
       ) : (
         <form
           className="flex flex-col gap-4"
