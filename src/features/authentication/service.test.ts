@@ -93,6 +93,41 @@ async function setup() {
 beforeEach(() => localStorage.clear());
 
 describe("authentication orchestration", () => {
+  it("switches persisted accounts without deleting inactive credentials and fences old contexts", async () => {
+    const f = await setup();
+    await f.login();
+    const a = await f.selected();
+    const old = f.service.activeContext()!;
+    const profile = await f.addProfile("https://second.test/");
+    await f.service.login(profile, "alice", "synthetic password", f.signal());
+    const b = await f.selected();
+    expect(await f.service.isCurrent(old)).toBe(false);
+    expect(await f.service.switchAccount(a)).toMatchObject({ kind: "ready", accountId: a });
+    expect(await f.service.switchAccount(b)).toMatchObject({ kind: "ready", accountId: b });
+    await f.service.switchAccount(null);
+    expect(f.service.getSnapshot()).toEqual({ kind: "signed-out" });
+    expect((await f.store.load()).selectedAccountId).toBeNull();
+    expect(await f.secrets.get(a)).not.toBeNull();
+    expect(await f.secrets.get(b)).not.toBeNull();
+  });
+  it("selects a saved signed-out account for reauthentication", async () => {
+    const f = await setup();
+    const state = await f.profiles.registerAccount(f.profileId, user.id, user.username);
+    const id = state.accounts[0]!.id;
+    expect(await f.service.switchAccount(id)).toMatchObject({
+      kind: "needs-login",
+      accountId: id,
+      reason: "missing",
+    });
+    expect((await f.store.load()).selectedAccountId).toBe(id);
+  });
+  it("fails closed when a selection write fails", async () => {
+    const f = await setup();
+    await f.login();
+    vi.spyOn(f.port, "write").mockRejectedValueOnce(new StorageError("quota"));
+    await expect(f.service.switchAccount(null)).rejects.toMatchObject({ category: "quota" });
+    expect(f.service.getSnapshot()).toMatchObject({ kind: "error", category: "storage-quota" });
+  });
   it("restores the selected account when another profile's orphan cannot be removed", async () => {
     const f = await setup();
     await f.login();

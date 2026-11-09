@@ -105,6 +105,7 @@ export class AuthenticationService {
   private listeners = new Set<() => void>();
   private publication = 0;
   private loginLifetime: AbortController | undefined;
+  private readLifetime = new AbortController();
   private flights = new Map<string, Promise<void>>();
   constructor(
     private readonly persistence: SessionPersistence,
@@ -112,19 +113,24 @@ export class AuthenticationService {
     private readonly now: () => number = Date.now,
   ) {
     persistence.state.subscribe(() => {
-      this.publication++;
-      this.loginLifetime?.abort();
-      const accountId = "accountId" in this.status ? this.status.accountId : undefined;
-      if (accountId) this.publish({ kind: "error", category: "storage-conflict", accountId });
+      this.suspend();
+      void this.restoreSelected(new AbortController().signal);
     });
     persistence.state.subscribeAccountInvalidation((accountId) => {
-      if (this.status.kind === "ready" && this.status.accountId === accountId)
-        this.publish({
-          kind: "needs-login",
-          accountId,
-          profileId: this.status.profileId,
-          reason: "missing",
-        });
+      if ("accountId" in this.status && this.status.accountId === accountId) {
+        const profileId =
+          this.status.kind === "ready" || this.status.kind === "needs-login"
+            ? this.status.profileId
+            : undefined;
+        this.suspend();
+        if (profileId)
+          this.publish({
+            kind: "needs-login",
+            accountId,
+            profileId,
+            reason: "missing",
+          });
+      }
     });
     persistence.state.subscribeCommitted(() => {
       const publication = this.publication;
@@ -156,6 +162,59 @@ export class AuthenticationService {
   private publish(status: SessionStatus) {
     this.status = Object.freeze(status);
     for (const listener of this.listeners) listener();
+  }
+  private suspend() {
+    this.publication++;
+    this.loginLifetime?.abort();
+    this.readLifetime.abort();
+    this.readLifetime = new AbortController();
+    this.publish({ kind: "signed-out" });
+    return this.publication;
+  }
+  /** Presentation-only fence for account-scoped reads; never contains a bearer. */
+  activeContext() {
+    if (this.status.kind !== "ready") return null;
+    return Object.freeze({
+      accountId: this.status.accountId,
+      profileId: this.status.profileId,
+      userId: this.status.userId,
+      epoch: this.publication,
+      signal: this.readLifetime.signal,
+    });
+  }
+  async isCurrent(context: NonNullable<ReturnType<AuthenticationService["activeContext"]>>) {
+    if (
+      context.signal.aborted ||
+      context.epoch !== this.publication ||
+      this.status.kind !== "ready" ||
+      this.status.accountId !== context.accountId
+    )
+      return false;
+    const state = await this.persistence.state.load();
+    return (
+      !context.signal.aborted &&
+      context.epoch === this.publication &&
+      state.selectedAccountId === context.accountId
+    );
+  }
+  async switchAccount(id: string | null): Promise<SessionStatus> {
+    const publication = this.suspend();
+    try {
+      this.supported();
+      const snapshot = await this.persistence.state.load();
+      await this.persistence.state.update((draft) => {
+        if (id !== null && !draft.accounts.some((a) => a.id === id))
+          throw new StorageError("conflict");
+        draft.selectedAccountId = id;
+      }, snapshot.revision);
+      if (publication === this.publication && id !== null)
+        return this.restoreSelected(new AbortController().signal);
+    } catch (error) {
+      if (publication === this.publication)
+        this.publish({ kind: "error", category: sessionError(error) });
+      throw error;
+    }
+    return this.status;
   }
   private supported() {
     if (!this.persistence.locks.supported) throw new SessionIssue("coordination");
@@ -189,7 +248,8 @@ export class AuthenticationService {
     expectedAccountId?: string,
   ): Promise<SessionStatus> {
     this.supported();
-    this.loginLifetime?.abort();
+    const previous = this.status;
+    this.suspend();
     const lifetime = new AbortController();
     this.loginLifetime = lifetime;
     const operationSignal = AbortSignal.any([signal, lifetime.signal]);
@@ -251,8 +311,8 @@ export class AuthenticationService {
       if (publication === this.publication) {
         if (this.status.kind === "restoring")
           this.publish({ kind: "error", category: "cancelled" });
-        else if (this.status.kind === "ready") {
-          const active = this.status;
+        else if (previous.kind === "ready") {
+          const active = previous;
           try {
             const latest = await this.persistence.state.load();
             if (latest.authOperations.some((op) => op.accountId === active.accountId))
@@ -449,7 +509,8 @@ export class AuthenticationService {
     );
   }
   async restoreSelected(signal: AbortSignal): Promise<SessionStatus> {
-    const publication = ++this.publication;
+    const publication = this.suspend();
+    signal = AbortSignal.any([signal, this.readLifetime.signal]);
     let account: AccountRecord | undefined;
     try {
       cancelled(signal);
