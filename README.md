@@ -11,7 +11,8 @@ responsive shell, accessible visual tokens, working language/appearance choices,
 manual server inspection with optional Linux-native local suggestions, saved
 server profiles, registration, sign-in, recoverable sessions and multi-account
 switching, exact-username discovery, opening new/existing Directs (including self),
-and a read-only conversation inbox and summary. Full message history,
+reviewed Group creation and paginated read-only Group membership/roles.
+The inbox and conversation summary are independently fetched. Full message history,
 sending, read-state changes and realtime updates are **not implemented yet**.
 There are no published client releases or supported installation packages.
 `0.0.1-dev.0` in build manifests is an unpublished development placeholder, not a release.
@@ -39,6 +40,12 @@ Select a signed-in account and open **Inbox** to browse that server's conversati
 Use **Load more** for the next cursor page and **Refresh** to restart from the
 latest first page. Open a conversation for its independently fetched summary.
 This does not mark messages read; the list is not realtime or available offline.
+Choose **New group** to review an exact title and optional initial Members on the
+selected server. The creator is Owner; Owner-only Groups are supported. Unknown
+creation outcomes require an explicit same-operation retry or acknowledged discard,
+because a new operation can create another Group with the same title. Group
+details show paginated roles and join dates, without management actions.
+See [Group conversations](docs/group-conversations.md).
 
 ## Development
 

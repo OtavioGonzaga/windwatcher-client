@@ -7,15 +7,16 @@ deferred and presentation choices remain in memory.
 
 ## Routes and deployment
 
-| Fragment              | Contents                                             |
-| --------------------- | ---------------------------------------------------- |
-| `#/`                  | Artwork, product description and saved profiles      |
-| `#/preferences`       | Working language and appearance controls             |
-| `#/conversations`     | Account-scoped read-only inbox                       |
-| `#/conversations/new` | Exact username lookup and confirmed Direct creation  |
-| `#/conversations/:id` | Independently fetched conversation summary           |
-| `#/connect`           | Manual inspection and Linux-native local suggestions |
-| Any other route       | Localized not-found message and Home recovery        |
+| Fragment                     | Contents                                              |
+| ---------------------------- | ----------------------------------------------------- |
+| `#/`                         | Artwork, product description and saved profiles       |
+| `#/preferences`              | Working language and appearance controls              |
+| `#/conversations`            | Account-scoped read-only inbox                        |
+| `#/conversations/new`        | Exact username lookup and confirmed Direct creation   |
+| `#/conversations/groups/new` | Reviewed Group creation with optional initial Members |
+| `#/conversations/:id`        | Independently fetched conversation summary            |
+| `#/connect`                  | Manual inspection and Linux-native local suggestions  |
+| Any other route              | Localized not-found message and Home recovery         |
 
 Providers wrap the router, so navigation does not reset appearance/language.
 Reload/restart restores browser/system defaults, as documented in the
@@ -42,6 +43,19 @@ The static `new` route is registered before conversation IDs. Its inbox action
 opens a two-step lookup/confirmation form; direct Android entry escapes to the
 inbox using the existing conversation-child fallback. Disposing the form discards
 its transient operation without claiming rollback of a dispatched POST.
+The fully static Group creation route also precedes the ID route. Inbox exposes
+both creation actions. Group draft/review/recovery stay on the same route; the
+review confirms server URL, current Owner, exact title and additional Members.
+Uncertain attempts require acknowledged discard before editing; route exit,
+account switch and app termination still discard the transient key. The page
+explains that a sent request may commit and another attempt may create a duplicate.
+The existing Android conversation-child Back fallback leads to Inbox without a
+new native permission or navigation adapter. A mocked-adapter regression checks
+this route, not actual IME/Back runtime behavior.
+
+Group detail mounts an independently loaded Members section only after an
+authoritative Group summary. Member refresh starts a new cursor traversal.
+Roles are descriptive; no Group-management actions are exposed.
 
 ## Layout and accessibility
 

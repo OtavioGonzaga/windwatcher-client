@@ -46,6 +46,13 @@ one POST, with no automatic replay even after a qualifying 401. A validated resu
 must pass the active-context fence before navigation. Cancellation after dispatch
 does not undo remote creation. Keys are form-owned and transient, not credentials
 or session-journal entries; see [Direct retry semantics](direct-conversations.md).
+Group creation uses the same single-dispatch mutation policy. Its transient
+operation freezes the confirming account/profile/user/epoch and exact semantic
+input, rechecking context and retry expiry after ownership/refresh waits. Member
+pages use the read policy, including the existing one qualifying GET replay.
+The Group UI never receives a bearer. A roster 403/404 clears both the protected
+summary and members; ordinary continuation failures may preserve verified partial
+rows. See [Group recovery and pagination](group-conversations.md).
 
 **Log out** first invalidates the target's UI context, serializes with refresh under
 profile/account ownership, reads only a bound current envelope, deletes/verifies
