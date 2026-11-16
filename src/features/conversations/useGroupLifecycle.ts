@@ -114,10 +114,10 @@ export function useGroupLifecycle({
       if (ticket === generation.current) busy.current = false;
     }
   };
-  const begin = (action: GroupAction) => {
+  const begin = (action: GroupAction, source = group) => {
     if (busy.current || !verified || deadline.current > Date.now() || state.phase !== "idle")
       return;
-    setState({ phase: "confirming", intent: groupIntent(context, group, action) });
+    setState({ phase: "confirming", intent: groupIntent(context, source, action) });
   };
   const cancel = () => {
     if (state.phase === "confirming") setState({ phase: "idle" });

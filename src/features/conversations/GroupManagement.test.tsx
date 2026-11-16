@@ -101,6 +101,97 @@ beforeEach(() => {
   f.owner.addGroupMember.mockResolvedValue({ user: peer, role: "admin", joined_at: date });
 });
 describe("Group management review", () => {
+  it("preflights Owner-only deletion and requires explicit irreversible confirmation", async () => {
+    f.owner.probeGroupMembers.mockResolvedValue({
+      items: [
+        { user: { id: f.context.userId, username: "alice" }, role: "owner", joined_at: date },
+      ],
+      has_more: false,
+    });
+    mount();
+    await ready();
+    fireEvent.click(screen.getByRole("button", { name: "Review leaving group" }));
+    const dialog = await screen.findByRole("dialog");
+    expect(
+      within(dialog).getByText(/all memberships, all messages and reply-linked history/),
+    ).toBeInTheDocument();
+    expect(f.owner.probeGroupMembers).toHaveBeenCalledTimes(1);
+    expect(f.owner.leaveGroup).not.toHaveBeenCalled();
+    fireEvent.click(within(dialog).getByRole("button", { name: "Delete group by leaving" }));
+    await screen.findByText("Returned to inbox");
+    expect(f.owner.leaveGroup).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("region", { name: "Members" })).not.toBeInTheDocument();
+  });
+  it("does not infer sole ownership from one loaded row or a partial probe", async () => {
+    f.owner.probeGroupMembers.mockResolvedValue({
+      items: [
+        { user: { id: f.context.userId, username: "alice" }, role: "owner", joined_at: date },
+      ],
+      has_more: true,
+      next_cursor: "next",
+    });
+    mount();
+    await ready();
+    fireEvent.click(screen.getByRole("button", { name: "Review leaving group" }));
+    await screen.findByText(
+      "Sole ownership could not be verified. No destructive action is available.",
+    );
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(f.owner.leaveGroup).not.toHaveBeenCalled();
+  });
+  it("Owner with others must transfer instead of receiving deletion confirmation", async () => {
+    f.owner.probeGroupMembers.mockResolvedValue({
+      items: [
+        { user: { id: f.context.userId, username: "alice" }, role: "owner", joined_at: date },
+        { user: peer, role: "member", joined_at: date },
+      ],
+      has_more: false,
+    });
+    mount();
+    await ready();
+    fireEvent.click(screen.getByRole("button", { name: "Review leaving group" }));
+    await screen.findByText(
+      "Other members remain. Transfer ownership to an existing member before leaving.",
+    );
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(f.owner.leaveGroup).not.toHaveBeenCalled();
+  });
+  it("non-Owner leaves with ordinary wording and no sole-Owner probe", async () => {
+    f.owner.getConversation.mockResolvedValue({ ...group, membership: { role: "member" } });
+    mount();
+    const leave = await screen.findByRole("button", { name: "Review leaving group" });
+    await waitFor(() => expect(leave).toBeEnabled());
+    fireEvent.click(leave);
+    const dialog = await screen.findByRole("dialog");
+    expect(
+      within(dialog).getByText(/This does not delete the Group for other members/),
+    ).toBeInTheDocument();
+    await confirm();
+    await screen.findByText("Returned to inbox");
+    expect(f.owner.probeGroupMembers).not.toHaveBeenCalled();
+  });
+  it("handles a member added after sole-Owner preflight without claiming deletion", async () => {
+    f.owner.probeGroupMembers.mockResolvedValue({
+      items: [
+        { user: { id: f.context.userId, username: "alice" }, role: "owner", joined_at: date },
+      ],
+      has_more: false,
+    });
+    f.owner.leaveGroup.mockRejectedValue(
+      new ApiError("http", { status: 409, code: "conversation.ownership_transfer_required" }),
+    );
+    mount();
+    await ready();
+    fireEvent.click(screen.getByRole("button", { name: "Review leaving group" }));
+    fireEvent.click(
+      within(await screen.findByRole("dialog")).getByRole("button", {
+        name: "Delete group by leaving",
+      }),
+    );
+    await screen.findByText("Transfer ownership before leaving a Group with other members.");
+    expect(screen.queryByText("Returned to inbox")).not.toBeInTheDocument();
+    expect(f.owner.leaveGroup).toHaveBeenCalledTimes(1);
+  });
   it("transfers only to a loaded member and drops Owner controls after fresh own-role read", async () => {
     mount();
     await ready();

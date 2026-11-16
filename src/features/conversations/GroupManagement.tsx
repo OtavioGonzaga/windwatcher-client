@@ -14,6 +14,7 @@ import type { UserSummary } from "./direct-validation";
 import { directFailure } from "./direct-operation";
 import type { DirectFailure } from "./direct-operation";
 import { useGroupLifecycle } from "./useGroupLifecycle";
+import { lifecycleFailure, soleOwner } from "./group-lifecycle";
 import type { GroupAction } from "./group-lifecycle";
 import type { Member } from "./group-validation";
 import { useCooldown } from "./useCooldown";
@@ -41,6 +42,7 @@ export function GroupManagement({
     onSummary,
     onUnavailable,
     onLeft: () => {
+      onUnavailable();
       void navigate("/conversations", { replace: true });
     },
   });
@@ -57,6 +59,10 @@ export function GroupManagement({
   const [missing, setMissing] = useState(false);
   const [lookupUntil, setLookupUntil] = useState(0);
   const lookupCooldown = useCooldown(lookupUntil);
+  const [probing, setProbing] = useState(false);
+  const [leaveNotice, setLeaveNotice] = useState<"probeError" | "transferFirst">();
+  const probeBusy = useRef(false);
+  const probe = useRef<AbortController | null>(null);
   const lookup = useRef<AbortController | null>(null);
   const lookupSequence = useRef(0);
   const dialog = useRef<HTMLDialogElement>(null);
@@ -69,7 +75,9 @@ export function GroupManagement({
     cooldown.waiting ||
     lookupCooldown.waiting ||
     !description ||
-    finding;
+    finding ||
+    probing ||
+    leaveNotice === "probeError";
   useEffect(() => {
     const lifetime = new AbortController();
     void profileRepository()
@@ -99,15 +107,59 @@ export function GroupManagement({
   useEffect(() => {
     const current = lookup;
     const sequence = lookupSequence;
+    const currentProbe = probe;
     return () => {
       sequence.current++;
       current.current?.abort();
+      currentProbe.current?.abort();
     };
   }, []);
-  const begin = (action: GroupAction) => {
+  const begin = (action: GroupAction, source = group) => {
     trigger.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    lifecycle.begin(action);
+    lifecycle.begin(action, source);
     setPeer(undefined);
+  };
+  const prepareLeave = async () => {
+    if (disabled || probeBusy.current) return;
+    trigger.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    probeBusy.current = true;
+    setProbing(true);
+    setLeaveNotice(undefined);
+    const lifetime = new AbortController();
+    probe.current = lifetime;
+    const current = async () =>
+      !lifetime.signal.aborted && (await owner.isCurrent(context)) && !lifetime.signal.aborted;
+    try {
+      const latest = await owner.getConversation(context, group.id, lifetime.signal);
+      if (!(await current())) return;
+      if (latest.kind !== "group") {
+        onUnavailable();
+        return;
+      }
+      onSummary(latest);
+      if (latest.membership.role !== "owner") {
+        lifecycle.begin({ kind: "leave", destructive: false }, latest);
+        return;
+      }
+      const members = await owner.probeGroupMembers(context, group.id, lifetime.signal);
+      if (!(await current())) return;
+      if (soleOwner(latest, context.userId, members))
+        lifecycle.begin({ kind: "leave", destructive: true }, latest);
+      else if (members.items.length >= 2) setLeaveNotice("transferFirst");
+      else setLeaveNotice("probeError");
+    } catch (error) {
+      if (!(await current())) return;
+      const failure = lifecycleFailure(error);
+      if (failure.kind === "unavailable") {
+        onUnavailable();
+        return;
+      }
+      if (failure.kind === "rate") setLookupUntil(failure.until);
+      setLeaveNotice("probeError");
+    } finally {
+      probeBusy.current = false;
+      if (!lifetime.signal.aborted) setProbing(false);
+    }
   };
   const cancel = () => {
     lifecycle.cancel();
@@ -279,6 +331,26 @@ export function GroupManagement({
           )}
         </>
       )}
+      <Button disabled={disabled} onClick={() => void prepareLeave()}>
+        {t("groupManagement.leave")}
+      </Button>
+      {probing && <output>{t("groupManagement.checking")}</output>}
+      {leaveNotice && (
+        <output>
+          <p>{t(`groupManagement.${leaveNotice}`)}</p>
+          {leaveNotice === "probeError" && (
+            <Button
+              disabled={lookupCooldown.waiting || cooldown.waiting}
+              onClick={() => {
+                setLeaveNotice(undefined);
+                void lifecycle.check();
+              }}
+            >
+              {t("groupManagement.check")}
+            </Button>
+          )}
+        </output>
+      )}
       <output ref={notice} tabIndex={-1} className="flex flex-col gap-3">
         {(state.phase === "sending" || state.phase === "checking") && (
           <p>{t(`groupManagement.${state.phase}`)}</p>
@@ -352,10 +424,25 @@ export function GroupManagement({
               )}
             </p>
           )}
+          {action?.kind === "leave" && (
+            <p>
+              {t(
+                action.destructive
+                  ? "groupManagement.deleteWarning"
+                  : "groupManagement.leaveWarning",
+              )}
+            </p>
+          )}
         </div>
         <div className="flex flex-wrap gap-2">
           <Button onClick={cancel}>{t("discovery.cancel")}</Button>
-          <Button onClick={() => void lifecycle.send()}>{t("groupManagement.confirm")}</Button>
+          <Button onClick={() => void lifecycle.send()}>
+            {t(
+              action?.kind === "leave" && action.destructive
+                ? "groupManagement.delete"
+                : "groupManagement.confirm",
+            )}
+          </Button>
         </div>
       </dialog>
     </section>

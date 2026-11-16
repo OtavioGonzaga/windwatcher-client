@@ -90,7 +90,7 @@ export async function reconcileGroup(
     if (lifecycleFailure(error).kind === "unavailable") return { result: "noAccess" };
     throw error;
   }
-  if (group.kind !== "group") throw new ApiError("invalid-response");
+  if (group.kind !== "group") return { group, result: "differs" };
   const action = intent.action;
   if (action.kind === "rename")
     return { group, result: group.title === action.title ? "matches" : "differs" };
@@ -98,8 +98,14 @@ export async function reconcileGroup(
   let cursor: string | undefined;
   const cursors = new Set<string>();
   for (let pageNumber = 0; pageNumber < 10; pageNumber++) {
-    // oxlint-disable-next-line eslint/no-await-in-loop -- Cursors require sequential, cancellable reads.
-    const page = await reader.listGroupMembers(context, intent.groupId, cursor, signal);
+    let page: Awaited<ReturnType<Reader["listGroupMembers"]>>;
+    try {
+      // oxlint-disable-next-line eslint/no-await-in-loop -- Each continuation depends on the previous page.
+      page = await reader.listGroupMembers(context, intent.groupId, cursor, signal);
+    } catch (error) {
+      if (lifecycleFailure(error).kind === "unavailable") return { result: "noAccess" };
+      throw error;
+    }
     if (signal.aborted) throw new ApiError("cancelled");
     if (pageNumber === 0 && page.items.length === 0) throw new ApiError("invalid-response");
     const targetId = action.kind === "add" ? action.target.id : action.target.user.id;
