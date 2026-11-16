@@ -86,10 +86,14 @@ and explicit-bearer current-user operations, bounded runtime DTO decoders and sa
 error categories. The single authentication owner coordinates production UI,
 credential persistence and account lifecycle;
 see [authentication and sessions](authentication-and-sessions.md).
-The session owner also coordinates the two bounded conversation GET operations,
+The session owner also coordinates bounded conversation and exact-user GET operations,
 retaining profile/account ownership through I/O and fencing results against the
 selected account and epoch. Conversation DTOs are runtime validated and held only
 in route-local memory; no conversation storage or background synchronization exists.
+Direct creation uses an explicit non-replayable mutation policy under the same
+ownership and context fences. Form-owned transient idempotency keys support only
+explicit same-operation retries; see [Direct conversations](direct-conversations.md)
+and [ADR 0011](adr/0011-transient-direct-idempotency.md).
 Instance advertisements use a derived runtime metadata type with open-ended
 string lists, preserving unknown API/auth capabilities without mutating the
 pinned generated enum types or deciding onboarding support.

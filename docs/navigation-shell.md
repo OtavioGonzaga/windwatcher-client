@@ -12,6 +12,7 @@ deferred and presentation choices remain in memory.
 | `#/`                  | Artwork, product description and saved profiles      |
 | `#/preferences`       | Working language and appearance controls             |
 | `#/conversations`     | Account-scoped read-only inbox                       |
+| `#/conversations/new` | Exact username lookup and confirmed Direct creation  |
 | `#/conversations/:id` | Independently fetched conversation summary           |
 | `#/connect`           | Manual inspection and Linux-native local suggestions |
 | Any other route       | Localized not-found message and Home recovery        |
@@ -37,6 +38,10 @@ No network check runs from the server-profile listing alone. Inbox navigation
 requires a verified selected account, and switching or restoring an account clears
 the previous context's conversation views. Pagination uses the server's opaque
 cursor and order; refresh starts a new traversal and there is no polling.
+The static `new` route is registered before conversation IDs. Its inbox action
+opens a two-step lookup/confirmation form; direct Android entry escapes to the
+inbox using the existing conversation-child fallback. Disposing the form discards
+its transient operation without claiming rollback of a dispatched POST.
 
 ## Layout and accessibility
 
