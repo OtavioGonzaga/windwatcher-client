@@ -100,7 +100,7 @@ export class ConversationsApi {
       decode: (value) => {
         const conversation = decodeConversation(value);
         if (conversation.id !== conversationId) throw new Error("Invalid response.");
-        return conversation;
+        return conversation.kind === "group" ? decodeGroup(value) : conversation;
       },
       maxResponseBytes: 4 * 1024 * 1024,
       signal: lifetime.signal,

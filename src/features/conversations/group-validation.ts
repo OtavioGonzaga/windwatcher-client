@@ -27,7 +27,9 @@ export function groupDraft(title: string, ids: readonly string[], actor: string)
   return { kind: "group", title, participant_ids };
 }
 
-export type Member = components["schemas"]["MemberResponse"];
+export type Member = Omit<components["schemas"]["MemberResponse"], "role"> & {
+  role: "owner" | "admin" | "member";
+};
 export type MemberPage = components["schemas"]["PageResponse_MemberResponse"];
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -57,7 +59,7 @@ export function decodeGroup(value: unknown) {
   groupRole(conversation.membership.role);
   return conversation;
 }
-export function decodeMemberPage(value: unknown): MemberPage {
+export function decodeMemberPage(value: unknown): Omit<MemberPage, "items"> & { items: Member[] } {
   const page = record(value);
   if (!Array.isArray(page.items) || page.items.length > 50 || typeof page.has_more !== "boolean")
     throw new Error("Invalid member page.");
