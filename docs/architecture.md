@@ -24,8 +24,8 @@ Preferences offers real language/appearance controls. Both share responsive
 navigation. A Home CTA opens manual server inspection with explicit profile save;
 Home lists persisted profiles and the verified selected session; the shared header
 offers account switching, logout and local removal. Saved profiles link to
-sign-in and conditional registration. There is no conversation UI. New boundaries
-should be introduced only when used.
+sign-in and conditional registration. The inbox and conversation summary are
+read-only and use the selected account's server; there is no message history or composer.
 
 ## Presentation and localization
 
@@ -40,7 +40,7 @@ routes. See [the visual foundation](visual-foundation.md) and
 
 ## Navigation and shell
 
-One declarative HashRouter renders Home, Preferences and localized not-found
+One declarative HashRouter renders Home, Preferences, inbox, conversation summary and localized not-found
 recovery inside AppShell. Providers remain above page navigation. Relative Vite
 assets support arbitrary static directory prefixes without SPA rewrites. A single
 navigation region adapts to side/bottom placement using CSS, with route focus,
@@ -86,6 +86,10 @@ and explicit-bearer current-user operations, bounded runtime DTO decoders and sa
 error categories. The single authentication owner coordinates production UI,
 credential persistence and account lifecycle;
 see [authentication and sessions](authentication-and-sessions.md).
+The session owner also coordinates the two bounded conversation GET operations,
+retaining profile/account ownership through I/O and fencing results against the
+selected account and epoch. Conversation DTOs are runtime validated and held only
+in route-local memory; no conversation storage or background synchronization exists.
 Instance advertisements use a derived runtime metadata type with open-ended
 string lists, preserving unknown API/auth capabilities without mutating the
 pinned generated enum types or deciding onboarding support.

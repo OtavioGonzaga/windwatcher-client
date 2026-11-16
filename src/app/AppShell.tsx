@@ -1,4 +1,4 @@
-import { Home, Settings } from "lucide-react";
+import { Home, Inbox, Settings } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { NavLink, Outlet, useLocation } from "react-router";
 import { RouteEffects } from "./navigation/RouteEffects";
@@ -39,6 +39,10 @@ export function AppShell() {
           <NavLink id="nav-home" to="/" end className="shell-link">
             <Home aria-hidden="true" size={20} strokeWidth={1.75} />
             <span>{t("navigation.home")}</span>
+          </NavLink>
+          <NavLink id="nav-inbox" to="/conversations" className="shell-link">
+            <Inbox aria-hidden="true" size={20} strokeWidth={1.75} />
+            <span>{t("conversations.inbox")}</span>
           </NavLink>
           <NavLink id="nav-preferences" to="/preferences" className="shell-link">
             <Settings aria-hidden="true" size={20} strokeWidth={1.75} />

@@ -29,11 +29,16 @@ owns initial restore, explicit retry and focus/visibility reconciliation. Browse
 metadata/secret storage events suspend and reconcile immediately. Native processes
 reconcile on focus/resume; there is no instant native notification or polling claim.
 
-Future account-scoped reads capture `activeContext()` (IDs, epoch and abort signal,
+Account-scoped conversation reads capture `activeContext()` (IDs, epoch and abort signal,
 never a bearer), pass its signal to their transport, and call `isCurrent(context)`
 before accepting results. Discard results when it returns false. Do not retain a
-global Authorization header or reuse data across contexts. PR 9 adds no query
-cache, conversation endpoint or realtime connection.
+global Authorization header or reuse data across contexts. The session owner
+resolves the matching envelope under profile/account ownership, rotates using the
+existing journal and permits one replay only for a qualifying invalid-access GET.
+The conversation feature never receives the token. Once its POST has started,
+consumer cancellation cannot discard a valid rotated grant; an interruption after
+the sent marker but before transmission is conservatively recovered without replay.
+There is no persistent query cache or realtime connection.
 
 **Log out** first invalidates the target's UI context, serializes with refresh under
 profile/account ownership, reads only a bound current envelope, deletes/verifies

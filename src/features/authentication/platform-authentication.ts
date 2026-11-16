@@ -3,6 +3,7 @@ import { platformHttp } from "../../shared/platform/http";
 import { sessionPersistence } from "../../shared/storage/platform-storage";
 import { AuthApi } from "./api";
 import { AuthenticationService } from "./service";
+import { ConversationsApi } from "../conversations/api";
 
 let current: Promise<AuthenticationService> | undefined;
 
@@ -14,6 +15,9 @@ export function authenticationService(): Promise<AuthenticationService> {
         new AuthenticationService(
           persistence,
           (profile) => new AuthApi(new ApiClient({ baseUrl: profile.canonicalUrl, transport })),
+          Date.now,
+          (profile) =>
+            new ConversationsApi(new ApiClient({ baseUrl: profile.canonicalUrl, transport })),
         ),
     )
     .catch((error: unknown) => {

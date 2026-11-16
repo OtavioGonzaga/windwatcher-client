@@ -7,12 +7,14 @@ deferred and presentation choices remain in memory.
 
 ## Routes and deployment
 
-| Fragment        | Contents                                             |
-| --------------- | ---------------------------------------------------- |
-| `#/`            | Artwork, product description and saved profiles      |
-| `#/preferences` | Working language and appearance controls             |
-| `#/connect`     | Manual inspection and Linux-native local suggestions |
-| Any other route | Localized not-found message and Home recovery        |
+| Fragment              | Contents                                             |
+| --------------------- | ---------------------------------------------------- |
+| `#/`                  | Artwork, product description and saved profiles      |
+| `#/preferences`       | Working language and appearance controls             |
+| `#/conversations`     | Account-scoped read-only inbox                       |
+| `#/conversations/:id` | Independently fetched conversation summary           |
+| `#/connect`           | Manual inspection and Linux-native local suggestions |
+| Any other route       | Localized not-found message and Home recovery        |
 
 Providers wrap the router, so navigation does not reset appearance/language.
 Reload/restart restores browser/system defaults, as documented in the
@@ -31,7 +33,10 @@ or fonts. Tests serve the production output under `/client/` without rewrites.
 The Home CTA opens manual inspection. An explicit Save server action persists a
 successful inspection; no authentication is performed. Saved profiles can be
 renamed, forgotten with confirmation or opened for an explicit fresh inspection.
-No network check runs from listing alone. Authenticated routes are deferred.
+No network check runs from the server-profile listing alone. Inbox navigation
+requires a verified selected account, and switching or restoring an account clears
+the previous context's conversation views. Pagination uses the server's opaque
+cursor and order; refresh starts a new traversal and there is no polling.
 
 ## Layout and accessibility
 
@@ -83,7 +88,8 @@ there is a safe internal predecessor.
 1. Android should dismiss an open IME before delivering route Back.
 2. On a secondary route with a known predecessor and native `canGoBack`, navigate
    back exactly once.
-3. On direct/unknown secondary history, replace with Home.
+3. On direct/unknown conversation detail history, replace with the inbox; other
+   secondary routes replace with Home.
 4. At Home, `exit(0)` finishes the Activity with the normal system transition.
 
 There are no overlays requiring additional precedence. Events are coalesced
