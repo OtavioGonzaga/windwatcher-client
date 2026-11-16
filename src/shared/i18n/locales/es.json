@@ -1,5 +1,65 @@
 {
   "common": {
+    "groupManagement": {
+      "title": "Gestionar grupo",
+      "rename": "Guardar título",
+      "add": "Revisar adición de miembro",
+      "promote": "Promover a {{username}} a administrador",
+      "demote": "Degradar a {{username}} a miembro",
+      "remove": "Eliminar a {{username}} del grupo",
+      "transfer": "Transferir propiedad a {{username}}",
+      "leave": "Revisar salida del grupo",
+      "delete": "Eliminar grupo al salir",
+      "confirm": "Confirmar acción",
+      "check": "Comprobar estado actual",
+      "finish": "Continuar con el estado actual",
+      "acknowledge": "Reconocer incertidumbre y continuar",
+      "sending": "Enviando una sola vez…",
+      "checking": "Comprobando estado actual del servidor…",
+      "metadataError": "No se pudo verificar la descripción de la cuenta y del servidor. Las acciones están suspendidas.",
+      "transient": "Las acciones no se repiten automáticamente. Salir de esta página o cambiar de cuenta pierde la recuperación local; una solicitud enviada aún puede tener efecto.",
+      "selfTransfer": "Sigues siendo propietario. Transferirte la propiedad a ti mismo no cambia nada.",
+      "transferWarning": "El miembro seleccionado será propietario y tú serás administrador. Salir después es una acción independiente.",
+      "selfDemotion": "Perderás los permisos de gestión del grupo.",
+      "leaveWarning": "Perderás el acceso a este grupo. Esto no elimina el grupo para otros miembros.",
+      "deleteWarning": "Se te observó como único propietario. Salir elimina permanentemente el grupo, todas las membresías, mensajes e historial de respuestas. No se puede deshacer. El servidor comprueba los miembros de nuevo al ejecutar la solicitud.",
+      "transferFirst": "Quedan otros miembros. Transfiere la propiedad a un miembro existente antes de salir.",
+      "probeError": "No se pudo verificar la propiedad exclusiva. No hay ninguna acción destructiva disponible.",
+      "actions": {
+        "rename": "Guardar el título exacto",
+        "add": "Añadir al miembro seleccionado",
+        "role": "Cambiar el rol del miembro seleccionado",
+        "remove": "Eliminar al miembro seleccionado",
+        "transfer": "Revisar transferencia de propiedad",
+        "leave": "Revisar salida de este grupo"
+      },
+      "outcomes": {
+        "confirmed": "El servidor confirmó esta solicitud. El estado actual se comprueba por separado.",
+        "rejected": "El servidor rechazó esta solicitud. Revisa el estado actual antes de una nueva acción.",
+        "ambiguous": "Este cambio podría haber ocurrido ya. La solicitud no se repetirá. Comprobar el estado actual no demuestra quién causó un cambio ni si fue sustituido después."
+      },
+      "verification": {
+        "matches": "El estado actual del servidor coincide con el cambio solicitado.",
+        "differs": "El estado actual del servidor difiere del cambio solicitado. Esto no demuestra que la solicitud anterior nunca tuviera efecto.",
+        "unverified": "La búsqueda limitada de miembros no verificó el objetivo. Una lista parcial no demuestra ausencia.",
+        "noAccess": "Este grupo ya no es accesible. Esto no demuestra una eliminación física.",
+        "failed": "No se pudo verificar el estado actual. Una solicitud confirmada sigue confirmada; la gestión está suspendida."
+      },
+      "errors": {
+        "permission": "Los permisos de gestión cambiaron. Actualizar tu rol no significa que el grupo haya desaparecido.",
+        "unavailable": "Este grupo no existe o es inaccesible.",
+        "targetMissing": "El miembro seleccionado ya no está presente. Revisa la lista actualizada.",
+        "ownerProtected": "No se puede cambiar ni eliminar al propietario mediante acciones de miembro. Usa la transferencia de propiedad.",
+        "transferRequired": "Transfiere la propiedad antes de salir de un grupo con otros miembros.",
+        "unsupported": "Esta acción no está permitida en conversaciones directas. Actualiza la conversación.",
+        "participant": "Este participante no está disponible. Realiza una nueva búsqueda exacta.",
+        "title": "Se rechazó el título. Corrígelo antes de una nueva acción.",
+        "input": "El servidor rechazó el formato de la solicitud. No la repitas sin revisión.",
+        "session": "Inicia sesión de nuevo. Esta acción no se repetirá.",
+        "rate": "Demasiadas solicitudes. Espera y comprueba el estado actual antes de confirmar una nueva acción.",
+        "ambiguous": "No se recibió ninguna respuesta concluyente."
+      }
+    },
     "groups": {
       "changedDraft": "Cambia el título o los participantes rechazados antes de revisar una nueva operación.",
       "new": "Nuevo grupo",

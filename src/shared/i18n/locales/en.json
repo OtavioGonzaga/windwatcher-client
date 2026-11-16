@@ -1,5 +1,65 @@
 {
   "common": {
+    "groupManagement": {
+      "title": "Manage group",
+      "rename": "Save title",
+      "add": "Review member addition",
+      "promote": "Promote {{username}} to Admin",
+      "demote": "Demote {{username}} to Member",
+      "remove": "Remove {{username}} from group",
+      "transfer": "Transfer ownership to {{username}}",
+      "leave": "Review leaving group",
+      "delete": "Delete group by leaving",
+      "confirm": "Confirm action",
+      "check": "Check current state",
+      "finish": "Continue with current state",
+      "acknowledge": "Acknowledge uncertainty and continue",
+      "sending": "Sending once…",
+      "checking": "Checking current server state…",
+      "metadataError": "Could not verify the account and server description. Actions are suspended.",
+      "transient": "Actions are not retried automatically. Leaving this page or switching accounts loses the local recovery state; a sent request may still take effect.",
+      "selfTransfer": "You remain Owner. Transferring ownership to yourself makes no change.",
+      "transferWarning": "The selected existing member becomes Owner and you become Admin. Leaving afterwards is a separate action.",
+      "selfDemotion": "You will lose Group management permissions.",
+      "leaveWarning": "You will lose access to this Group. This does not delete the Group for other members.",
+      "deleteWarning": "You were observed as the sole Owner. Leaving permanently deletes the Group, all memberships, all messages and reply-linked history. This cannot be undone. The server checks membership again when the request runs.",
+      "transferFirst": "Other members remain. Transfer ownership to an existing member before leaving.",
+      "probeError": "Sole ownership could not be verified. No destructive action is available.",
+      "actions": {
+        "rename": "Save the exact title",
+        "add": "Add the selected member",
+        "role": "Change the selected member's role",
+        "remove": "Remove the selected member",
+        "transfer": "Review ownership transfer",
+        "leave": "Review leaving this Group"
+      },
+      "outcomes": {
+        "confirmed": "The server confirmed this request. The current state is checked separately.",
+        "rejected": "The server rejected this request. Review current state before a new action.",
+        "ambiguous": "This change may already have happened. The request will not be repeated. Checking current state cannot establish who caused a change or whether it was later superseded."
+      },
+      "verification": {
+        "matches": "Current server state matches the requested change.",
+        "differs": "Current server state differs from the requested change. This does not prove the earlier request never took effect.",
+        "unverified": "The bounded member search did not verify the target. A partial roster cannot establish absence.",
+        "noAccess": "This Group is no longer accessible. This does not prove physical deletion.",
+        "failed": "Could not verify current state. Any confirmed request remains confirmed; management is suspended."
+      },
+      "errors": {
+        "permission": "Management permissions changed. Refreshing your current role does not mean the Group is gone.",
+        "unavailable": "This Group is missing or inaccessible.",
+        "targetMissing": "The selected member is no longer present. Review the updated list.",
+        "ownerProtected": "The Owner cannot be changed or removed through member actions. Use ownership transfer.",
+        "transferRequired": "Transfer ownership before leaving a Group with other members.",
+        "unsupported": "This action is not supported for Direct conversations. Refresh the conversation.",
+        "participant": "This participant is unavailable. Perform a fresh exact lookup.",
+        "title": "The title was rejected. Correct it before a new action.",
+        "input": "The server rejected the request format. Do not repeat it without review.",
+        "session": "Sign in again. This action will not be replayed.",
+        "rate": "Too many requests. Wait, then check current state before confirming a new action.",
+        "ambiguous": "No conclusive response was received."
+      }
+    },
     "groups": {
       "changedDraft": "Change the rejected title or participant selection before reviewing a new operation.",
       "new": "New group",

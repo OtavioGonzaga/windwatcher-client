@@ -1,5 +1,65 @@
 {
   "common": {
+    "groupManagement": {
+      "title": "Gruppe verwalten",
+      "rename": "Titel speichern",
+      "add": "Mitgliedsaufnahme prüfen",
+      "promote": "{{username}} zum Administrator befördern",
+      "demote": "{{username}} zum Mitglied herabstufen",
+      "remove": "{{username}} aus der Gruppe entfernen",
+      "transfer": "Eigentum an {{username}} übertragen",
+      "leave": "Gruppenaustritt prüfen",
+      "delete": "Gruppe durch Austritt löschen",
+      "confirm": "Aktion bestätigen",
+      "check": "Aktuellen Zustand prüfen",
+      "finish": "Mit aktuellem Zustand fortfahren",
+      "acknowledge": "Ungewissheit anerkennen und fortfahren",
+      "sending": "Einmaliges Senden…",
+      "checking": "Aktueller Serverzustand wird geprüft…",
+      "metadataError": "Konto- und Serverbeschreibung konnten nicht geprüft werden. Aktionen sind ausgesetzt.",
+      "transient": "Aktionen werden nicht automatisch wiederholt. Beim Verlassen dieser Seite oder Kontowechsel geht die lokale Wiederherstellung verloren; eine gesendete Anfrage kann dennoch wirksam werden.",
+      "selfTransfer": "Du bleibst Eigentümer. Eine Übertragung an dich selbst ändert nichts.",
+      "transferWarning": "Das ausgewählte Mitglied wird Eigentümer und du wirst Administrator. Ein späterer Austritt ist eine separate Aktion.",
+      "selfDemotion": "Du verlierst die Berechtigungen zur Gruppenverwaltung.",
+      "leaveWarning": "Du verlierst den Zugriff auf diese Gruppe. Die Gruppe wird für andere Mitglieder nicht gelöscht.",
+      "deleteWarning": "Du wurdest als alleiniger Eigentümer festgestellt. Ein Austritt löscht die Gruppe, alle Mitgliedschaften, Nachrichten und verknüpften Antworten dauerhaft. Dies ist unwiderruflich. Der Server prüft die Mitgliedschaft bei Ausführung erneut.",
+      "transferFirst": "Andere Mitglieder sind noch vorhanden. Übertrage das Eigentum vor dem Austritt an ein bestehendes Mitglied.",
+      "probeError": "Alleiniges Eigentum konnte nicht geprüft werden. Keine destruktive Aktion ist verfügbar.",
+      "actions": {
+        "rename": "Den exakten Titel speichern",
+        "add": "Das ausgewählte Mitglied hinzufügen",
+        "role": "Die Rolle des ausgewählten Mitglieds ändern",
+        "remove": "Das ausgewählte Mitglied entfernen",
+        "transfer": "Eigentumsübertragung prüfen",
+        "leave": "Austritt aus dieser Gruppe prüfen"
+      },
+      "outcomes": {
+        "confirmed": "Der Server hat diese Anfrage bestätigt. Der aktuelle Zustand wird separat geprüft.",
+        "rejected": "Der Server hat diese Anfrage abgelehnt. Prüfe den aktuellen Zustand vor einer neuen Aktion.",
+        "ambiguous": "Diese Änderung könnte bereits erfolgt sein. Die Anfrage wird nicht wiederholt. Der aktuelle Zustand beweist weder den Verursacher noch, ob die Änderung später ersetzt wurde."
+      },
+      "verification": {
+        "matches": "Der aktuelle Serverzustand entspricht der angeforderten Änderung.",
+        "differs": "Der aktuelle Serverzustand weicht von der angeforderten Änderung ab. Dies beweist nicht, dass die frühere Anfrage nie wirksam wurde.",
+        "unverified": "Die begrenzte Mitgliedersuche konnte das Ziel nicht prüfen. Eine Teilliste beweist keine Abwesenheit.",
+        "noAccess": "Diese Gruppe ist nicht mehr zugänglich. Dies beweist keine physische Löschung.",
+        "failed": "Der aktuelle Zustand konnte nicht geprüft werden. Eine bestätigte Anfrage bleibt bestätigt; die Verwaltung ist ausgesetzt."
+      },
+      "errors": {
+        "permission": "Verwaltungsberechtigungen haben sich geändert. Eine Rollenaktualisierung bedeutet nicht, dass die Gruppe gelöscht wurde.",
+        "unavailable": "Diese Gruppe fehlt oder ist nicht zugänglich.",
+        "targetMissing": "Das ausgewählte Mitglied ist nicht mehr vorhanden. Prüfe die aktualisierte Liste.",
+        "ownerProtected": "Der Eigentümer kann nicht über Mitgliedsaktionen geändert oder entfernt werden. Nutze die Eigentumsübertragung.",
+        "transferRequired": "Übertrage das Eigentum, bevor du eine Gruppe mit anderen Mitgliedern verlässt.",
+        "unsupported": "Diese Aktion wird für Direktgespräche nicht unterstützt. Aktualisiere das Gespräch.",
+        "participant": "Dieser Teilnehmer ist nicht verfügbar. Führe eine neue exakte Suche durch.",
+        "title": "Der Titel wurde abgelehnt. Korrigiere ihn vor einer neuen Aktion.",
+        "input": "Der Server hat das Anfrageformat abgelehnt. Wiederhole sie nicht ohne Prüfung.",
+        "session": "Melde dich erneut an. Diese Aktion wird nicht wiederholt.",
+        "rate": "Zu viele Anfragen. Warte und prüfe den aktuellen Zustand vor einer neuen Bestätigung.",
+        "ambiguous": "Es wurde keine eindeutige Antwort empfangen."
+      }
+    },
     "groups": {
       "changedDraft": "Ändere den abgelehnten Titel oder die Teilnehmerauswahl, bevor du einen neuen Vorgang überprüfst.",
       "new": "Neue Gruppe",

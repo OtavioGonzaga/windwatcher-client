@@ -65,7 +65,7 @@ export function useGroupLifecycle({
     ticket === generation.current;
 
   const check = async (previous = state) => {
-    if (busy.current || deadline.current > Date.now() || !previous.intent) return;
+    if (busy.current || deadline.current > Date.now()) return;
     busy.current = true;
     setVerified(false);
     setState({ ...previous, phase: "checking" });
@@ -75,7 +75,12 @@ export function useGroupLifecycle({
     const ticket = ++generation.current;
     const timer = setTimeout(() => lifetime.abort(), 30000);
     try {
-      const snapshot = await reconcileGroup(owner, context, previous.intent, lifetime.signal);
+      const snapshot = await reconcileGroup(
+        owner,
+        context,
+        previous.intent ?? groupIntent(context, group, { kind: "rename", title: group.title }),
+        lifetime.signal,
+      );
       if (!(await current(ticket, lifetime.signal))) return;
       if (snapshot.result === "noAccess") {
         // No access proves neither physical deletion nor the cause of membership loss.
@@ -85,7 +90,11 @@ export function useGroupLifecycle({
       if (snapshot.group) onSummary(snapshot.group);
       setRevision((n) => n + 1);
       setVerified(true);
-      setState({ ...previous, phase: "result", verification: snapshot.result });
+      setState(
+        previous.intent
+          ? { ...previous, phase: "result", verification: snapshot.result }
+          : { phase: "idle" },
+      );
     } catch (error) {
       if (ticket !== generation.current || !(await owner.isCurrent(context))) return;
       const failure = lifecycleFailure(error);

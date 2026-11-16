@@ -8,7 +8,7 @@ import { isLocale } from "../../shared/i18n/locale";
 import { useSession } from "../authentication/SessionOwner";
 import type { AuthenticationService } from "../authentication/service";
 import type { Conversation } from "./validation";
-import { GroupMembers } from "./GroupMembers";
+import { GroupManagement } from "./GroupManagement";
 
 type Context = NonNullable<ReturnType<AuthenticationService["activeContext"]>>;
 type Scope = { owner: AuthenticationService; context: Context };
@@ -313,10 +313,11 @@ function Detail({ owner, context }: Scope) {
           <Preview conversation={item} />
           <p>{t("conversations.notice")}</p>
           {item.kind === "group" && (
-            <GroupMembers
+            <GroupManagement
               owner={owner}
               context={context}
-              conversationId={item.id}
+              group={item}
+              onSummary={setItem}
               onUnavailable={unavailable}
             />
           )}
