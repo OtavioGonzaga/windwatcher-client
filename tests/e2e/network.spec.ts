@@ -42,6 +42,17 @@ test("browser CORS denial remains an opaque transport failure", async ({ page })
   ).toMatchObject({ ok: false, category: "transport" });
 });
 
+test("keyed Direct POST uses real CORS preflight and fails closed when the header is denied", async ({
+  page,
+}) => {
+  expect(await page.evaluate(() => window.directProbe("http://127.0.0.1:4318/key/"))).toMatchObject(
+    { ok: true },
+  );
+  expect(
+    await page.evaluate(() => window.directProbe("http://127.0.0.1:4318/key-denied/")),
+  ).toEqual({ ok: false, category: "transport" });
+});
+
 test("manual redirect refuses foreign origin without forwarding a bearer", async ({
   page,
   request,

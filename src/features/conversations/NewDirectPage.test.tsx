@@ -107,4 +107,68 @@ describe("confirmed Direct flow", () => {
     await act(async () => resolve({ id: "old" }));
     expect(screen.queryByText("Authoritative detail")).not.toBeInTheDocument();
   });
+  it("requires a new lookup and confirmation after the 24-hour retry window", async () => {
+    f.owner.openDirect.mockRejectedValue(new ApiError("transport"));
+    mount();
+    await find();
+    fireEvent.click(screen.getByRole("button", { name: "Start conversation" }));
+    await screen.findByText(/The conversation may already exist/);
+    const clock = vi.spyOn(Date, "now").mockReturnValue(Date.now() + 86400_001);
+    try {
+      fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+      await screen.findByText(/retry window has ended/);
+      expect(f.owner.openDirect).toHaveBeenCalledTimes(1);
+      fireEvent.click(screen.getByRole("button", { name: "Search again" }));
+      fireEvent.click(screen.getByRole("button", { name: "Find user" }));
+      await screen.findByText(/Start a conversation with alice/);
+      fireEvent.click(screen.getByRole("button", { name: "Start conversation" }));
+      await screen.findByText(/The conversation may already exist/);
+      expect(f.owner.openDirect.mock.calls[1]?.[2]).not.toBe(f.owner.openDirect.mock.calls[0]?.[2]);
+    } finally {
+      clock.mockRestore();
+    }
+  });
+  it("does not send requests without a ready context", () => {
+    f.owner.activeContext.mockReturnValue(null);
+    mount();
+    expect(screen.getByText("Select a signed-in account to see its inbox.")).toBeInTheDocument();
+    expect(f.owner.findUser).not.toHaveBeenCalled();
+    expect(f.owner.openDirect).not.toHaveBeenCalled();
+  });
+  it("drops an obsolete lookup even if its transport ignores abort", async () => {
+    let resolve!: (value: unknown) => void;
+    f.owner.findUser.mockImplementationOnce(
+      () =>
+        new Promise((done) => {
+          resolve = done;
+        }),
+    );
+    mount();
+    await act(async () => {});
+    fireEvent.change(screen.getByLabelText("Full username"), { target: { value: "alice" } });
+    fireEvent.click(screen.getByRole("button", { name: "Find user" }));
+    fireEvent.change(screen.getByLabelText("Full username"), { target: { value: "bob" } });
+    await act(async () => resolve(peer));
+    expect(screen.queryByRole("button", { name: "Start conversation" })).not.toBeInTheDocument();
+  });
+  it("coalesces repeated confirmation clicks while a POST is pending", async () => {
+    let resolve!: (value: unknown) => void;
+    f.owner.openDirect.mockImplementationOnce(
+      () =>
+        new Promise((done) => {
+          resolve = done;
+        }),
+    );
+    mount();
+    await find();
+    const start = screen.getByRole("button", { name: "Start conversation" });
+    act(() => {
+      start.click();
+      start.click();
+      start.click();
+    });
+    expect(f.owner.openDirect).toHaveBeenCalledTimes(1);
+    await act(async () => resolve({ id: "direct" }));
+    expect(await screen.findByText("Authoritative detail")).toBeInTheDocument();
+  });
 });

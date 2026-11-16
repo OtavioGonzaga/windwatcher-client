@@ -7,24 +7,28 @@ const user = "01890f3e-7b12-7123-8123-123456789abc";
 const id = (n: number) => `01890f3e-7b12-7123-8123-${n.toString(16).padStart(12, "0")}`;
 
 describe("conversation response budgets", () => {
-  it.each(["list", "detail"] as const)(
-    "times out a stalled %s GET even if the transport ignores abort",
+  it.each(["list", "detail", "direct"] as const)(
+    "times out a stalled %s request without replay even if the transport ignores abort",
     async (operation) => {
       vi.useFakeTimers();
       try {
+        const transport = vi.fn(() => new Promise<Response>(() => {}));
         const api = new ConversationsApi(
           new ApiClient({
             baseUrl: "https://example.test/",
-            transport: () => new Promise<Response>(() => {}),
+            transport,
           }),
         );
         const pending =
           operation === "list"
             ? api.list("fixture.token.signature", undefined, {})
-            : api.get("fixture.token.signature", id(1), {});
+            : operation === "detail"
+              ? api.get("fixture.token.signature", id(1), {})
+              : api.openDirect("fixture.token.signature", id(1), "fixed-key", {});
         const rejected = expect(pending).rejects.toMatchObject({ category: "timeout" });
         await vi.advanceTimersByTimeAsync(15_000);
         await rejected;
+        expect(transport).toHaveBeenCalledTimes(1);
       } finally {
         vi.useRealTimers();
       }

@@ -436,37 +436,43 @@ describe("authentication orchestration", () => {
     expect(state.accounts.find((row) => row.id === a)?.session?.generation).toBe(2);
     expect(state.accounts.find((row) => row.id === b)?.session?.generation).toBe(1);
   });
-  it("finishes a conversation-triggered sent refresh after changing accounts without publishing its result", async () => {
-    const f = await setup();
-    await f.login();
-    const a = await f.selected();
-    const other = await f.addProfile("https://other.test/");
-    await f.service.login(other, "alice", "synthetic", f.signal());
-    const b = await f.selected();
-    await f.service.switchAccount(a);
-    f.clock.value += 56_000;
-    let finish!: (response: Response) => void;
-    let started!: () => void;
-    const submitted = new Promise<void>((resolve) => {
-      started = resolve;
-    });
-    f.transport.mockImplementationOnce(async () => {
-      started();
-      return new Promise<Response>((resolve) => {
-        finish = resolve;
+  it.each(["read", "direct"] as const)(
+    "finishes a %s-triggered sent refresh after changing accounts without publishing its result",
+    async (operation) => {
+      const f = await setup();
+      await f.login();
+      const a = await f.selected();
+      const other = await f.addProfile("https://other.test/");
+      await f.service.login(other, "alice", "synthetic", f.signal());
+      const b = await f.selected();
+      await f.service.switchAccount(a);
+      f.clock.value += 56_000;
+      let finish!: (response: Response) => void;
+      let started!: () => void;
+      const submitted = new Promise<void>((resolve) => {
+        started = resolve;
       });
-    });
-    const read = f.service.listConversations(f.service.activeContext()!);
-    const rejected = expect(read).rejects.toMatchObject({ category: "cancelled" });
-    await submitted;
-    await f.service.switchAccount(b);
-    finish(Response.json(f.makeGrant()));
-    await rejected;
-    const state = await f.store.load();
-    expect(state.accounts.find((row) => row.id === a)?.session?.generation).toBe(2);
-    expect(state.authOperations.filter((op) => op.accountId === a)).toEqual([]);
-    expect(f.service.getSnapshot()).toMatchObject({ kind: "ready", accountId: b });
-  });
+      f.transport.mockImplementationOnce(async () => {
+        started();
+        return new Promise<Response>((resolve) => {
+          finish = resolve;
+        });
+      });
+      const read =
+        operation === "read"
+          ? f.service.listConversations(f.service.activeContext()!)
+          : f.service.openDirect(f.service.activeContext()!, user.id, "operation-key");
+      const rejected = expect(read).rejects.toMatchObject({ category: "cancelled" });
+      await submitted;
+      await f.service.switchAccount(b);
+      finish(Response.json(f.makeGrant()));
+      await rejected;
+      const state = await f.store.load();
+      expect(state.accounts.find((row) => row.id === a)?.session?.generation).toBe(2);
+      expect(state.authOperations.filter((op) => op.accountId === a)).toEqual([]);
+      expect(f.service.getSnapshot()).toMatchObject({ kind: "ready", accountId: b });
+    },
+  );
   it("serializes logout after refresh and revokes the latest bound bearer", async () => {
     const f = await setup();
     await f.login();
