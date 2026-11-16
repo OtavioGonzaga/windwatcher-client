@@ -6,6 +6,7 @@ import { AppShell } from "./AppShell";
 import { AddServerPage } from "../features/server-discovery/AddServerPage";
 import { AuthenticationPage } from "../features/authentication/AuthenticationPage";
 import { ConversationDetailPage, InboxPage } from "../features/conversations/ConversationPages";
+import { NewDirectPage } from "../features/conversations/NewDirectPage";
 
 export function App() {
   return (
@@ -14,6 +15,7 @@ export function App() {
         <Route path="/" element={<HomePage />} />
         <Route path="/preferences" element={<PreferencesPage />} />
         <Route path="/conversations" element={<InboxPage />} />
+        <Route path="/conversations/new" element={<NewDirectPage />} />
         <Route path="/conversations/:conversationId" element={<ConversationDetailPage />} />
         <Route path="/connect" element={<AddServerPage />} />
         <Route path="/servers/:profileId/login" element={<AuthenticationPage />} />

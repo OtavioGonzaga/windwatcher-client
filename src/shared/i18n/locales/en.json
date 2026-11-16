@@ -1,5 +1,29 @@
 {
   "common": {
+    "direct": {
+      "title": "New direct conversation",
+      "username": "Full username",
+      "hint": "Enter the full exact username on this server (3–32 ASCII letters, digits or underscores).",
+      "find": "Find user",
+      "looking": "Finding user…",
+      "creating": "Opening conversation…",
+      "empty": "No matching user could be found on this server.",
+      "confirm": "Start a conversation with {{username}} on this server?",
+      "self": "Conversation with yourself",
+      "start": "Start conversation",
+      "again": "Search again",
+      "errors": {
+        "network": "The request could not be completed. Check your connection and try again.",
+        "invalid": "The server returned an invalid response.",
+        "username": "Enter 3–32 ASCII letters, digits or underscores, without spaces.",
+        "unavailable": "This participant is unavailable. Search again before starting a conversation.",
+        "conflict": "This attempt conflicts with an earlier request. Search again to confirm a new operation.",
+        "resultUnavailable": "The previous conversation result can no longer be retrieved. Search again to confirm a new operation.",
+        "ambiguous": "The conversation may already exist. Retry explicitly to check this same attempt.",
+        "rate": "Too many requests. Wait before trying again.",
+        "expired": "This attempt's retry window has ended. The conversation may already exist. Search again and confirm a new attempt."
+      }
+    },
     "conversations": {
       "inbox": "Inbox",
       "refresh": "Refresh",

@@ -1,5 +1,29 @@
 {
   "common": {
+    "direct": {
+      "title": "Nova conversa direta",
+      "username": "Nome de usuário completo",
+      "hint": "Digite o nome exato neste servidor (3–32 letras ASCII, dígitos ou sublinhados).",
+      "find": "Encontrar usuário",
+      "looking": "Buscando usuário…",
+      "creating": "Abrindo conversa…",
+      "empty": "Nenhum usuário correspondente foi encontrado neste servidor.",
+      "confirm": "Iniciar uma conversa com {{username}} neste servidor?",
+      "self": "Conversa com você mesmo",
+      "start": "Iniciar conversa",
+      "again": "Buscar novamente",
+      "errors": {
+        "network": "Não foi possível concluir a solicitação. Verifique sua conexão e tente novamente.",
+        "invalid": "O servidor retornou uma resposta inválida.",
+        "username": "Digite de 3 a 32 letras ASCII, dígitos ou sublinhados, sem espaços.",
+        "unavailable": "Este participante está indisponível. Busque novamente antes de iniciar uma conversa.",
+        "conflict": "Esta tentativa conflita com uma solicitação anterior. Busque novamente para confirmar uma nova operação.",
+        "resultUnavailable": "O resultado da conversa anterior não pode mais ser recuperado. Busque novamente para confirmar uma nova operação.",
+        "ambiguous": "A conversa pode já existir. Tente novamente explicitamente para verificar esta mesma tentativa.",
+        "rate": "Muitas solicitações. Aguarde antes de tentar novamente.",
+        "expired": "O prazo de repetição desta tentativa terminou. A conversa pode já existir. Busque novamente e confirme uma nova tentativa."
+      }
+    },
     "conversations": {
       "inbox": "Caixa de entrada",
       "refresh": "Atualizar",
