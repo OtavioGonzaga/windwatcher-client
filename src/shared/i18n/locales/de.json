@@ -1,5 +1,64 @@
 {
   "common": {
+    "groups": {
+      "changedDraft": "Ändere den abgelehnten Titel oder die Teilnehmerauswahl, bevor du einen neuen Vorgang überprüfst.",
+      "new": "Neue Gruppe",
+      "title": "Gruppentitel",
+      "bytes": "{{count}} / 256 UTF-8-Bytes",
+      "find": "Teilnehmer suchen und hinzufügen",
+      "participants": "Zusätzliche Mitglieder: {{count}}",
+      "ownerOnly": "Nur du trittst dieser Gruppe als Eigentümer bei.",
+      "owner": "Eigentümer: {{username}}",
+      "remove": "{{username}} entfernen",
+      "review": "Gruppe überprüfen",
+      "create": "Gruppe erstellen",
+      "sending": "Gruppe wird erstellt…",
+      "retry": "Denselben Vorgang wiederholen",
+      "edit": "Entwurf bearbeiten",
+      "discard": "Ungewissen Versuch verwerfen",
+      "confirmDiscard": "Risiko bestätigen und bearbeiten",
+      "keep": "Diesen Versuch behalten",
+      "transient": "Versuche bleiben nur auf dieser Seite erhalten. Beim Verlassen, Kontowechsel oder Neustart geht der Wiederholungsschlüssel verloren; eine gesendete Anfrage kann trotzdem eine Gruppe erstellen.",
+      "uncertain": "Die Gruppe könnte bereits existieren. Ein neuer Versuch kann eine zweite Gruppe erstellen, auch mit demselben Titel. Der Posteingang beweist nicht, dass die Erstellung fehlgeschlagen ist.",
+      "discardWarning": "Diesen ungewissen Versuch verwerfen? Die Wiederholung desselben Vorgangs geht verloren. Ein neuer Schlüssel kann eine weitere Gruppe erstellen.",
+      "lookup": {
+        "missing": "Auf diesem Server wurde kein passender Benutzer gefunden.",
+        "owner": "Bereits als Eigentümer enthalten.",
+        "added": "Teilnehmer als Mitglied hinzugefügt.",
+        "duplicate": "Bereits hinzugefügt.",
+        "limit": "256 zusätzliche Teilnehmer ausgewählt. Entferne einen, bevor du einen weiteren hinzufügst."
+      },
+      "titleErrors": {
+        "blank": "Gib einen nicht leeren Titel ein.",
+        "long": "Verwende höchstens 256 UTF-8-Bytes, nicht Zeichen.",
+        "unicode": "Der Titel enthält ungültiges Unicode. Bearbeite ihn vor dem Fortfahren."
+      },
+      "errors": {
+        "ambiguous": "Kein Erstellungsergebnis wurde bestätigt. Wiederhole ausdrücklich denselben Vorgang.",
+        "expired": "Das Wiederholungsfenster ist abgelaufen. Prüfe und bestätige einen neuen Versuch; die frühere Gruppe könnte bereits existieren.",
+        "conflict": "Dieser Schlüssel steht im Konflikt mit einer anderen Anfrage. Dieser Versuch kann nicht wiederholt werden.",
+        "resultUnavailable": "Das ursprüngliche Gruppenergebnis ist nicht verfügbar. Es könnte existiert haben; dieser Versuch kann nicht wiederholt werden.",
+        "invalidTitle": "Der Server hat den Titel abgelehnt. Bearbeite und prüfe einen neuen Versuch.",
+        "tooMany": "Der Server hat die Teilnehmeranzahl abgelehnt. Bearbeite und prüfe einen neuen Versuch.",
+        "participant": "Ein Teilnehmer ist nicht verfügbar. Entferne oder ersetze Teilnehmer und prüfe einen geänderten Entwurf.",
+        "rate": "Zu viele Anfragen. Warte, bevor du ausdrücklich denselben Vorgang wiederholst.",
+        "session": "Melde dich erneut an. Die Anfrage wird nicht automatisch wiederholt."
+      },
+      "members": "Mitglieder",
+      "joined": "Beitritt: {{date}}",
+      "roles": {
+        "owner": "Eigentümer — einziger Gruppeneigentümer",
+        "admin": "Administrator",
+        "member": "Mitglied"
+      },
+      "readOnly": "Rollen beschreiben die aktuelle Mitgliedschaft auf dem Server. Gruppenverwaltung ist hier nicht verfügbar.",
+      "partial": "Nur geladene Mitglieder werden angezeigt; dies ist keine Gesamtanzahl.",
+      "invalidMembers": "Der Server hat eine widersprüchliche Liste geliefert. Beginne erneut mit der ersten Seite.",
+      "memberError": "Mitglieder konnten nicht geladen werden. Bereits geladene Einträge können unvollständig sein.",
+      "restart": "Mitgliederliste neu starten",
+      "refresh": "Mitglieder aktualisieren",
+      "more": "Weitere Mitglieder laden"
+    },
     "direct": {
       "title": "Neue direkte Unterhaltung",
       "username": "Vollständiger Benutzername",

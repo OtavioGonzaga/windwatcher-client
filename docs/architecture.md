@@ -94,6 +94,14 @@ Direct creation uses an explicit non-replayable mutation policy under the same
 ownership and context fences. Form-owned transient idempotency keys support only
 explicit same-operation retries; see [Direct conversations](direct-conversations.md)
 and [ADR 0011](adr/0011-transient-direct-idempotency.md).
+Group creation reuses that policy with an immutable context/title/participant-set
+snapshot and rechecks retry eligibility immediately before dispatch, including
+after lock/refresh waits. Unlike Directs, Groups are not unique by title; uncertain
+attempts require acknowledged discard before editing. A Group-only detail child
+independently fetches public member pages under the read policy. It cannot create
+membership from a draft, and a member-read access denial clears the parent summary
+as well as the roster. See [Groups](group-conversations.md). There is no additional
+credential owner, persistence schema, transport or native permission.
 Instance advertisements use a derived runtime metadata type with open-ended
 string lists, preserving unknown API/auth capabilities without mutating the
 pinned generated enum types or deciding onboarding support.

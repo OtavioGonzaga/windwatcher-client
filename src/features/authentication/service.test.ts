@@ -15,6 +15,7 @@ import { grant, user } from "../../../tests/fixtures/authentication";
 import { problem } from "../../../tests/fixtures/instance";
 import type { SessionGrant } from "./validation";
 import { ConversationsApi } from "../conversations/api";
+import { GroupOperation } from "../conversations/group-operation";
 
 async function setup() {
   const clock = { value: Date.parse("2026-11-06T12:00:00Z") };
@@ -99,40 +100,133 @@ async function setup() {
 beforeEach(() => localStorage.clear());
 
 describe("authentication orchestration", () => {
-  it("refreshes once before concurrent lookup and single-dispatch Direct creation", async () => {
+  it.each([401, 429, 500])("never replays Group POST after HTTP %s", async (status) => {
     const f = await setup();
     await f.login();
+    f.transport.mockClear();
+    f.transport.mockImplementation(async () =>
+      Response.json(
+        problem(
+          status,
+          status === 401
+            ? "auth.invalid_access_token"
+            : status === 429
+              ? "rate_limit.exceeded"
+              : "internal.error",
+        ),
+        { status, headers: { "Content-Type": "application/problem+json" } },
+      ),
+    );
+    const active = f.service.activeContext()!;
+    await expect(
+      f.service.createGroup(active, new GroupOperation(active, "Group", [])),
+    ).rejects.toMatchObject({ metadata: { status } });
+    expect(f.transport).toHaveBeenCalledTimes(1);
+    expect(f.refreshCalls()).toHaveLength(0);
+  });
+  it("pre-refreshes a Group creation and rejects an expired queued operation before POST", async () => {
+    const f = await setup();
+    await f.login();
+    const active = f.service.activeContext()!;
+    const op = new GroupOperation(active, "Group", []);
     f.clock.value += 56_000;
     f.transport.mockClear();
     f.transport.mockImplementation(async (url) => {
-      if (url.pathname.endsWith("/refresh")) return Response.json(f.makeGrant());
-      if (url.pathname.endsWith("/users"))
-        return Response.json({ items: [{ id: user.id, username: "alice" }], has_more: false });
-      return Response.json(
-        {
-          id: user.id,
-          kind: "direct",
-          title: "alice",
-          created_at: user.created_at,
-          updated_at: user.updated_at,
-          membership: { role: "direct" },
-          unread_count: 0,
-        },
-        { status: 201 },
-      );
+      if (url.pathname.endsWith("/refresh")) {
+        op.stop();
+        return Response.json(f.makeGrant());
+      }
+      throw new Error("Expired attempt must not send.");
     });
-    const active = f.service.activeContext()!;
-    await Promise.all([
-      f.service.findUser(active, "ALICE"),
-      f.service.openDirect(active, user.id, "operation-key"),
-    ]);
+    await expect(f.service.createGroup(active, op)).rejects.toThrow();
     expect(f.refreshCalls()).toHaveLength(1);
+    expect(f.transport).toHaveBeenCalledTimes(1);
+  });
+  it("refreshes once and replays a qualifying member GET", async () => {
+    const f = await setup();
+    await f.login();
+    f.transport.mockClear();
+    f.transport.mockImplementationOnce(async () =>
+      Response.json(problem(401, "auth.invalid_access_token"), {
+        status: 401,
+        headers: { "Content-Type": "application/problem+json" },
+      }),
+    );
+    f.transport.mockImplementationOnce(async () => Response.json(f.makeGrant()));
+    f.transport.mockImplementationOnce(async () => Response.json({ items: [], has_more: false }));
+    await expect(
+      f.service.listGroupMembers(f.service.activeContext()!, user.id),
+    ).resolves.toMatchObject({ items: [] });
     expect(f.transport.mock.calls.map(([url]) => url.pathname)).toEqual([
+      `/proxy/v1/conversations/${user.id}/members`,
       "/proxy/v1/sessions/refresh",
-      "/proxy/v1/users",
-      "/proxy/v1/conversations",
+      `/proxy/v1/conversations/${user.id}/members`,
     ]);
   });
+  it("fences Group POST completion and releases ownership after account selection", async () => {
+    const f = await setup();
+    await f.login();
+    let started!: () => void;
+    let finish!: (response: Response) => void;
+    const sent = new Promise<void>((resolve) => {
+      started = resolve;
+    });
+    f.transport.mockImplementationOnce(async () => {
+      started();
+      return new Promise<Response>((resolve) => {
+        finish = resolve;
+      });
+    });
+    const active = f.service.activeContext()!;
+    const pending = f.service.createGroup(active, new GroupOperation(active, "Group", []));
+    const rejected = expect(pending).rejects.toMatchObject({ category: "cancelled" });
+    await sent;
+    await f.service.switchAccount(null);
+    finish(Response.json({}));
+    await rejected;
+    await expect(
+      f.persistence.accountOperation(active.accountId, async () => "released"),
+    ).resolves.toBe("released");
+  });
+  it.each(["direct", "group"] as const)(
+    "refreshes once before concurrent lookup and single-dispatch %s creation",
+    async (kind) => {
+      const f = await setup();
+      await f.login();
+      f.clock.value += 56_000;
+      f.transport.mockClear();
+      f.transport.mockImplementation(async (url) => {
+        if (url.pathname.endsWith("/refresh")) return Response.json(f.makeGrant());
+        if (url.pathname.endsWith("/users"))
+          return Response.json({ items: [{ id: user.id, username: "alice" }], has_more: false });
+        return Response.json(
+          {
+            id: user.id,
+            kind,
+            title: "alice",
+            created_at: user.created_at,
+            updated_at: user.updated_at,
+            membership: { role: kind === "direct" ? "direct" : "owner" },
+            unread_count: 0,
+          },
+          { status: 201 },
+        );
+      });
+      const active = f.service.activeContext()!;
+      await Promise.all([
+        f.service.findUser(active, "ALICE"),
+        kind === "direct"
+          ? f.service.openDirect(active, user.id, "operation-key")
+          : f.service.createGroup(active, new GroupOperation(active, "Group", [])),
+      ]);
+      expect(f.refreshCalls()).toHaveLength(1);
+      expect(f.transport.mock.calls.map(([url]) => url.pathname)).toEqual([
+        "/proxy/v1/sessions/refresh",
+        "/proxy/v1/users",
+        "/proxy/v1/conversations",
+      ]);
+    },
+  );
   it.each([401, 429, 500])("never replays Direct POST after HTTP %s", async (status) => {
     const f = await setup();
     await f.login();
@@ -436,7 +530,7 @@ describe("authentication orchestration", () => {
     expect(state.accounts.find((row) => row.id === a)?.session?.generation).toBe(2);
     expect(state.accounts.find((row) => row.id === b)?.session?.generation).toBe(1);
   });
-  it.each(["read", "direct"] as const)(
+  it.each(["read", "direct", "group"] as const)(
     "finishes a %s-triggered sent refresh after changing accounts without publishing its result",
     async (operation) => {
       const f = await setup();
@@ -461,7 +555,12 @@ describe("authentication orchestration", () => {
       const read =
         operation === "read"
           ? f.service.listConversations(f.service.activeContext()!)
-          : f.service.openDirect(f.service.activeContext()!, user.id, "operation-key");
+          : operation === "direct"
+            ? f.service.openDirect(f.service.activeContext()!, user.id, "operation-key")
+            : f.service.createGroup(
+                f.service.activeContext()!,
+                new GroupOperation(f.service.activeContext()!, "Group", []),
+              );
       const rejected = expect(read).rejects.toMatchObject({ category: "cancelled" });
       await submitted;
       await f.service.switchAccount(b);

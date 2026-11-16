@@ -8,6 +8,7 @@ import { isLocale } from "../../shared/i18n/locale";
 import { useSession } from "../authentication/SessionOwner";
 import type { AuthenticationService } from "../authentication/service";
 import type { Conversation } from "./validation";
+import { GroupMembers } from "./GroupMembers";
 
 type Context = NonNullable<ReturnType<AuthenticationService["activeContext"]>>;
 type Scope = { owner: AuthenticationService; context: Context };
@@ -180,6 +181,9 @@ function Inbox({ owner, context }: Scope) {
       <Link className="inline-flex min-h-11 items-center underline" to="/conversations/new">
         {t("direct.title")}
       </Link>
+      <Link className="inline-flex min-h-11 items-center underline" to="/conversations/groups/new">
+        {t("groups.new")}
+      </Link>
       <div>
         <Button disabled={error?.kind === "rate"} onClick={() => request()}>
           {t("conversations.refresh")}
@@ -237,6 +241,10 @@ function Detail({ owner, context }: Scope) {
   const [error, setError] = useState<Failure>();
   const [attempt, setAttempt] = useState(0);
   const [pending, setPending] = useState(true);
+  const unavailable = useCallback(() => {
+    setItem(undefined);
+    setError({ kind: "unavailable" });
+  }, []);
   useEffect(() => {
     const lifetime = new AbortController();
     // oxlint-disable-next-line react/set-state-in-effect -- Every explicit retry starts a fresh authoritative detail fetch.
@@ -304,6 +312,14 @@ function Detail({ owner, context }: Scope) {
           <h3 className="font-semibold">{t("conversations.lastMessage")}</h3>
           <Preview conversation={item} />
           <p>{t("conversations.notice")}</p>
+          {item.kind === "group" && (
+            <GroupMembers
+              owner={owner}
+              context={context}
+              conversationId={item.id}
+              onUnavailable={unavailable}
+            />
+          )}
         </>
       )}
     </section>

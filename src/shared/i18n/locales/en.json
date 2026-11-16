@@ -1,5 +1,60 @@
 {
   "common": {
+    "groups": {
+      "changedDraft": "Change the rejected title or participant selection before reviewing a new operation.",
+      "new": "New group",
+      "title": "Group title",
+      "bytes": "{{count}} / 256 UTF-8 bytes",
+      "find": "Find and add participant",
+      "participants": "Additional Members: {{count}}",
+      "ownerOnly": "Only you will join this Group as Owner.",
+      "owner": "Owner: {{username}}",
+      "remove": "Remove {{username}}",
+      "review": "Review group",
+      "create": "Create group",
+      "sending": "Creating group…",
+      "retry": "Retry same operation",
+      "edit": "Edit draft",
+      "discard": "Discard uncertain attempt",
+      "confirmDiscard": "Acknowledge risk and edit",
+      "keep": "Keep this attempt",
+      "transient": "Attempts are kept only on this page. Leaving, switching accounts or restarting loses the retry key; a sent request can still create a Group.",
+      "uncertain": "The Group may already exist. A new attempt can create a second Group, even with the same title. The inbox is not proof that creation failed.",
+      "discardWarning": "Discard this uncertain attempt? You will lose same-operation retry. Creating again with a new key may create another Group.",
+      "lookup": {
+        "missing": "No matching user could be found on this server.",
+        "owner": "Already included as Owner.",
+        "added": "Participant added as Member.",
+        "duplicate": "Already added.",
+        "limit": "256 additional participants selected. Remove one before adding another."
+      },
+      "titleErrors": {
+        "blank": "Enter a nonblank title.",
+        "long": "Use at most 256 UTF-8 bytes, not characters.",
+        "unicode": "The title contains invalid Unicode. Edit it before continuing."
+      },
+      "errors": {
+        "ambiguous": "No creation result was confirmed. Retry this same operation explicitly.",
+        "expired": "The retry window has ended. Review and confirm a new attempt; the previous Group may already exist.",
+        "conflict": "This key conflicts with a different request. This attempt cannot be retried.",
+        "resultUnavailable": "The original Group result is unavailable. It may have existed; this attempt cannot be retried.",
+        "invalidTitle": "The server rejected the title. Edit and review a new attempt.",
+        "tooMany": "The server rejected the participant count. Edit and review a new attempt.",
+        "participant": "A participant is unavailable. Remove or replace participants and review a changed draft.",
+        "rate": "Too many requests. Wait before explicitly retrying the same operation.",
+        "session": "Sign in again. The request will not be repeated automatically."
+      },
+      "members": "Members",
+      "joined": "Joined: {{date}}",
+      "roles": { "owner": "Owner — sole Group owner", "admin": "Admin", "member": "Member" },
+      "readOnly": "Roles describe the server's current membership. Group management is not available here.",
+      "partial": "Only the loaded members are shown; this is not a total count.",
+      "invalidMembers": "The server returned an inconsistent member list. Restart from the first page.",
+      "memberError": "Could not load members. Previously loaded rows may be incomplete.",
+      "restart": "Restart member list",
+      "refresh": "Refresh members",
+      "more": "Load more members"
+    },
     "direct": {
       "title": "New direct conversation",
       "username": "Full username",

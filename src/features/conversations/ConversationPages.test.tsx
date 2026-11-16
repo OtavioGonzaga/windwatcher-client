@@ -19,6 +19,7 @@ const mocked = vi.hoisted(() => ({
     activeContext: vi.fn(),
     listConversations: vi.fn(),
     getConversation: vi.fn(),
+    listGroupMembers: vi.fn(),
     isCurrent: vi.fn(),
   },
 }));
@@ -151,6 +152,36 @@ describe("scoped inbox", () => {
     );
     expect(screen.queryByText("Last message")).not.toBeInTheDocument();
   });
+  it.each(["direct", "group"] as const)(
+    "fetches members only for authoritative %s summary and clears summary on roster denial",
+    async (kind) => {
+      mocked.owner.getConversation.mockResolvedValueOnce({
+        ...row("1", "Protected summary"),
+        kind,
+        membership: { role: kind === "group" ? "owner" : "direct" },
+      });
+      mocked.owner.listGroupMembers.mockRejectedValueOnce(
+        new ApiError("http", { status: 404, code: "conversation.not_found" }),
+      );
+      render(
+        <I18nextProvider i18n={createI18n("en")}>
+          <MemoryRouter initialEntries={["/conversations/1"]}>
+            <Routes>
+              <Route path="/conversations/:conversationId" element={<ConversationDetailPage />} />
+            </Routes>
+          </MemoryRouter>
+        </I18nextProvider>,
+      );
+      if (kind === "group") {
+        await screen.findByText("This conversation is unavailable.");
+        expect(screen.queryByText("Protected summary")).not.toBeInTheDocument();
+        expect(mocked.owner.listGroupMembers).toHaveBeenCalledTimes(1);
+      } else {
+        await screen.findByText("Protected summary");
+        expect(mocked.owner.listGroupMembers).not.toHaveBeenCalled();
+      }
+    },
+  );
   it.each([
     ["timeout", "The request timed out. Try again."],
     ["transport", "Could not load conversations. Check your connection and try again."],

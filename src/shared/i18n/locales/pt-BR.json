@@ -1,5 +1,64 @@
 {
   "common": {
+    "groups": {
+      "changedDraft": "Altere o título ou os participantes rejeitados antes de revisar uma nova operação.",
+      "new": "Novo grupo",
+      "title": "Título do grupo",
+      "bytes": "{{count}} / 256 bytes UTF-8",
+      "find": "Encontrar e adicionar participante",
+      "participants": "Membros adicionais: {{count}}",
+      "ownerOnly": "Somente você participará deste grupo como proprietário.",
+      "owner": "Proprietário: {{username}}",
+      "remove": "Remover {{username}}",
+      "review": "Revisar grupo",
+      "create": "Criar grupo",
+      "sending": "Criando grupo…",
+      "retry": "Repetir a mesma operação",
+      "edit": "Editar rascunho",
+      "discard": "Descartar tentativa incerta",
+      "confirmDiscard": "Reconhecer risco e editar",
+      "keep": "Manter esta tentativa",
+      "transient": "As tentativas ficam apenas nesta página. Sair, trocar de conta ou reiniciar perde a chave de repetição; uma solicitação enviada ainda pode criar um grupo.",
+      "uncertain": "O grupo pode já existir. Uma nova tentativa pode criar outro grupo, mesmo com o mesmo título. A caixa de entrada não prova que a criação falhou.",
+      "discardWarning": "Descartar esta tentativa incerta? Você perderá a repetição da mesma operação. Criar com uma nova chave pode criar outro grupo.",
+      "lookup": {
+        "missing": "Nenhum usuário correspondente foi encontrado neste servidor.",
+        "owner": "Já incluído como proprietário.",
+        "added": "Participante adicionado como membro.",
+        "duplicate": "Já adicionado.",
+        "limit": "256 participantes adicionais selecionados. Remova um antes de adicionar outro."
+      },
+      "titleErrors": {
+        "blank": "Digite um título não vazio.",
+        "long": "Use no máximo 256 bytes UTF-8, não caracteres.",
+        "unicode": "O título contém Unicode inválido. Edite-o antes de continuar."
+      },
+      "errors": {
+        "ambiguous": "Nenhum resultado de criação foi confirmado. Repita esta mesma operação explicitamente.",
+        "expired": "O prazo de repetição terminou. Revise e confirme uma nova tentativa; o grupo anterior pode já existir.",
+        "conflict": "Esta chave conflita com outra solicitação. Esta tentativa não pode ser repetida.",
+        "resultUnavailable": "O resultado do grupo original está indisponível. Ele pode ter existido; esta tentativa não pode ser repetida.",
+        "invalidTitle": "O servidor rejeitou o título. Edite e revise uma nova tentativa.",
+        "tooMany": "O servidor rejeitou a quantidade de participantes. Edite e revise uma nova tentativa.",
+        "participant": "Um participante está indisponível. Remova ou substitua participantes e revise um rascunho alterado.",
+        "rate": "Muitas solicitações. Aguarde antes de repetir explicitamente a mesma operação.",
+        "session": "Entre novamente. A solicitação não será repetida automaticamente."
+      },
+      "members": "Membros",
+      "joined": "Entrada: {{date}}",
+      "roles": {
+        "owner": "Proprietário — único dono do grupo",
+        "admin": "Administrador",
+        "member": "Membro"
+      },
+      "readOnly": "Os papéis descrevem a participação atual no servidor. O gerenciamento de grupos não está disponível aqui.",
+      "partial": "Somente os membros carregados são exibidos; esta não é uma contagem total.",
+      "invalidMembers": "O servidor retornou uma lista inconsistente. Reinicie pela primeira página.",
+      "memberError": "Não foi possível carregar os membros. Os itens já carregados podem estar incompletos.",
+      "restart": "Reiniciar lista de membros",
+      "refresh": "Atualizar membros",
+      "more": "Carregar mais membros"
+    },
     "direct": {
       "title": "Nova conversa direta",
       "username": "Nome de usuário completo",

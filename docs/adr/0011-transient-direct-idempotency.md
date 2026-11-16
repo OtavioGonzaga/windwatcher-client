@@ -30,3 +30,19 @@ Restart does not preserve the original key; a new confirmed operation relies on
 the server's unordered Direct uniqueness. Same-server credential operations
 serialize under the existing profile gate. No new native permission, persistent
 outbox, generic retry middleware or storage schema is introduced.
+
+## Extension: Group creation (2026-11-16)
+
+Groups reuse this mutation/read ownership boundary without changing Direct
+behavior. A Group-specific operation freezes exact title bytes, sorted unique
+peer IDs and the confirming context. The session callback rechecks scope and
+the conservative 24-hour eligibility window immediately before its sole POST,
+after any queued locks or pre-refresh. Backward/invalid clock observations stop
+eligibility; an expired key is never silently replaced.
+
+Unlike Directs, a new Group operation can create a duplicate, even with identical
+input. Ambiguity remains attached to the attempt across subsequent failures.
+Editing after ambiguity requires an explicit risk acknowledgement; a 409 stops
+the key and a definitive 422 requires a changed draft and fresh review. Keys
+remain intentionally transient through route/account disposal and restart.
+No outbox, global form framework or new ADR-level persistence decision is added.

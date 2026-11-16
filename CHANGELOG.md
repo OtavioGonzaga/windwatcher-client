@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Reviewed Group creation with optional exact-username-selected initial Members,
+  Owner-only Groups, explicit uncertain-attempt recovery and paginated read-only
+  member/role presentation.
+
 - Exact-username discovery and confirmed opening of new/existing Directs, including
   conversations with yourself, with explicit same-operation retry for uncertain outcomes.
 

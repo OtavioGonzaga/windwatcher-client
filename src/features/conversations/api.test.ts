@@ -7,7 +7,7 @@ const user = "01890f3e-7b12-7123-8123-123456789abc";
 const id = (n: number) => `01890f3e-7b12-7123-8123-${n.toString(16).padStart(12, "0")}`;
 
 describe("conversation response budgets", () => {
-  it.each(["list", "detail", "direct"] as const)(
+  it.each(["list", "detail", "direct", "group", "members"] as const)(
     "times out a stalled %s request without replay even if the transport ignores abort",
     async (operation) => {
       vi.useFakeTimers();
@@ -24,7 +24,16 @@ describe("conversation response budgets", () => {
             ? api.list("fixture.token.signature", undefined, {})
             : operation === "detail"
               ? api.get("fixture.token.signature", id(1), {})
-              : api.openDirect("fixture.token.signature", id(1), "fixed-key", {});
+              : operation === "direct"
+                ? api.openDirect("fixture.token.signature", id(1), "fixed-key", {})
+                : operation === "members"
+                  ? api.listMembers("fixture.token.signature", id(1), undefined, {})
+                  : api.createGroup(
+                      "fixture.token.signature",
+                      { kind: "group", title: "Group", participant_ids: [] },
+                      "fixed-key",
+                      {},
+                    );
         const rejected = expect(pending).rejects.toMatchObject({ category: "timeout" });
         await vi.advanceTimersByTimeAsync(15_000);
         await rejected;
