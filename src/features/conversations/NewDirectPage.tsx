@@ -49,6 +49,8 @@ function DirectForm({ owner, active }: { owner: AuthenticationService; active: A
   const navigate = useNavigate();
   const [input, setInput] = useState("");
   const [server, setServer] = useState("");
+  const [serverFailed, setServerFailed] = useState(false);
+  const [loadAttempt, setLoadAttempt] = useState(0);
   const [phase, setPhase] = useState<Phase>({ kind: "idle" });
   const [now, setNow] = useState(Date.now);
   const [cooldown, setCooldown] = useState(0);
@@ -64,10 +66,15 @@ function DirectForm({ owner, active }: { owner: AuthenticationService; active: A
       .then((repository) => repository.load())
       .then((state) => {
         const profile = state.serverProfiles.find((item) => item.id === active.profileId);
-        if (mounted.current && profile)
-          setServer(`${profile.label ? `${profile.label} — ` : ""}${profile.canonicalUrl}`);
+        if (mounted.current) {
+          if (profile)
+            setServer(`${profile.label ? `${profile.label} — ` : ""}${profile.canonicalUrl}`);
+          setServerFailed(!profile);
+        }
       })
-      .catch(() => {});
+      .catch(() => {
+        if (mounted.current) setServerFailed(true);
+      });
     const lifetime = controller;
     const generation = sequence;
     return () => {
@@ -75,7 +82,8 @@ function DirectForm({ owner, active }: { owner: AuthenticationService; active: A
       generation.current++;
       lifetime.current?.abort();
     };
-  }, [active.profileId]);
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- Explicit retry must reload the nonsecret server description.
+  }, [active.profileId, loadAttempt]);
   useEffect(() => {
     if (phase.kind === "matched" || phase.kind === "error" || phase.kind === "empty")
       notice.current?.focus();
@@ -183,6 +191,14 @@ function DirectForm({ owner, active }: { owner: AuthenticationService; active: A
       <Link to="/conversations" className="underline">
         {t("conversations.back")}
       </Link>
+      {serverFailed && (
+        <InlineNotice tone="warning">
+          <p>{t("direct.errors.network")}</p>
+          <Button onClick={() => setLoadAttempt((attempt) => attempt + 1)}>
+            {t("conversations.retry")}
+          </Button>
+        </InlineNotice>
+      )}
       <form
         className="flex flex-col gap-3"
         onSubmit={(event) => {

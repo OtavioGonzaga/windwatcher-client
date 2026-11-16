@@ -605,8 +605,8 @@ export class AuthenticationService {
   private async conversationOperation<T>(
     active: NonNullable<ReturnType<AuthenticationService["activeContext"]>>,
     operation: (api: ConversationsApi, token: string, signal: AbortSignal) => Promise<T>,
-    signal?: AbortSignal,
-    replayGet = true,
+    signal: AbortSignal | undefined,
+    policy: "read" | "mutation",
   ): Promise<T> {
     this.supported();
     const lifetime = signal ? AbortSignal.any([signal, active.signal]) : active.signal;
@@ -649,7 +649,7 @@ export class AuthenticationService {
               lifetime,
             );
           } catch (error) {
-            if (!replayGet || !qualifying401(error) || refreshed) throw error;
+            if (policy !== "read" || !qualifying401(error) || refreshed) throw error;
             envelope = await this.rotate(
               context.account,
               context.profile,
@@ -714,6 +714,7 @@ export class AuthenticationService {
       active,
       (api, token, lifetime) => api.list(token, cursor, { signal: lifetime }),
       signal,
+      "read",
     );
   }
   getConversation(
@@ -725,6 +726,7 @@ export class AuthenticationService {
       active,
       (api, token, lifetime) => api.get(token, id, { signal: lifetime }),
       signal,
+      "read",
     );
   }
   findUser(
@@ -736,6 +738,7 @@ export class AuthenticationService {
       active,
       (api, token, lifetime) => api.findExactUsername(token, username, { signal: lifetime }),
       signal,
+      "read",
     );
   }
   openDirect(
@@ -750,7 +753,7 @@ export class AuthenticationService {
       active,
       (api, token, lifetime) => api.openDirect(token, participantId, key, { signal: lifetime }),
       signal,
-      false,
+      "mutation",
     );
   }
   reconcileSelected(signal: AbortSignal) {
