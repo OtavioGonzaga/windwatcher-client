@@ -1,6 +1,7 @@
 {
   "common": {
     "groups": {
+      "changedDraft": "Altere o título ou os participantes rejeitados antes de revisar uma nova operação.",
       "new": "Novo grupo",
       "title": "Título do grupo",
       "bytes": "{{count}} / 256 bytes UTF-8",

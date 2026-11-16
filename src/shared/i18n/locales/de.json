@@ -1,6 +1,7 @@
 {
   "common": {
     "groups": {
+      "changedDraft": "Ändere den abgelehnten Titel oder die Teilnehmerauswahl, bevor du einen neuen Vorgang überprüfst.",
       "new": "Neue Gruppe",
       "title": "Gruppentitel",
       "bytes": "{{count}} / 256 UTF-8-Bytes",

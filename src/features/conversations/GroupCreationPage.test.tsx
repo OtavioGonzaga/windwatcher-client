@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createI18n } from "../../shared/i18n";
 import { GroupCreationPage } from "./GroupCreationPage";
 import type { GroupOperation } from "./group-operation";
+import { ApiError } from "../../shared/api/error";
 
 const f = vi.hoisted(() => ({
   active: {
@@ -122,6 +123,97 @@ describe("Group creation and review", () => {
     expect(screen.getByText("Select a signed-in account to see its inbox.")).toBeInTheDocument();
     expect(f.owner.findUser).not.toHaveBeenCalled();
     expect(f.owner.createGroup).not.toHaveBeenCalled();
+  });
+  it("preserves exact payload/key on explicit retry and never automatically retries", async () => {
+    f.send.mockRejectedValueOnce(new ApiError("transport"));
+    mount();
+    await review();
+    fireEvent.click(screen.getByRole("button", { name: "Create group" }));
+    await screen.findByText(/The Group may already exist/);
+    expect(f.send).toHaveBeenCalledTimes(1);
+    expect(screen.getByLabelText("Group title")).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: "Retry same operation" }));
+    await screen.findByText("Authoritative Group detail");
+    expect(f.send.mock.calls[0]).toEqual(f.send.mock.calls[1]);
+  });
+  it("requires a separate duplicate-risk acknowledgement before editing an uncertain draft", async () => {
+    f.send.mockRejectedValueOnce(new ApiError("timeout"));
+    mount();
+    await review();
+    fireEvent.click(screen.getByRole("button", { name: "Create group" }));
+    await screen.findByText(/The Group may already exist/);
+    fireEvent.click(screen.getByRole("button", { name: "Discard uncertain attempt" }));
+    expect(screen.getByLabelText("Group title")).toBeDisabled();
+    expect(f.send).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByRole("button", { name: "Acknowledge risk and edit" }));
+    expect(screen.getByLabelText("Group title")).toBeEnabled();
+    fireEvent.click(screen.getByRole("button", { name: "Review group" }));
+    fireEvent.click(screen.getByRole("button", { name: "Create group" }));
+    await screen.findByText("Authoritative Group detail");
+    expect(f.send.mock.calls[0]?.[1]).not.toBe(f.send.mock.calls[1]?.[1]);
+  });
+  it.each(["idempotency.key_reused", "idempotency.result_unavailable"])(
+    "stops %s without replacing its key",
+    async (code) => {
+      f.send.mockRejectedValueOnce(new ApiError("http", { status: 409, code }));
+      mount();
+      await review();
+      fireEvent.click(screen.getByRole("button", { name: "Create group" }));
+      await screen.findByText(/this attempt cannot be retried|This attempt cannot be retried/);
+      expect(
+        screen.queryByRole("button", { name: "Retry same operation" }),
+      ).not.toBeInTheDocument();
+      expect(f.send).toHaveBeenCalledTimes(1);
+    },
+  );
+  it("retains uncertainty across a later 429 and retries only after cooldown", async () => {
+    f.send
+      .mockRejectedValueOnce(new ApiError("transport"))
+      .mockRejectedValueOnce(
+        new ApiError("http", { status: 429, code: "rate_limit.exceeded", retryAfterMs: 50 }),
+      );
+    mount();
+    await review();
+    fireEvent.click(screen.getByRole("button", { name: "Create group" }));
+    await screen.findByText(/The Group may already exist/);
+    fireEvent.click(screen.getByRole("button", { name: "Retry same operation" }));
+    await screen.findByText(/Wait before explicitly retrying/);
+    expect(screen.getByText(/The Group may already exist/)).toBeInTheDocument();
+    const retry = screen.getByRole("button", { name: "Retry same operation" });
+    await waitFor(() => expect(retry).toBeEnabled());
+    expect(f.send).toHaveBeenCalledTimes(2);
+    fireEvent.click(retry);
+    await screen.findByText("Authoritative Group detail");
+    expect(f.send.mock.calls[0]).toEqual(f.send.mock.calls[2]);
+  });
+  it("refuses expired retry without dispatch and keeps duplicate-risk acknowledgement", async () => {
+    f.send.mockRejectedValueOnce(new ApiError("transport"));
+    mount();
+    await review();
+    fireEvent.click(screen.getByRole("button", { name: "Create group" }));
+    await screen.findByText(/The Group may already exist/);
+    const clock = vi.spyOn(Date, "now").mockReturnValue(Date.now() + 86400_001);
+    try {
+      fireEvent.click(screen.getByRole("button", { name: "Retry same operation" }));
+      await screen.findByText(/retry window has ended/);
+      expect(f.send).toHaveBeenCalledTimes(1);
+      expect(screen.getByRole("button", { name: "Discard uncertain attempt" })).toBeInTheDocument();
+    } finally {
+      clock.mockRestore();
+    }
+  });
+  it("requires a changed draft after a definitive participant rejection", async () => {
+    f.send.mockRejectedValueOnce(
+      new ApiError("http", { status: 422, code: "conversation.participant_unavailable" }),
+    );
+    mount();
+    await review();
+    fireEvent.click(screen.getByRole("button", { name: "Create group" }));
+    await screen.findByText(/A participant is unavailable/);
+    fireEvent.click(screen.getByRole("button", { name: "Edit draft" }));
+    fireEvent.click(screen.getByRole("button", { name: "Review group" }));
+    await screen.findByText(/Change the rejected title/);
+    expect(f.send).toHaveBeenCalledTimes(1);
   });
   it("coalesces confirmation spam and discards completion after unmount", async () => {
     let resolve!: (value: unknown) => void;

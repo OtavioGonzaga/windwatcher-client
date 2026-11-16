@@ -11,7 +11,7 @@ import { validUsername } from "./direct-validation";
 import type { UserSummary } from "./direct-validation";
 import { directFailure } from "./direct-operation";
 import type { DirectFailure } from "./direct-operation";
-import { groupTitleIssue } from "./group-validation";
+import { groupDraft, groupTitleIssue } from "./group-validation";
 import type { TitleIssue } from "./group-validation";
 import { GroupOperation } from "./group-operation";
 import { groupFailure } from "./group-failure";
@@ -77,6 +77,8 @@ function GroupForm({
   const [until, setUntil] = useState(0);
   const { waiting, seconds } = useCooldown(until);
   const [operation, setOperation] = useState<GroupOperation | null>(null);
+  const [rejected, setRejected] = useState<GroupOperation | null>(null);
+  const [unchanged, setUnchanged] = useState(false);
   const lookupController = useRef<AbortController | null>(null);
   const postController = useRef<AbortController | null>(null);
   const generation = useRef(0);
@@ -166,6 +168,20 @@ function GroupForm({
       titleField.current?.focus();
       return;
     }
+    const draft = groupDraft(
+      title,
+      members.map((m) => m.id),
+      active.userId,
+    );
+    if (
+      rejected &&
+      rejected.title === draft.title &&
+      JSON.stringify(rejected.participantIds) === JSON.stringify(draft.participant_ids)
+    ) {
+      setUnchanged(true);
+      return;
+    }
+    setUnchanged(false);
     invalidateLookup();
     setOperation(
       new GroupOperation(
@@ -197,6 +213,7 @@ function GroupForm({
       if (!lifetime.signal.aborted && (await owner.isCurrent(active)) && !lifetime.signal.aborted) {
         const failure = groupFailure(error);
         if (failure.terminal) op.stop();
+        if (["invalidTitle", "tooMany", "participant"].includes(failure.kind)) setRejected(op);
         if (
           failure.kind === "ambiguous" ||
           failure.kind === "resultUnavailable" ||
@@ -298,6 +315,7 @@ function GroupForm({
         ))}
       </ul>
       <div ref={notice} tabIndex={-1} className="flex min-w-0 flex-col gap-3">
+        {unchanged && <InlineNotice tone="warning">{t("groups.changedDraft")}</InlineNotice>}
         {lookup !== "idle" && (
           <output>
             {lookup === "loading" ? t("direct.looking") : t(`groups.lookup.${lookup}`)}
