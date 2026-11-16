@@ -180,6 +180,9 @@ function Inbox({ owner, context }: Scope) {
       <Link className="inline-flex min-h-11 items-center underline" to="/conversations/new">
         {t("direct.title")}
       </Link>
+      <Link className="inline-flex min-h-11 items-center underline" to="/conversations/groups/new">
+        {t("groups.new")}
+      </Link>
       <div>
         <Button disabled={error?.kind === "rate"} onClick={() => request()}>
           {t("conversations.refresh")}
