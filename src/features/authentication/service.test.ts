@@ -99,6 +99,89 @@ async function setup() {
 beforeEach(() => localStorage.clear());
 
 describe("authentication orchestration", () => {
+  it("refreshes once before concurrent lookup and single-dispatch Direct creation", async () => {
+    const f = await setup();
+    await f.login();
+    f.clock.value += 56_000;
+    f.transport.mockClear();
+    f.transport.mockImplementation(async (url) => {
+      if (url.pathname.endsWith("/refresh")) return Response.json(f.makeGrant());
+      if (url.pathname.endsWith("/users"))
+        return Response.json({ items: [{ id: user.id, username: "alice" }], has_more: false });
+      return Response.json(
+        {
+          id: user.id,
+          kind: "direct",
+          title: "alice",
+          created_at: user.created_at,
+          updated_at: user.updated_at,
+          membership: { role: "direct" },
+          unread_count: 0,
+        },
+        { status: 201 },
+      );
+    });
+    const active = f.service.activeContext()!;
+    await Promise.all([
+      f.service.findUser(active, "ALICE"),
+      f.service.openDirect(active, user.id, "operation-key"),
+    ]);
+    expect(f.refreshCalls()).toHaveLength(1);
+    expect(f.transport.mock.calls.map(([url]) => url.pathname)).toEqual([
+      "/proxy/v1/sessions/refresh",
+      "/proxy/v1/users",
+      "/proxy/v1/conversations",
+    ]);
+  });
+  it.each([401, 429, 500])("never replays Direct POST after HTTP %s", async (status) => {
+    const f = await setup();
+    await f.login();
+    f.transport.mockClear();
+    f.transport.mockImplementation(async () =>
+      Response.json(
+        problem(
+          status,
+          status === 401
+            ? "auth.invalid_access_token"
+            : status === 429
+              ? "rate_limit.exceeded"
+              : "internal.error",
+        ),
+        { status, headers: { "Content-Type": "application/problem+json" } },
+      ),
+    );
+    await expect(
+      f.service.openDirect(f.service.activeContext()!, user.id, "key"),
+    ).rejects.toMatchObject({ metadata: { status } });
+    expect(f.transport).toHaveBeenCalledTimes(1);
+    expect(f.refreshCalls()).toHaveLength(0);
+  });
+  it("fences a dispatched Direct after account selection changes and releases ownership", async () => {
+    const f = await setup();
+    await f.login();
+    let started!: () => void;
+    let finish!: (response: Response) => void;
+    const submitted = new Promise<void>((resolve) => {
+      started = resolve;
+    });
+    f.transport.mockImplementationOnce(async () => {
+      started();
+      return new Promise<Response>((resolve) => {
+        finish = resolve;
+      });
+    });
+    const active = f.service.activeContext()!;
+    const pending = f.service.openDirect(active, user.id, "fixed-key");
+    const rejected = expect(pending).rejects.toMatchObject({ category: "cancelled" });
+    await submitted;
+    await f.service.switchAccount(null);
+    finish(Response.json({}));
+    await rejected;
+    await expect(
+      f.persistence.accountOperation(active.accountId, async () => "released"),
+    ).resolves.toBe("released");
+    expect(f.service.getSnapshot()).not.toMatchObject({ kind: "ready" });
+  });
   it("serializes concurrent reads so an expiring token rotates only once", async () => {
     const f = await setup();
     await f.login();
