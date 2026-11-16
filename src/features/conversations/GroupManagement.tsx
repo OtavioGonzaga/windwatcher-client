@@ -15,6 +15,7 @@ import { directFailure } from "./direct-operation";
 import type { DirectFailure } from "./direct-operation";
 import { useGroupLifecycle } from "./useGroupLifecycle";
 import type { GroupAction } from "./group-lifecycle";
+import type { Member } from "./group-validation";
 import { useCooldown } from "./useCooldown";
 
 type Context = NonNullable<ReturnType<AuthenticationService["activeContext"]>>;
@@ -153,6 +154,30 @@ export function GroupManagement({
         ? action.target.user.username
         : action.target.username
       : undefined;
+  const memberActions = (member: Member) =>
+    member.role !== "owner" ? (
+      <div className="mt-3 flex flex-wrap gap-2">
+        <Button
+          disabled={disabled}
+          onClick={() =>
+            begin({
+              kind: "role",
+              target: member,
+              role: member.role === "admin" ? "member" : "admin",
+            })
+          }
+        >
+          {t(member.role === "admin" ? "groupManagement.demote" : "groupManagement.promote", {
+            username: member.user.username,
+          })}
+        </Button>
+        {member.user.id !== context.userId && (
+          <Button disabled={disabled} onClick={() => begin({ kind: "remove", target: member })}>
+            {t("groupManagement.remove", { username: member.user.username })}
+          </Button>
+        )}
+      </div>
+    ) : null;
   return (
     <section className="flex min-w-0 flex-col gap-4" aria-label={t("groupManagement.title")}>
       <h2 className="font-semibold">{t("groupManagement.title")}</h2>
@@ -285,6 +310,7 @@ export function GroupManagement({
         onUnavailable={onUnavailable}
         disabled={disabled}
         onRefreshRequest={() => void lifecycle.check()}
+        renderActions={manager ? memberActions : undefined}
       />
       <dialog
         ref={dialog}
@@ -306,6 +332,9 @@ export function GroupManagement({
           {target && <p>{target}</p>}
           {action?.kind === "rename" && <p className="whitespace-pre-wrap">{action.title}</p>}
           {action?.kind === "role" && <p>{t(`groups.roles.${action.role}`)}</p>}
+          {action?.kind === "role" &&
+            action.role === "member" &&
+            action.target.user.id === context.userId && <p>{t("groupManagement.selfDemotion")}</p>}
         </div>
         <div className="flex flex-wrap gap-2">
           <Button onClick={cancel}>{t("discovery.cancel")}</Button>

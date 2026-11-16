@@ -101,6 +101,64 @@ beforeEach(() => {
   f.owner.addGroupMember.mockResolvedValue({ user: peer, role: "admin", joined_at: date });
 });
 describe("Group management review", () => {
+  it("offers non-Owner row actions but never removes self or modifies Owner", async () => {
+    mount();
+    await ready();
+    expect(screen.getByRole("button", { name: "Promote bob to Admin" })).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /Demote alice|Remove alice/ }),
+    ).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Remove bob from group" }));
+    expect(f.owner.removeGroupMember).not.toHaveBeenCalled();
+    await confirm();
+    await screen.findByText(/The server confirmed this request/);
+    expect(f.owner.removeGroupMember).toHaveBeenCalledWith(
+      f.context,
+      id,
+      peer.id,
+      expect.any(AbortSignal),
+    );
+  });
+  it("allows Admin self-demotion and hides all manager actions after authoritative refresh", async () => {
+    f.owner.getConversation.mockResolvedValue({ ...group, membership: { role: "admin" } });
+    f.owner.listGroupMembers.mockResolvedValue({
+      items: [
+        { user: { id: f.context.userId, username: "alice" }, role: "admin", joined_at: date },
+        { user: peer, role: "owner", joined_at: date },
+      ],
+      has_more: false,
+    });
+    mount();
+    await ready();
+    fireEvent.click(screen.getByRole("button", { name: "Demote alice to Member" }));
+    expect(
+      within(await screen.findByRole("dialog")).getByText(
+        "You will lose Group management permissions.",
+      ),
+    ).toBeInTheDocument();
+    f.owner.getConversation.mockResolvedValue({ ...group, membership: { role: "member" } });
+    await confirm();
+    await screen.findByText(/The server confirmed this request/);
+    expect(f.owner.changeGroupMemberRole).toHaveBeenCalledWith(
+      f.context,
+      id,
+      f.context.userId,
+      "member",
+      expect.any(AbortSignal),
+    );
+    expect(screen.queryByRole("button", { name: "Save title" })).not.toBeInTheDocument();
+  });
+  it("handles protected Owner rejection without declaring the Group inaccessible", async () => {
+    f.owner.removeGroupMember.mockRejectedValue(
+      new ApiError("http", { status: 409, code: "conversation.owner_protected" }),
+    );
+    mount();
+    await ready();
+    fireEvent.click(screen.getByRole("button", { name: "Remove bob from group" }));
+    await confirm();
+    await screen.findByText(/The Owner cannot be changed or removed/);
+    expect(screen.getByRole("heading", { name: "Initial group" })).toBeInTheDocument();
+  });
   it("reviews exact rename input and updates from a new summary, not the write DTO", async () => {
     mount();
     await ready();

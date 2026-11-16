@@ -26,7 +26,7 @@ export function GroupMembers({
   onUnavailable: () => void;
   disabled?: boolean;
   onRefreshRequest?: () => void;
-  renderActions?: (member: Member) => ReactNode;
+  renderActions?: ((member: Member) => ReactNode) | undefined;
 }) {
   const { t, i18n } = useTranslation();
   const [items, setItems] = useState<Member[]>([]);

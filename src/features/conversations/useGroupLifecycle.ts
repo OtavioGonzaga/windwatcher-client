@@ -50,6 +50,12 @@ export function useGroupLifecycle({
   const controller = useRef<AbortController | null>(null);
   const generation = useRef(0);
   useEffect(() => {
+    if (state.phase === "confirming" && state.intent?.sourceRole !== group.membership.role) {
+      // oxlint-disable-next-line react/set-state-in-effect -- A new authoritative role invalidates a stale review.
+      setState({ phase: "idle" });
+    }
+  }, [group.membership.role, state]);
+  useEffect(() => {
     const current = controller;
     const sequence = generation;
     return () => {
