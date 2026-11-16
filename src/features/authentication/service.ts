@@ -10,6 +10,7 @@ import type { SessionEnvelope } from "./envelope";
 import type { SessionGrant, UserIdentity } from "./validation";
 import type { AuthApi } from "./api";
 import type { ConversationsApi } from "../conversations/api";
+import type { GroupOperation } from "../conversations/group-operation";
 
 export type LoginReason =
   | "expired"
@@ -704,6 +705,34 @@ export class AuthenticationService {
     if (!(await this.isCurrent(active))) throw new ApiError("cancelled");
     cancelled(lifetime);
     return result;
+  }
+  createGroup(
+    active: NonNullable<ReturnType<AuthenticationService["activeContext"]>>,
+    operation: GroupOperation,
+    signal?: AbortSignal,
+  ) {
+    return this.conversationOperation(
+      active,
+      (api, token, lifetime) =>
+        operation.dispatch(active, (body, key) =>
+          api.createGroup(token, body, key, { signal: lifetime }),
+        ),
+      signal,
+      "mutation",
+    );
+  }
+  listGroupMembers(
+    active: NonNullable<ReturnType<AuthenticationService["activeContext"]>>,
+    id: string,
+    cursor?: string,
+    signal?: AbortSignal,
+  ) {
+    return this.conversationOperation(
+      active,
+      (api, token, lifetime) => api.listMembers(token, id, cursor, { signal: lifetime }),
+      signal,
+      "read",
+    );
   }
   listConversations(
     active: NonNullable<ReturnType<AuthenticationService["activeContext"]>>,
