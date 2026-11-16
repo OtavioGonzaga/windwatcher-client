@@ -23,6 +23,7 @@ interface RequestOptions extends RequestLifetime {
   readonly query?: Readonly<Record<string, string>>;
   readonly accessToken?: string;
   readonly body?: unknown;
+  readonly idempotencyKey?: string;
 }
 type JsonRequest<T> = RequestOptions & {
   readonly expectedStatuses: readonly [200 | 201, ...(200 | 201)[]];
@@ -123,6 +124,16 @@ export class ApiClient {
     }
     const url = apiUrl(this.#base, options.path, options.query);
     const headers = new Headers({ Accept: "application/json" });
+    if (options.idempotencyKey !== undefined) {
+      if (
+        options.method !== "POST" ||
+        typeof options.idempotencyKey !== "string" ||
+        !/^[\x21-\x7e]{1,128}$/.test(options.idempotencyKey)
+      ) {
+        throw new TypeError("Invalid POST idempotency key.");
+      }
+      headers.set("Idempotency-Key", options.idempotencyKey);
+    }
     if (options.accessToken !== undefined) {
       if (!/^[A-Za-z0-9\-._~+/]+=*$/.test(options.accessToken)) {
         throw new TypeError("Invalid bearer token syntax.");
