@@ -40,6 +40,13 @@ consumer cancellation cannot discard a valid rotated grant; an interruption afte
 the sent marker but before transmission is conservatively recovered without replay.
 There is no persistent query cache or realtime connection.
 
+Exact username discovery uses this GET policy. Direct creation instead uses the
+required mutation policy: pre-refresh under ownership if necessary, then exactly
+one POST, with no automatic replay even after a qualifying 401. A validated result
+must pass the active-context fence before navigation. Cancellation after dispatch
+does not undo remote creation. Keys are form-owned and transient, not credentials
+or session-journal entries; see [Direct retry semantics](direct-conversations.md).
+
 **Log out** first invalidates the target's UI context, serializes with refresh under
 profile/account ownership, reads only a bound current envelope, deletes/verifies
 its local secret, and commits session/intent cleanup. The account and server stay.

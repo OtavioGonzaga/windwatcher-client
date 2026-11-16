@@ -10,7 +10,8 @@ This repository contains the shared toolchain, a typed HTTP foundation and a
 responsive shell, accessible visual tokens, working language/appearance choices,
 manual server inspection with optional Linux-native local suggestions, saved
 server profiles, registration, sign-in, recoverable sessions and multi-account
-switching, and a read-only conversation inbox and summary. Full message history,
+switching, exact-username discovery, opening new/existing Directs (including self),
+and a read-only conversation inbox and summary. Full message history,
 sending, read-state changes and realtime updates are **not implemented yet**.
 There are no published client releases or supported installation packages.
 `0.0.1-dev.0` in build manifests is an unpublished development placeholder, not a release.

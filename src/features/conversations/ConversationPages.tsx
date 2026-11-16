@@ -177,6 +177,9 @@ function Inbox({ owner, context }: Scope) {
       <h1 id="route-heading" tabIndex={-1} className="text-lg font-semibold">
         {t("conversations.inbox")}
       </h1>
+      <Link className="inline-flex min-h-11 items-center underline" to="/conversations/new">
+        {t("direct.title")}
+      </Link>
       <div>
         <Button disabled={error?.kind === "rate"} onClick={() => request()}>
           {t("conversations.refresh")}

@@ -1,5 +1,29 @@
 {
   "common": {
+    "direct": {
+      "title": "Neue direkte Unterhaltung",
+      "username": "Vollständiger Benutzername",
+      "hint": "Gib den exakten Namen auf diesem Server ein (3–32 ASCII-Buchstaben, Ziffern oder Unterstriche).",
+      "find": "Benutzer finden",
+      "looking": "Benutzer wird gesucht…",
+      "creating": "Unterhaltung wird geöffnet…",
+      "empty": "Auf diesem Server wurde kein passender Benutzer gefunden.",
+      "confirm": "Eine Unterhaltung mit {{username}} auf diesem Server beginnen?",
+      "self": "Unterhaltung mit dir selbst",
+      "start": "Unterhaltung beginnen",
+      "again": "Erneut suchen",
+      "errors": {
+        "network": "Die Anfrage konnte nicht abgeschlossen werden. Prüfe deine Verbindung und versuche es erneut.",
+        "invalid": "Der Server hat eine ungültige Antwort zurückgegeben.",
+        "username": "Gib 3–32 ASCII-Buchstaben, Ziffern oder Unterstriche ohne Leerzeichen ein.",
+        "unavailable": "Dieser Teilnehmer ist nicht verfügbar. Suche erneut, bevor du eine Unterhaltung beginnst.",
+        "conflict": "Dieser Versuch steht im Konflikt mit einer früheren Anfrage. Suche erneut und bestätige einen neuen Vorgang.",
+        "resultUnavailable": "Das frühere Ergebnis ist nicht mehr abrufbar. Suche erneut und bestätige einen neuen Vorgang.",
+        "ambiguous": "Die Unterhaltung könnte bereits existieren. Wiederhole diesen Versuch ausdrücklich, um ihn zu überprüfen.",
+        "rate": "Zu viele Anfragen. Warte, bevor du es erneut versuchst.",
+        "expired": "Das Wiederholungsfenster ist abgelaufen. Die Unterhaltung könnte bereits existieren. Suche erneut und bestätige einen neuen Versuch."
+      }
+    },
     "conversations": {
       "inbox": "Posteingang",
       "refresh": "Aktualisieren",

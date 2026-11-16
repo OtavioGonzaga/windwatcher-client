@@ -602,10 +602,11 @@ export class AuthenticationService {
       true,
     );
   }
-  private async conversationRead<T>(
+  private async conversationOperation<T>(
     active: NonNullable<ReturnType<AuthenticationService["activeContext"]>>,
     operation: (api: ConversationsApi, token: string, signal: AbortSignal) => Promise<T>,
-    signal?: AbortSignal,
+    signal: AbortSignal | undefined,
+    policy: "read" | "mutation",
   ): Promise<T> {
     this.supported();
     const lifetime = signal ? AbortSignal.any([signal, active.signal]) : active.signal;
@@ -638,6 +639,8 @@ export class AuthenticationService {
             refreshed = true;
           }
           await checkpoint(lease, lifetime);
+          if (!(await this.isCurrent(active))) throw new ApiError("cancelled");
+          cancelled(lifetime);
           let response: T;
           try {
             response = await operation(
@@ -646,7 +649,7 @@ export class AuthenticationService {
               lifetime,
             );
           } catch (error) {
-            if (!qualifying401(error) || refreshed) throw error;
+            if (policy !== "read" || !qualifying401(error) || refreshed) throw error;
             envelope = await this.rotate(
               context.account,
               context.profile,
@@ -707,10 +710,11 @@ export class AuthenticationService {
     cursor?: string,
     signal?: AbortSignal,
   ) {
-    return this.conversationRead(
+    return this.conversationOperation(
       active,
       (api, token, lifetime) => api.list(token, cursor, { signal: lifetime }),
       signal,
+      "read",
     );
   }
   getConversation(
@@ -718,10 +722,38 @@ export class AuthenticationService {
     id: string,
     signal?: AbortSignal,
   ) {
-    return this.conversationRead(
+    return this.conversationOperation(
       active,
       (api, token, lifetime) => api.get(token, id, { signal: lifetime }),
       signal,
+      "read",
+    );
+  }
+  findUser(
+    active: NonNullable<ReturnType<AuthenticationService["activeContext"]>>,
+    username: string,
+    signal?: AbortSignal,
+  ) {
+    return this.conversationOperation(
+      active,
+      (api, token, lifetime) => api.findExactUsername(token, username, { signal: lifetime }),
+      signal,
+      "read",
+    );
+  }
+  openDirect(
+    active: NonNullable<ReturnType<AuthenticationService["activeContext"]>>,
+    participantId: string,
+    key: string,
+    signal?: AbortSignal,
+  ) {
+    // The keyed mutation is still single-dispatch. Only an explicit UI retry
+    // may invoke it again; a qualifying 401 never replays this POST.
+    return this.conversationOperation(
+      active,
+      (api, token, lifetime) => api.openDirect(token, participantId, key, { signal: lifetime }),
+      signal,
+      "mutation",
     );
   }
   reconcileSelected(signal: AbortSignal) {

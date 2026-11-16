@@ -16,7 +16,7 @@ const foreign = Bun.serve({
 let foreignHits = 0;
 const cors = {
   "Access-Control-Allow-Origin": "http://127.0.0.1:4174",
-  "Access-Control-Allow-Headers": "Authorization, Content-Type",
+  "Access-Control-Allow-Headers": "Authorization, Content-Type, Idempotency-Key",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
   "Access-Control-Expose-Headers": "X-Request-Id, Retry-After",
 };
@@ -25,7 +25,33 @@ const server = Bun.serve({
   port: 4318,
   async fetch(request) {
     const path = new URL(request.url).pathname;
+    if (path === "/key-denied/v1/conversations" && request.method === "OPTIONS")
+      return new Response(null, {
+        status: 204,
+        headers: { ...cors, "Access-Control-Allow-Headers": "Authorization, Content-Type" },
+      });
     if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
+    if (path === "/key/v1/conversations") {
+      const body = await request.json();
+      if (
+        request.headers.get("Idempotency-Key") !== "fixture-only-key" ||
+        JSON.stringify(body) !==
+          JSON.stringify({ kind: "direct", participant_id: "019a0000-0000-7000-8000-000000000001" })
+      )
+        return new Response(null, { status: 400, headers: cors });
+      return Response.json(
+        {
+          id: "019a0000-0000-7000-8000-000000000011",
+          kind: "direct",
+          title: "Fixture Direct",
+          created_at: "2026-11-06T12:00:00Z",
+          updated_at: "2026-11-06T12:00:00Z",
+          membership: { role: "direct" },
+          unread_count: 0,
+        },
+        { status: 201, headers: cors },
+      );
+    }
     if (path === "/ready") return new Response("ready");
     if (path === "/pr5-allowed/v1/instance")
       return Response.json(instance, {

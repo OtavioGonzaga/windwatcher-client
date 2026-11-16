@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Exact-username discovery and confirmed opening of new/existing Directs, including
+  conversations with yourself, with explicit same-operation retry for uncertain outcomes.
+
 - Account-scoped read-only inbox and conversation summaries, with cursor pagination,
   explicit refresh, localized empty/error states and safe deleted-message previews.
 - Shared account/server selector with persisted single-account selection,
