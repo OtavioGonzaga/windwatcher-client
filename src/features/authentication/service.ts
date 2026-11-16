@@ -734,6 +734,96 @@ export class AuthenticationService {
       "read",
     );
   }
+  renameGroup(
+    active: NonNullable<ReturnType<AuthenticationService["activeContext"]>>,
+    id: string,
+    title: string,
+    signal?: AbortSignal,
+  ) {
+    return this.conversationOperation(
+      active,
+      (api, token, lifetime) => api.renameGroup(token, id, title, { signal: lifetime }),
+      signal,
+      "mutation",
+    );
+  }
+  addGroupMember(
+    active: NonNullable<ReturnType<AuthenticationService["activeContext"]>>,
+    id: string,
+    target: string,
+    signal?: AbortSignal,
+  ) {
+    return this.conversationOperation(
+      active,
+      (api, token, lifetime) => api.addMember(token, id, target, { signal: lifetime }),
+      signal,
+      "mutation",
+    );
+  }
+  changeGroupMemberRole(
+    active: NonNullable<ReturnType<AuthenticationService["activeContext"]>>,
+    id: string,
+    target: string,
+    role: "admin" | "member",
+    signal?: AbortSignal,
+  ) {
+    return this.conversationOperation(
+      active,
+      (api, token, lifetime) => api.changeMemberRole(token, id, target, role, { signal: lifetime }),
+      signal,
+      "mutation",
+    );
+  }
+  removeGroupMember(
+    active: NonNullable<ReturnType<AuthenticationService["activeContext"]>>,
+    id: string,
+    target: string,
+    signal?: AbortSignal,
+  ) {
+    return this.conversationOperation(
+      active,
+      (api, token, lifetime) => api.removeMember(token, id, target, { signal: lifetime }),
+      signal,
+      "mutation",
+    );
+  }
+  transferGroupOwner(
+    active: NonNullable<ReturnType<AuthenticationService["activeContext"]>>,
+    id: string,
+    target: string,
+    signal?: AbortSignal,
+  ) {
+    return this.conversationOperation(
+      active,
+      (api, token, lifetime) => api.transferOwner(token, id, target, { signal: lifetime }),
+      signal,
+      "mutation",
+    );
+  }
+  leaveGroup(
+    active: NonNullable<ReturnType<AuthenticationService["activeContext"]>>,
+    id: string,
+    signal?: AbortSignal,
+  ) {
+    return this.conversationOperation(
+      active,
+      (api, token, lifetime) => api.leaveGroup(token, id, { signal: lifetime }),
+      signal,
+      "mutation",
+    );
+  }
+  probeGroupMembers(
+    active: NonNullable<ReturnType<AuthenticationService["activeContext"]>>,
+    id: string,
+    signal?: AbortSignal,
+  ) {
+    return this.conversationOperation(
+      active,
+      (api, token, lifetime) => api.probeGroupMembers(token, id, { signal: lifetime }),
+      signal,
+      "read",
+    );
+  }
   listConversations(
     active: NonNullable<ReturnType<AuthenticationService["activeContext"]>>,
     cursor?: string,

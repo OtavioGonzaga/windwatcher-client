@@ -100,6 +100,90 @@ async function setup() {
 beforeEach(() => localStorage.clear());
 
 describe("authentication orchestration", () => {
+  const actions = ["rename", "add", "role", "remove", "transfer", "leave"] as const;
+  function lifecycle(
+    f: Awaited<ReturnType<typeof setup>>,
+    action: (typeof actions)[number],
+    signal?: AbortSignal,
+  ) {
+    const active = f.service.activeContext()!;
+    switch (action) {
+      case "rename":
+        return f.service.renameGroup(active, user.id, "New", signal);
+      case "add":
+        return f.service.addGroupMember(active, user.id, user.id, signal);
+      case "role":
+        return f.service.changeGroupMemberRole(active, user.id, user.id, "member", signal);
+      case "remove":
+        return f.service.removeGroupMember(active, user.id, user.id, signal);
+      case "transfer":
+        return f.service.transferGroupOwner(active, user.id, user.id, signal);
+      case "leave":
+        return f.service.leaveGroup(active, user.id, signal);
+    }
+    throw new Error("Unknown lifecycle action.");
+  }
+  it.each(actions)("never replays lifecycle %s after 401, 429 or 500", async (action) => {
+    for (const status of [401, 429, 500]) {
+      localStorage.clear();
+      // oxlint-disable-next-line eslint/no-await-in-loop -- Independent session per rejection.
+      const f = await setup();
+      // oxlint-disable-next-line eslint/no-await-in-loop -- Authenticate before testing the operation.
+      await f.login();
+      f.transport.mockClear();
+      f.transport.mockImplementation(async () =>
+        Response.json(
+          problem(
+            status,
+            status === 401
+              ? "auth.invalid_access_token"
+              : status === 429
+                ? "rate_limit.exceeded"
+                : "internal.error",
+          ),
+          { status, headers: { "Content-Type": "application/problem+json" } },
+        ),
+      );
+      // oxlint-disable-next-line eslint/no-await-in-loop -- Inspect single-dispatch rejection.
+      await expect(lifecycle(f, action)).rejects.toMatchObject({ metadata: { status } });
+      expect(f.transport).toHaveBeenCalledTimes(1);
+      expect(f.refreshCalls()).toHaveLength(0);
+      expect(new Headers(f.transport.mock.calls[0]![1].headers).has("Idempotency-Key")).toBe(false);
+    }
+  });
+  it.each(actions)(
+    "pre-refreshes %s once and fences completion on account change",
+    async (action) => {
+      const f = await setup();
+      await f.login();
+      f.clock.value += 56000;
+      let started!: () => void;
+      let finish!: (response: Response) => void;
+      const sent = new Promise<void>((resolve) => {
+        started = resolve;
+      });
+      f.transport.mockClear();
+      f.transport.mockImplementation(async (url) => {
+        if (url.pathname.endsWith("/refresh")) return Response.json(f.makeGrant());
+        started();
+        return new Promise<Response>((resolve) => {
+          finish = resolve;
+        });
+      });
+      const active = f.service.activeContext()!;
+      const pending = lifecycle(f, action);
+      const rejected = expect(pending).rejects.toMatchObject({ category: "cancelled" });
+      await sent;
+      await f.service.switchAccount(null);
+      finish(new Response(null, { status: 204 }));
+      await rejected;
+      expect(f.refreshCalls()).toHaveLength(1);
+      expect(f.transport).toHaveBeenCalledTimes(2);
+      await expect(
+        f.persistence.accountOperation(active.accountId, async () => "released"),
+      ).resolves.toBe("released");
+    },
+  );
   it.each([401, 429, 500])("never replays Group POST after HTTP %s", async (status) => {
     const f = await setup();
     await f.login();
