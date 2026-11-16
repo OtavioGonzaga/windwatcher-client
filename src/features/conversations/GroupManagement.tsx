@@ -154,30 +154,38 @@ export function GroupManagement({
         ? action.target.user.username
         : action.target.username
       : undefined;
-  const memberActions = (member: Member) =>
-    member.role !== "owner" ? (
-      <div className="mt-3 flex flex-wrap gap-2">
-        <Button
-          disabled={disabled}
-          onClick={() =>
-            begin({
-              kind: "role",
-              target: member,
-              role: member.role === "admin" ? "member" : "admin",
-            })
-          }
-        >
-          {t(member.role === "admin" ? "groupManagement.demote" : "groupManagement.promote", {
-            username: member.user.username,
-          })}
-        </Button>
-        {member.user.id !== context.userId && (
-          <Button disabled={disabled} onClick={() => begin({ kind: "remove", target: member })}>
-            {t("groupManagement.remove", { username: member.user.username })}
+  const memberActions = (member: Member) => (
+    <div className="mt-3 flex flex-wrap gap-2">
+      {member.role !== "owner" && (
+        <>
+          <Button
+            disabled={disabled}
+            onClick={() =>
+              begin({
+                kind: "role",
+                target: member,
+                role: member.role === "admin" ? "member" : "admin",
+              })
+            }
+          >
+            {t(member.role === "admin" ? "groupManagement.demote" : "groupManagement.promote", {
+              username: member.user.username,
+            })}
           </Button>
-        )}
-      </div>
-    ) : null;
+          {member.user.id !== context.userId && (
+            <Button disabled={disabled} onClick={() => begin({ kind: "remove", target: member })}>
+              {t("groupManagement.remove", { username: member.user.username })}
+            </Button>
+          )}
+        </>
+      )}
+      {group.membership.role === "owner" && (
+        <Button disabled={disabled} onClick={() => begin({ kind: "transfer", target: member })}>
+          {t("groupManagement.transfer", { username: member.user.username })}
+        </Button>
+      )}
+    </div>
+  );
   return (
     <section className="flex min-w-0 flex-col gap-4" aria-label={t("groupManagement.title")}>
       <h2 className="font-semibold">{t("groupManagement.title")}</h2>
@@ -335,6 +343,15 @@ export function GroupManagement({
           {action?.kind === "role" &&
             action.role === "member" &&
             action.target.user.id === context.userId && <p>{t("groupManagement.selfDemotion")}</p>}
+          {action?.kind === "transfer" && (
+            <p>
+              {t(
+                action.target.user.id === context.userId
+                  ? "groupManagement.selfTransfer"
+                  : "groupManagement.transferWarning",
+              )}
+            </p>
+          )}
         </div>
         <div className="flex flex-wrap gap-2">
           <Button onClick={cancel}>{t("discovery.cancel")}</Button>

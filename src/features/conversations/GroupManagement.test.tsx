@@ -101,6 +101,45 @@ beforeEach(() => {
   f.owner.addGroupMember.mockResolvedValue({ user: peer, role: "admin", joined_at: date });
 });
 describe("Group management review", () => {
+  it("transfers only to a loaded member and drops Owner controls after fresh own-role read", async () => {
+    mount();
+    await ready();
+    fireEvent.click(screen.getByRole("button", { name: "Transfer ownership to bob" }));
+    await screen.findByText(/The selected existing member becomes Owner/);
+    f.owner.getConversation.mockResolvedValue({ ...group, membership: { role: "admin" } });
+    f.owner.listGroupMembers.mockResolvedValue({
+      items: [{ user: peer, role: "owner", joined_at: date }],
+      has_more: false,
+    });
+    await confirm();
+    await screen.findByText("Current server state matches the requested change.");
+    expect(f.owner.transferGroupOwner).toHaveBeenCalledWith(
+      f.context,
+      id,
+      peer.id,
+      expect.any(AbortSignal),
+    );
+    expect(screen.queryByRole("button", { name: /Transfer ownership/ })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Save title" })).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: "Continue with current state" }));
+    await ready();
+  });
+  it("labels self-transfer as no change and never promises that ownership moved", async () => {
+    mount();
+    await ready();
+    fireEvent.click(screen.getByRole("button", { name: "Transfer ownership to alice" }));
+    await screen.findByText(
+      "You remain Owner. Transferring ownership to yourself makes no change.",
+    );
+    await confirm();
+    await screen.findByText("Current server state matches the requested change.");
+    expect(f.owner.transferGroupOwner).toHaveBeenCalledWith(
+      f.context,
+      id,
+      f.context.userId,
+      expect.any(AbortSignal),
+    );
+  });
   it("offers non-Owner row actions but never removes self or modifies Owner", async () => {
     mount();
     await ready();
