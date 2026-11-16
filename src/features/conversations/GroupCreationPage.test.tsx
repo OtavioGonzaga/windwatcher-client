@@ -236,4 +236,32 @@ describe("Group creation and review", () => {
     await act(async () => resolve({ id: "late" }));
     expect(screen.queryByText("Authoritative Group detail")).not.toBeInTheDocument();
   });
+  it("allows 256 additional members and refuses the 257th without truncation", async () => {
+    let counter = 1;
+    f.owner.findUser.mockImplementation(async () => {
+      const n = ++counter;
+      return {
+        id: `019a0000-0000-7000-8000-${n.toString(16).padStart(12, "0")}`,
+        username: `peer_${n}`,
+      };
+    });
+    mount();
+    await act(async () => {});
+    const input = screen.getByLabelText("Full username");
+    const find = screen.getByRole("button", { name: "Find and add participant" });
+    for (let n = 0; n < 257; n++) {
+      fireEvent.change(input, { target: { value: `peer_${n + 2}` } });
+      // oxlint-disable-next-line eslint/no-await-in-loop -- Each explicit lookup must finish before the next user action.
+      await act(async () => {
+        find.click();
+      });
+    }
+    expect(screen.getAllByRole("listitem")).toHaveLength(256);
+    expect(screen.getByText(/256 additional participants selected/)).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Group title"), { target: { value: "Full group" } });
+    fireEvent.click(screen.getByRole("button", { name: "Review group" }));
+    fireEvent.click(screen.getByRole("button", { name: "Create group" }));
+    await screen.findByText("Authoritative Group detail");
+    expect(f.send.mock.calls[0]?.[0].participant_ids).toHaveLength(256);
+  }, 20000);
 });

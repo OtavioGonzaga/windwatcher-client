@@ -188,40 +188,45 @@ describe("authentication orchestration", () => {
       f.persistence.accountOperation(active.accountId, async () => "released"),
     ).resolves.toBe("released");
   });
-  it("refreshes once before concurrent lookup and single-dispatch Direct creation", async () => {
-    const f = await setup();
-    await f.login();
-    f.clock.value += 56_000;
-    f.transport.mockClear();
-    f.transport.mockImplementation(async (url) => {
-      if (url.pathname.endsWith("/refresh")) return Response.json(f.makeGrant());
-      if (url.pathname.endsWith("/users"))
-        return Response.json({ items: [{ id: user.id, username: "alice" }], has_more: false });
-      return Response.json(
-        {
-          id: user.id,
-          kind: "direct",
-          title: "alice",
-          created_at: user.created_at,
-          updated_at: user.updated_at,
-          membership: { role: "direct" },
-          unread_count: 0,
-        },
-        { status: 201 },
-      );
-    });
-    const active = f.service.activeContext()!;
-    await Promise.all([
-      f.service.findUser(active, "ALICE"),
-      f.service.openDirect(active, user.id, "operation-key"),
-    ]);
-    expect(f.refreshCalls()).toHaveLength(1);
-    expect(f.transport.mock.calls.map(([url]) => url.pathname)).toEqual([
-      "/proxy/v1/sessions/refresh",
-      "/proxy/v1/users",
-      "/proxy/v1/conversations",
-    ]);
-  });
+  it.each(["direct", "group"] as const)(
+    "refreshes once before concurrent lookup and single-dispatch %s creation",
+    async (kind) => {
+      const f = await setup();
+      await f.login();
+      f.clock.value += 56_000;
+      f.transport.mockClear();
+      f.transport.mockImplementation(async (url) => {
+        if (url.pathname.endsWith("/refresh")) return Response.json(f.makeGrant());
+        if (url.pathname.endsWith("/users"))
+          return Response.json({ items: [{ id: user.id, username: "alice" }], has_more: false });
+        return Response.json(
+          {
+            id: user.id,
+            kind,
+            title: "alice",
+            created_at: user.created_at,
+            updated_at: user.updated_at,
+            membership: { role: kind === "direct" ? "direct" : "owner" },
+            unread_count: 0,
+          },
+          { status: 201 },
+        );
+      });
+      const active = f.service.activeContext()!;
+      await Promise.all([
+        f.service.findUser(active, "ALICE"),
+        kind === "direct"
+          ? f.service.openDirect(active, user.id, "operation-key")
+          : f.service.createGroup(active, new GroupOperation(active, "Group", [])),
+      ]);
+      expect(f.refreshCalls()).toHaveLength(1);
+      expect(f.transport.mock.calls.map(([url]) => url.pathname)).toEqual([
+        "/proxy/v1/sessions/refresh",
+        "/proxy/v1/users",
+        "/proxy/v1/conversations",
+      ]);
+    },
+  );
   it.each([401, 429, 500])("never replays Direct POST after HTTP %s", async (status) => {
     const f = await setup();
     await f.login();
@@ -525,7 +530,7 @@ describe("authentication orchestration", () => {
     expect(state.accounts.find((row) => row.id === a)?.session?.generation).toBe(2);
     expect(state.accounts.find((row) => row.id === b)?.session?.generation).toBe(1);
   });
-  it.each(["read", "direct"] as const)(
+  it.each(["read", "direct", "group"] as const)(
     "finishes a %s-triggered sent refresh after changing accounts without publishing its result",
     async (operation) => {
       const f = await setup();
@@ -550,7 +555,12 @@ describe("authentication orchestration", () => {
       const read =
         operation === "read"
           ? f.service.listConversations(f.service.activeContext()!)
-          : f.service.openDirect(f.service.activeContext()!, user.id, "operation-key");
+          : operation === "direct"
+            ? f.service.openDirect(f.service.activeContext()!, user.id, "operation-key")
+            : f.service.createGroup(
+                f.service.activeContext()!,
+                new GroupOperation(f.service.activeContext()!, "Group", []),
+              );
       const rejected = expect(read).rejects.toMatchObject({ category: "cancelled" });
       await submitted;
       await f.service.switchAccount(b);

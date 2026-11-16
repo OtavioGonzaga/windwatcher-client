@@ -5,6 +5,16 @@ import { groupDraft, groupTitleIssue } from "./group-validation";
 const id = (n: number) => `019a0000-0000-7000-8000-${n.toString(16).padStart(12, "0")}`;
 const scope = { profileId: "profile", accountId: "account", userId: id(1), epoch: 1 };
 describe("Group draft and operation", () => {
+  it("fails closed on invalid clock, rollback or expiration without silently renewing the window", () => {
+    expect(() => new GroupOperation(scope, "Group", [], NaN)).toThrow();
+    const op = new GroupOperation(scope, "Group", [], 100);
+    expect(op.eligible(200)).toBe(true);
+    expect(op.eligible(199)).toBe(false);
+    expect(op.eligible(201)).toBe(false);
+    const expired = new GroupOperation(scope, "Group", [], 100);
+    expect(expired.eligible(100 + 86400_000)).toBe(false);
+    expect(expired.eligible(100)).toBe(false);
+  });
   it.each(["", " \t\n", "\u0085", "\u2003"])("rejects Rust whitespace-only titles", (title) => {
     expect(groupTitleIssue(title)).toBe("blank");
   });

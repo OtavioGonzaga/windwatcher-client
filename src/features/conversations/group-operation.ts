@@ -16,6 +16,7 @@ export class GroupOperation {
   #sending = false;
 
   constructor(scope: GroupScope, title: string, ids: readonly string[], now = Date.now()) {
+    if (!Number.isFinite(now)) throw new GroupAttemptExpired();
     this.scope = Object.freeze({
       profileId: scope.profileId,
       accountId: scope.accountId,
