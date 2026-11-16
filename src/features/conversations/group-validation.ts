@@ -59,23 +59,24 @@ export function decodeGroup(value: unknown) {
   groupRole(conversation.membership.role);
   return conversation;
 }
+export function decodeMember(value: unknown): Member {
+  const m = record(value);
+  const user = record(m.user);
+  if (typeof user.username !== "string" || !/^[a-z0-9_]{3,32}$/.test(user.username))
+    throw new Error("Invalid member identity.");
+  return {
+    user: { id: serverUuid(user.id), username: user.username },
+    role: groupRole(m.role),
+    joined_at: utcTimestamp(m.joined_at),
+  };
+}
 export function decodeMemberPage(value: unknown): Omit<MemberPage, "items"> & { items: Member[] } {
   const page = record(value);
   if (!Array.isArray(page.items) || page.items.length > 50 || typeof page.has_more !== "boolean")
     throw new Error("Invalid member page.");
   const cursor = page.next_cursor == null ? page.next_cursor : memberCursor(page.next_cursor);
   if (page.has_more !== (cursor != null)) throw new Error("Invalid member page.");
-  const items = page.items.map((entry): Member => {
-    const m = record(entry);
-    const user = record(m.user);
-    if (typeof user.username !== "string" || !/^[a-z0-9_]{3,32}$/.test(user.username))
-      throw new Error("Invalid member identity.");
-    return {
-      user: { id: serverUuid(user.id), username: user.username },
-      role: groupRole(m.role),
-      joined_at: utcTimestamp(m.joined_at),
-    };
-  });
+  const items = page.items.map(decodeMember);
   if (new Set(items.map((m) => m.user.id)).size !== items.length)
     throw new Error("Duplicate member.");
   return {
