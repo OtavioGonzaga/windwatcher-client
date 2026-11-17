@@ -1,6 +1,7 @@
 {
   "common": {
     "groupManagement": {
+      "abandon": "Reconocer incertidumbre y abandonar recuperación local hacia la bandeja de entrada",
       "title": "Gestionar grupo",
       "rename": "Guardar título",
       "add": "Revisar adición de miembro",

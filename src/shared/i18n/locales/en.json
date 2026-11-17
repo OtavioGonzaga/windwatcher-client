@@ -1,6 +1,7 @@
 {
   "common": {
     "groupManagement": {
+      "abandon": "Acknowledge uncertainty and abandon local recovery to Inbox",
       "title": "Manage group",
       "rename": "Save title",
       "add": "Review member addition",

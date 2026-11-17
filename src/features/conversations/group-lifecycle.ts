@@ -13,6 +13,7 @@ export type GroupIntent = Readonly<{
   scope: Readonly<GroupScope>;
   groupId: string;
   sourceRole: Conversation["membership"]["role"];
+  sourceTitle: string;
   action: GroupAction;
 }>;
 export function groupIntent(
@@ -34,6 +35,7 @@ export function groupIntent(
     }),
     groupId: group.id,
     sourceRole: group.membership.role,
+    sourceTitle: group.title,
     action: Object.freeze(captured),
   });
 }
@@ -114,7 +116,9 @@ export async function reconcileGroup(
       const matches =
         action.kind === "add" ||
         (action.kind === "role" && target.role === action.role) ||
-        (action.kind === "transfer" && target.role === "owner");
+        (action.kind === "transfer" &&
+          target.role === "owner" &&
+          group.membership.role === (action.target.user.id === context.userId ? "owner" : "admin"));
       return { group, result: matches ? "matches" : "differs" };
     }
     if (!page.has_more) return { group, result: action.kind === "remove" ? "matches" : "differs" };

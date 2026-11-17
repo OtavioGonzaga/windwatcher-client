@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { useTranslation } from "react-i18next";
 import { Button } from "../../shared/components/Button";
 import { TextField } from "../../shared/components/TextField";
@@ -47,6 +47,21 @@ export function GroupManagement({
     },
   });
   const { state, cooldown } = lifecycle;
+  const [observed, setObserved] = useState<Member[]>([]);
+  const cancelIntent = lifecycle.cancel;
+  useEffect(() => {
+    const action = state.intent?.action;
+    if (
+      state.phase !== "confirming" ||
+      !action ||
+      !("target" in action) ||
+      !("user" in action.target)
+    )
+      return;
+    const target = action.target;
+    const latest = observed.find((member) => member.user.id === target.user.id);
+    if (latest && latest.role !== target.role) cancelIntent();
+  }, [state, observed, cancelIntent]);
   const [description, setDescription] = useState("");
   const [metadataAttempt, setMetadataAttempt] = useState(0);
   const [metadataError, setMetadataError] = useState(false);
@@ -362,12 +377,20 @@ export function GroupManagement({
       </output>
       {state.phase === "result" && (
         <>
-          <Button disabled={cooldown.waiting} onClick={() => void lifecycle.check()}>
+          {state.outcome === "ambiguous" && (
+            <Link className="inline-flex min-h-11 items-center underline" to="/conversations">
+              {t("groupManagement.abandon")}
+            </Link>
+          )}
+          <Button
+            disabled={cooldown.waiting || lookupCooldown.waiting}
+            onClick={() => void lifecycle.check()}
+          >
             {t("groupManagement.check")}
           </Button>
           {state.verification && state.verification !== "failed" && (
             <Button
-              disabled={cooldown.waiting}
+              disabled={cooldown.waiting || lookupCooldown.waiting}
               onClick={() => {
                 lifecycle.finish();
                 setPeer(undefined);
@@ -391,6 +414,8 @@ export function GroupManagement({
         disabled={disabled}
         onRefreshRequest={() => void lifecycle.check()}
         renderActions={manager ? memberActions : undefined}
+        onObserved={setObserved}
+        onCooldown={setLookupUntil}
       />
       <dialog
         ref={dialog}
@@ -407,7 +432,7 @@ export function GroupManagement({
         </h2>
         <div className="my-4 flex min-w-0 flex-col gap-3 break-words">
           <p>{description}</p>
-          <p>{group.title}</p>
+          <p>{state.intent?.sourceTitle}</p>
           {action && <p>{t(`groupManagement.actions.${action.kind}`)}</p>}
           {target && <p>{target}</p>}
           {action?.kind === "rename" && <p className="whitespace-pre-wrap">{action.title}</p>}

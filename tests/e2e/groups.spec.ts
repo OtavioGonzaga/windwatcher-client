@@ -28,6 +28,12 @@ type Mode =
   | "repeated-cursor"
   | "missing"
   | "direct-role";
+type LifecycleMode =
+  | "drop-write"
+  | "hold-write"
+  | "rate-write"
+  | "permission-write"
+  | "refresh-failure";
 type Call = {
   host: string;
   path: string;
@@ -39,19 +45,20 @@ type Call = {
 };
 
 async function fixture(context: BrowserContext) {
-  let mode: Mode = "normal";
+  let mode: Mode | LifecycleMode = "normal";
   let release: (() => void) | undefined;
   let began: (() => void) | undefined;
   let ended: (() => void) | undefined;
   let started = Promise.resolve();
   let finished = Promise.resolve();
   const groups = new Map<string, Group>();
+  const leftGroups = new Set<string>();
   const keys = new Map<string, { fingerprint: string; id: string }>();
   const calls: Call[] = [];
   const headers = {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Headers": "authorization, content-type, idempotency-key",
-    "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
+    "Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
   };
   const dto = (g: Group) => ({
     id: g.id,
@@ -91,7 +98,7 @@ async function fixture(context: BrowserContext) {
         headers: { ...headers, "Content-Type": "application/problem+json", "Retry-After": "1" },
         json: problem(status, code),
       });
-    if (req.method() === "DELETE") return route.fulfill({ status: 204, headers });
+    if (url.pathname.endsWith("/sessions/current")) return route.fulfill({ status: 204, headers });
     if (url.pathname.endsWith("/instance"))
       return route.fulfill({
         headers,
@@ -117,7 +124,8 @@ async function fixture(context: BrowserContext) {
     const held =
       (mode === "hold-post" && req.method() === "POST") ||
       (mode === "hold-lookup" && url.pathname.endsWith("/users")) ||
-      (mode === "hold-members" && url.pathname.endsWith("/members"));
+      (mode === "hold-members" && url.pathname.endsWith("/members")) ||
+      (mode === "hold-write" && ["PUT", "PATCH", "DELETE"].includes(req.method()));
     if (held) {
       mode = "normal";
       began?.();
@@ -227,8 +235,101 @@ async function fixture(context: BrowserContext) {
         });
       const cid = url.pathname.split("/")[4];
       const g = groups.get(cid ?? "");
-      if (!g || g.host !== url.host || mode === "missing")
+      if (!g || g.host !== url.host || mode === "missing" || leftGroups.has(g.id))
         return await fail(404, "conversation.not_found");
+      if (req.method() === "GET" && mode === "refresh-failure") {
+        mode = "normal";
+        return await fail(500, "internal.error");
+      }
+      if (["PUT", "PATCH", "DELETE"].includes(req.method())) {
+        const next = mode;
+        mode = "normal";
+        if (next === "rate-write") return await fail(429, "rate_limit.exceeded");
+        if (next === "permission-write") {
+          g.role = "member";
+          const own = g.members.find((m) => m.user.id === user.id);
+          if (own) own.role = "member";
+          return await fail(403, "conversation.insufficient_permissions");
+        }
+        const suffix = url.pathname.split("/").slice(5);
+        const targetId = suffix[1];
+        const targetMember = g.members.find((m) => m.user.id === targetId);
+        let result: unknown;
+        let status = 200;
+        if (suffix.join("/") === "members/me") {
+          if (g.role === "owner" && g.members.length > 1)
+            return await fail(409, "conversation.ownership_transfer_required");
+          g.members = g.members.filter((m) => m.user.id !== user.id);
+          leftGroups.add(g.id);
+          if (!g.members.length) groups.delete(g.id);
+          status = 204;
+        } else {
+          if (g.role === "member") return await fail(403, "conversation.insufficient_permissions");
+          if (!suffix.length && req.method() === "PATCH") {
+            if (
+              typeof body !== "object" ||
+              body === null ||
+              !("title" in body) ||
+              typeof body.title !== "string"
+            )
+              throw new Error("Invalid rename fixture request.");
+            g.title = body.title;
+            result = dto(g);
+          } else if (suffix[0] === "owner") {
+            if (g.role !== "owner") return await fail(403, "conversation.insufficient_permissions");
+            if (typeof body !== "object" || body === null || !("user_id" in body))
+              throw new Error("Invalid transfer fixture request.");
+            const targetOwner = g.members.find((m) => m.user.id === body.user_id);
+            if (!targetOwner) return await fail(404, "conversation.member_not_found");
+            if (targetOwner.user.id !== user.id) {
+              const old = g.members.find((m) => m.user.id === user.id);
+              if (old) old.role = "admin";
+              targetOwner.role = "owner";
+              g.role = "admin";
+            }
+            result = dto(g);
+          } else if (req.method() === "PUT") {
+            if (targetMember) result = targetMember;
+            else {
+              const found = ["bob", "carol", "alice"]
+                .map((name) => peer(name, url.host))
+                .find((p) => p.id === targetId);
+              if (!found) return await fail(422, "conversation.participant_unavailable");
+              const added: Member = { user: found, role: "member", joined_at: date };
+              g.members.push(added);
+              result = added;
+              status = 201;
+            }
+          } else {
+            if (!targetMember) return await fail(404, "conversation.member_not_found");
+            if (req.method() === "DELETE" && targetId === user.id)
+              return await fail(403, "conversation.insufficient_permissions");
+            if (targetMember.role === "owner")
+              return await fail(409, "conversation.owner_protected");
+            if (req.method() === "DELETE") {
+              g.members = g.members.filter((m) => m.user.id !== targetId);
+              status = 204;
+            } else {
+              if (
+                typeof body !== "object" ||
+                body === null ||
+                !("role" in body) ||
+                (body.role !== "admin" && body.role !== "member")
+              )
+                return await fail(400, "request.invalid_json");
+              targetMember.role = body.role;
+              if (targetId === user.id) g.role = body.role;
+              result = targetMember;
+            }
+          }
+        }
+        if (next === "drop-write") return await route.abort("failed");
+        return await route.fulfill({
+          status,
+          headers,
+          ...(status === 204 ? {} : { json: result }),
+        });
+      }
       if (url.pathname.endsWith("/members")) {
         if (mode === "invalid-cursor") {
           mode = "normal";
@@ -238,8 +339,9 @@ async function fixture(context: BrowserContext) {
         if (cursor && !/^opaque-\d+$/.test(cursor))
           return await fail(400, "pagination.invalid_cursor");
         const offset = cursor ? Number(cursor.replace("opaque-", "")) : 0;
-        const rows = g.members.slice(offset, offset + 50);
-        const more = offset + 50 < g.members.length;
+        const limit = Number(url.searchParams.get("limit") ?? 50);
+        const rows = g.members.slice(offset, offset + limit);
+        const more = offset + limit < g.members.length;
         const repeat = mode === "repeated-cursor";
         const badRole = mode === "direct-role";
         mode = "normal";
@@ -248,7 +350,9 @@ async function fixture(context: BrowserContext) {
           json: {
             items: badRole ? rows.map((m) => ({ ...m, role: "direct" })) : rows,
             has_more: repeat || more,
-            ...(repeat || more ? { next_cursor: repeat ? cursor : `opaque-${offset + 50}` } : {}),
+            ...(repeat || more
+              ? { next_cursor: repeat ? cursor : `opaque-${offset + limit}` }
+              : {}),
           },
         });
       }
@@ -263,7 +367,7 @@ async function fixture(context: BrowserContext) {
     groups,
     calls,
     posts: () => calls.filter((c) => c.path.endsWith("/conversations") && c.method === "POST"),
-    mode: (next: Mode) => {
+    mode: (next: Mode | LifecycleMode) => {
       mode = next;
       if (next.startsWith("hold-")) {
         started = new Promise<void>((resolve) => {
@@ -305,6 +409,299 @@ async function add(page: Page, name: string) {
 async function create(page: Page) {
   await page.getByRole("button", { name: "Review group", exact: true }).click();
   await page.getByRole("button", { name: "Create group", exact: true }).click();
+}
+
+async function managedGroup(page: Page, context: BrowserContext) {
+  const f = await fixture(context);
+  await login(page);
+  await draft(page, "Managed group");
+  await add(page, "bob");
+  await expect(page.getByRole("button", { name: "Remove bob", exact: true })).toBeVisible();
+  await create(page);
+  await expect(page.getByRole("button", { name: "Save title" })).toBeEnabled();
+  await expect(
+    page.getByRole("region", { name: "Members", exact: true }).getByRole("listitem"),
+  ).toHaveCount(2);
+  return f;
+}
+async function confirmManagement(page: Page, label = "Confirm action") {
+  await page.getByRole("dialog").getByRole("button", { name: label, exact: true }).click();
+}
+const lifecycleWrites = (calls: Call[]) =>
+  calls.filter(
+    (c) => c.path.includes("/conversations/") && ["PATCH", "PUT", "DELETE"].includes(c.method),
+  );
+
+for (const action of ["rename", "add", "role", "remove", "transfer", "leave"] as const) {
+  test(`lifecycle ${action}: committed lost response requires read reconciliation, never replay`, async ({
+    page,
+    context,
+  }) => {
+    const f = await managedGroup(page, context);
+    const g = [...f.groups.values()][0]!;
+    if (action === "leave") {
+      g.role = "member";
+      g.members.forEach((m) => {
+        m.role = m.user.id === user.id ? "member" : "owner";
+      });
+      await page.getByRole("button", { name: "Refresh members" }).click();
+      await expect(page.getByRole("button", { name: "Save title" })).toHaveCount(0);
+    }
+    if (action === "rename") {
+      await page.getByLabel("Group title", { exact: true }).fill(" exact 😀 ");
+      await page.getByRole("button", { name: "Save title" }).click();
+    } else if (action === "add") {
+      await page.getByLabel("Full username").fill("CAROL");
+      await page.getByRole("button", { name: "Find user", exact: true }).click();
+      await page.getByRole("button", { name: "Review member addition" }).click();
+    } else if (action === "role")
+      await page.getByRole("button", { name: "Promote bob to Admin" }).click();
+    else if (action === "remove")
+      await page.getByRole("button", { name: "Remove bob from group" }).click();
+    else if (action === "transfer")
+      await page.getByRole("button", { name: "Transfer ownership to bob" }).click();
+    else await page.getByRole("button", { name: "Review leaving group" }).click();
+    f.mode("drop-write");
+    await confirmManagement(page);
+    await expect(page.getByText(/This change may already have happened/)).toBeVisible();
+    expect(lifecycleWrites(f.calls)).toHaveLength(1);
+    await page.getByRole("button", { name: "Check current state" }).click();
+    if (action === "leave") {
+      await expect(page.getByText("This conversation is unavailable.")).toBeVisible();
+      await expect(page.getByRole("region", { name: "Members", exact: true })).toHaveCount(0);
+    } else {
+      await expect(
+        page.getByText("Current server state matches the requested change."),
+      ).toBeVisible();
+      await expect(page.getByText(/This change may already have happened/)).toBeVisible();
+      await page.getByRole("button", { name: "Acknowledge uncertainty and continue" }).click();
+      if (action === "transfer")
+        await expect(page.getByRole("button", { name: /Transfer ownership to/ })).toHaveCount(0);
+    }
+    const writes = lifecycleWrites(f.calls);
+    expect(writes).toHaveLength(1);
+    expect(writes[0]?.key).toBe("");
+    expect(writes[0]?.token).toBe("Bearer fixture.one.signature");
+    const expected = {
+      rename: ["PATCH", { title: " exact 😀 " }],
+      add: ["PUT", undefined],
+      role: ["PATCH", { role: "admin" }],
+      remove: ["DELETE", undefined],
+      transfer: ["PUT", { user_id: id(3) }],
+      leave: ["DELETE", undefined],
+    }[action];
+    expect([writes[0]?.method, writes[0]?.body]).toEqual(expected);
+  });
+}
+
+test("lifecycle permission loss retains readable Group and drops stale controls", async ({
+  page,
+  context,
+}) => {
+  const f = await managedGroup(page, context);
+  await page.getByRole("button", { name: "Save title" }).click();
+  f.mode("permission-write");
+  await confirmManagement(page);
+  await expect(page.getByText(/Management permissions changed/)).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Managed group", exact: true })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Members", exact: true })).toContainText("alice");
+  await expect(page.getByRole("button", { name: "Save title" })).toHaveCount(0);
+  expect(lifecycleWrites(f.calls)).toHaveLength(1);
+});
+
+test("lifecycle Owner transfer and Admin self-demotion revalidate own controls", async ({
+  page,
+  context,
+}) => {
+  const f = await managedGroup(page, context);
+  await page.getByRole("button", { name: "Transfer ownership to alice" }).click();
+  await expect(page.getByRole("dialog")).toContainText("You remain Owner.");
+  await confirmManagement(page);
+  await page.getByRole("button", { name: "Continue with current state" }).click();
+  await page.getByRole("button", { name: "Transfer ownership to bob" }).click();
+  await expect(page.getByRole("dialog")).toContainText("you become Admin");
+  await confirmManagement(page);
+  await page.getByRole("button", { name: "Continue with current state" }).click();
+  await page.getByRole("button", { name: "Demote alice to Member" }).click();
+  await expect(page.getByRole("dialog")).toContainText(
+    "You will lose Group management permissions.",
+  );
+  await confirmManagement(page);
+  await expect(page.getByRole("button", { name: "Save title" })).toHaveCount(0);
+  expect(lifecycleWrites(f.calls)).toHaveLength(3);
+});
+
+test("lifecycle Owner-only deletion preflight handles a concurrent addition", async ({
+  page,
+  context,
+}) => {
+  const f = await fixture(context);
+  await login(page);
+  await draft(page, "Disposable");
+  await create(page);
+  const leave = page.getByRole("button", { name: "Review leaving group" });
+  await expect(leave).toBeEnabled();
+  await leave.click();
+  await expect(page.getByRole("dialog")).toContainText("all messages and reply-linked history");
+  expect(f.calls.filter((c) => c.path.endsWith("/members")).at(-1)?.query).toBe("?limit=2");
+  const g = [...f.groups.values()][0]!;
+  g.members.push({ user: { id: id(3), username: "bob" }, role: "member", joined_at: date });
+  await confirmManagement(page, "Delete group by leaving");
+  await expect(
+    page.getByText("Transfer ownership before leaving a Group with other members."),
+  ).toBeVisible();
+  expect(f.groups.size).toBe(1);
+  await page.getByRole("button", { name: "Continue with current state" }).click();
+  g.members = g.members.filter((m) => m.user.id === user.id);
+  await leave.click();
+  await confirmManagement(page, "Delete group by leaving");
+  await expect(page).toHaveURL(/#\/conversations$/);
+  expect(f.groups.size).toBe(0);
+  await expect(page.getByText("Disposable", { exact: true })).toHaveCount(0);
+});
+
+for (const locale of ["en", "pt-BR", "es", "de"] as const) {
+  test(`${locale}: lifecycle confirmation and cancellation accessible at 320px`, async ({
+    page,
+    context,
+  }) => {
+    await managedGroup(page, context);
+    await page.goto("/#/preferences");
+    await page.locator("select").first().selectOption(locale);
+    await page.setViewportSize({ width: 320, height: 800 });
+    await page.goto(`/#/conversations/${id(1000)}`);
+    const labels = resources[locale].common;
+    const save = page.getByRole("button", { name: labels.groupManagement.rename, exact: true });
+    await save.click();
+    await expect(page.getByRole("dialog")).toBeVisible();
+    expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+      true,
+    );
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await expect(save).toBeFocused();
+  });
+}
+
+test("lifecycle cooldown never schedules a write and requires a fresh confirmation", async ({
+  page,
+  context,
+}) => {
+  const f = await managedGroup(page, context);
+  await page.getByRole("button", { name: "Save title" }).click();
+  f.mode("rate-write");
+  await confirmManagement(page);
+  const check = page.getByRole("button", { name: "Check current state" });
+  await expect(check).toBeDisabled();
+  await expect(check).toBeEnabled();
+  expect(lifecycleWrites(f.calls)).toHaveLength(1);
+  await check.click();
+  await page.getByRole("button", { name: "Continue with current state" }).click();
+  await page.getByRole("button", { name: "Save title" }).click();
+  expect(lifecycleWrites(f.calls)).toHaveLength(1);
+  await confirmManagement(page);
+  await expect(page.getByText(/The server confirmed this request/)).toBeVisible();
+  expect(lifecycleWrites(f.calls)).toHaveLength(2);
+});
+
+test("lifecycle server switch fences a late held write", async ({ page, context }) => {
+  const f = await managedGroup(page, context);
+  await login(page, "two");
+  await draft(page, "Other server");
+  await create(page);
+  await expect(page.getByRole("button", { name: "Save title" })).toBeEnabled();
+  await page.getByRole("button", { name: "Save title" }).click();
+  f.mode("hold-write");
+  await confirmManagement(page);
+  await f.started();
+  await page.getByRole("button", { name: /^Accounts and servers/ }).click();
+  await page
+    .getByRole("button", { name: "Switch to alice on https://one.groups.test/proxy/", exact: true })
+    .click();
+  await page.getByRole("button", { name: "Close", exact: true }).click();
+  f.release();
+  await f.finished();
+  await expect(page.getByText(/The server confirmed this request/)).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Other server", exact: true })).toHaveCount(0);
+  const first = [...f.groups.values()].find((g) => g.host === "one.groups.test")!;
+  await page.goto(`/#/conversations/${first.id}`);
+  await page.getByRole("button", { name: "Save title" }).click();
+  await confirmManagement(page);
+  await expect(page.getByText(/The server confirmed this request/)).toBeVisible();
+  expect(lifecycleWrites(f.calls).map((c) => [c.host, c.token])).toEqual([
+    ["two.groups.test", "Bearer fixture.two.signature"],
+    ["one.groups.test", "Bearer fixture.one.signature"],
+  ]);
+});
+
+for (const action of ["Log out", "Remove saved account", "forget", "reauthenticate"] as const) {
+  test(`lifecycle ${action}: cross-tab cleanup waits for the sent write`, async ({
+    page,
+    context,
+  }) => {
+    const f = await managedGroup(page, context);
+    const writer = await context.newPage();
+    await writer.goto(page.url());
+    await writer.getByRole("button", { name: "Save title" }).click();
+    f.mode("hold-write");
+    await confirmManagement(writer);
+    await f.started();
+    if (action === "forget") {
+      await page.goto("/#/");
+      await page
+        .getByRole("button", { name: "Forget server https://one.groups.test/proxy/", exact: true })
+        .click();
+      await page
+        .getByRole("button", { name: "Confirm forget https://one.groups.test/proxy/", exact: true })
+        .click();
+    } else if (action === "reauthenticate") {
+      await page.goto("/#/");
+      await page
+        .getByRole("link", { name: "Sign in https://one.groups.test/proxy/", exact: true })
+        .click();
+      await page.getByLabel("Username").fill("alice");
+      await page.getByLabel("Password", { exact: true }).fill("synthetic password");
+      await page.getByRole("button", { name: "Sign in and save session" }).click();
+    } else {
+      await page.getByRole("button", { name: /^Accounts and servers/ }).click();
+      await page
+        .getByRole("button", {
+          name: `${action} alice on https://one.groups.test/proxy/`,
+          exact: true,
+        })
+        .click();
+      await page.getByRole("button", { name: "Confirm", exact: true }).click();
+    }
+    await expect
+      .poll(() =>
+        page.evaluate(
+          async () =>
+            (await navigator.locks.query()).pending?.filter((lock) =>
+              lock.name?.includes(":operation:profile-"),
+            ).length ?? 0,
+        ),
+      )
+      .toBe(1);
+    f.release();
+    await f.finished();
+    if (action === "reauthenticate")
+      await expect(page.getByText("Signed in as alice", { exact: true })).toBeVisible();
+    else
+      await expect(writer.getByText("Select a signed-in account to see its inbox.")).toBeVisible();
+    await expect
+      .poll(() =>
+        page.evaluate(
+          async () =>
+            (await navigator.locks.query()).held?.filter((lock) =>
+              lock.name?.includes(":operation:profile-"),
+            ).length ?? 0,
+        ),
+      )
+      .toBe(0);
+    expect(lifecycleWrites(f.calls)).toHaveLength(1);
+    await writer.close();
+  });
 }
 
 test("owner-only and populated Group creation preserve title and fetch authoritative membership", async ({
@@ -504,7 +901,15 @@ test("member paging handles 120 rows, role attribution, cursor restart and lost 
   await panel.getByRole("button", { name: "Load more members" }).click();
   await expect(panel.getByRole("listitem")).toHaveCount(120);
   await expect(panel.getByText("Admin", { exact: true })).toBeVisible();
-  await expect(panel.getByRole("button", { name: /Remove|Transfer|Rename/ })).toHaveCount(0);
+  await expect(
+    panel.getByRole("button", { name: "Remove member_0 from group", exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    panel.getByRole("button", { name: "Promote member_0 to Admin", exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    panel.getByRole("button", { name: "Transfer ownership to member_119", exact: true }),
+  ).toBeVisible();
   f.mode("missing");
   await panel.getByRole("button", { name: "Refresh members" }).click();
   await expect(page.getByText("This conversation is unavailable.")).toBeVisible();

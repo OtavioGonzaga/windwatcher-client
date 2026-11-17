@@ -131,7 +131,14 @@ export function useGroupLifecycle({
     )
       return;
     const intent = state.intent;
-    if (intent.sourceRole !== group.membership.role) {
+    if (
+      intent.sourceRole !== group.membership.role ||
+      intent.groupId !== group.id ||
+      intent.scope.profileId !== context.profileId ||
+      intent.scope.accountId !== context.accountId ||
+      intent.scope.userId !== context.userId ||
+      intent.scope.epoch !== context.epoch
+    ) {
       setState({ phase: "idle" });
       return;
     }

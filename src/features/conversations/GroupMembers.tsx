@@ -19,6 +19,8 @@ export function GroupMembers({
   disabled = false,
   onRefreshRequest,
   renderActions,
+  onObserved,
+  onCooldown,
 }: {
   owner: Pick<AuthenticationService, "listGroupMembers" | "isCurrent">;
   context: Active;
@@ -27,6 +29,8 @@ export function GroupMembers({
   disabled?: boolean;
   onRefreshRequest?: () => void;
   renderActions?: ((member: Member) => ReactNode) | undefined;
+  onObserved?: (members: Member[]) => void;
+  onCooldown?: (until: number) => void;
 }) {
   const { t, i18n } = useTranslation();
   const [items, setItems] = useState<Member[]>([]);
@@ -65,6 +69,7 @@ export function GroupMembers({
             (page.has_more && page.next_cursor != null && cursors.current.has(page.next_cursor))
           )
             throw new ApiError("invalid-response");
+          onObserved?.(page.items);
           if (page.next_cursor != null) cursors.current.add(page.next_cursor);
           setItems((previous) => {
             if (next === undefined) return page.items;
@@ -93,6 +98,7 @@ export function GroupMembers({
             if (error.metadata.status === 429) {
               deadline.current = Date.now() + (error.metadata.retryAfterMs ?? 1000);
               setUntil(deadline.current);
+              onCooldown?.(deadline.current);
               setFailure("rate");
               return;
             }
@@ -110,7 +116,7 @@ export function GroupMembers({
           }
         });
     },
-    [owner, context, conversationId, onUnavailable],
+    [owner, context, conversationId, onUnavailable, onObserved, onCooldown],
   );
   useEffect(() => {
     // oxlint-disable-next-line react/set-state-in-effect -- Begin this scope's independent member fetch.

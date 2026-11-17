@@ -184,6 +184,41 @@ describe("authentication orchestration", () => {
       ).resolves.toBe("released");
     },
   );
+  it("fences a lifecycle write when switching between two identities on the same server", async () => {
+    const f = await setup();
+    await f.login();
+    const a = await f.selected();
+    const originalTransport = f.transport.getMockImplementation()!;
+    const otherId = "019a0000-0000-7000-8000-000000000099";
+    f.transport.mockImplementation(async (url, init) =>
+      url.pathname.endsWith("/users/me") &&
+      new Headers(init.headers).get("Authorization") === "Bearer synthetic.2.signature"
+        ? Response.json({ ...user, id: otherId, username: "bob" })
+        : originalTransport(url, init),
+    );
+    await f.service.login(f.profileId, "bob", "synthetic password", f.signal());
+    const b = await f.selected();
+    expect(a).not.toBe(b);
+    await f.service.switchAccount(a);
+    let finish!: (response: Response) => void;
+    let started!: () => void;
+    const sent = new Promise<void>((resolve) => {
+      started = resolve;
+    });
+    f.transport.mockImplementationOnce(async () => {
+      started();
+      return new Promise<Response>((resolve) => {
+        finish = resolve;
+      });
+    });
+    const pending = f.service.renameGroup(f.service.activeContext()!, user.id, "Bound to alice");
+    const rejected = expect(pending).rejects.toMatchObject({ category: "cancelled" });
+    await sent;
+    await f.service.switchAccount(b);
+    finish(Response.json({}));
+    await rejected;
+    expect(f.service.getSnapshot()).toMatchObject({ kind: "ready", accountId: b, userId: otherId });
+  });
   it.each([401, 429, 500])("never replays Group POST after HTTP %s", async (status) => {
     const f = await setup();
     await f.login();
@@ -614,7 +649,7 @@ describe("authentication orchestration", () => {
     expect(state.accounts.find((row) => row.id === a)?.session?.generation).toBe(2);
     expect(state.accounts.find((row) => row.id === b)?.session?.generation).toBe(1);
   });
-  it.each(["read", "direct", "group"] as const)(
+  it.each(["read", "direct", "group", ...actions] as const)(
     "finishes a %s-triggered sent refresh after changing accounts without publishing its result",
     async (operation) => {
       const f = await setup();
@@ -641,10 +676,12 @@ describe("authentication orchestration", () => {
           ? f.service.listConversations(f.service.activeContext()!)
           : operation === "direct"
             ? f.service.openDirect(f.service.activeContext()!, user.id, "operation-key")
-            : f.service.createGroup(
-                f.service.activeContext()!,
-                new GroupOperation(f.service.activeContext()!, "Group", []),
-              );
+            : operation === "group"
+              ? f.service.createGroup(
+                  f.service.activeContext()!,
+                  new GroupOperation(f.service.activeContext()!, "Group", []),
+                )
+              : lifecycle(f, operation);
       const rejected = expect(read).rejects.toMatchObject({ category: "cancelled" });
       await submitted;
       await f.service.switchAccount(b);

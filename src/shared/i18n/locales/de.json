@@ -1,6 +1,7 @@
 {
   "common": {
     "groupManagement": {
+      "abandon": "Ungewissheit anerkennen und lokale Wiederherstellung zum Posteingang verlassen",
       "title": "Gruppe verwalten",
       "rename": "Titel speichern",
       "add": "Mitgliedsaufnahme prüfen",
