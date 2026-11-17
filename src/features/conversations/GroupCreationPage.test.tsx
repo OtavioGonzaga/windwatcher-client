@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { I18nextProvider } from "react-i18next";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -94,6 +94,22 @@ describe("Group creation and review", () => {
     await screen.findByText("Already included as Owner.");
     fireEvent.click(screen.getByRole("button", { name: "Remove bob" }));
     expect(screen.queryByText("bob", { exact: true })).not.toBeInTheDocument();
+  });
+  it("shows selected canonical usernames in the final review and preserves them after an uncertain result", async () => {
+    f.send.mockRejectedValueOnce(new ApiError("transport"));
+    mount();
+    await add();
+    await screen.findByText("Participant added as Member.");
+    await review();
+    const list = screen.getByRole("list", { name: "Additional Members: 1" });
+    expect(within(list).getByText("bob")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Remove bob" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Create group" }));
+    await screen.findByText(/The Group may already exist/);
+    expect(
+      within(screen.getByRole("list", { name: "Additional Members: 1" })).getByText("bob"),
+    ).toBeInTheDocument();
+    expect(f.send.mock.calls[0]?.[0].participant_ids).toEqual([peer.id]);
   });
   it.each(["", "   ", "😀".repeat(65)])("rejects invalid title without POST", async (title) => {
     mount();

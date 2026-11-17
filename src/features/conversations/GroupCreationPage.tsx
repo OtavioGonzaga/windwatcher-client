@@ -294,26 +294,31 @@ function GroupForm({
           {t("groups.find")}
         </Button>
       </form>
-      <h2 className="font-semibold">{t("groups.participants", { count: members.length })}</h2>
-      {!members.length && <p>{t("groups.ownerOnly")}</p>}
-      <ul className="flex min-w-0 flex-col gap-2">
-        {members.map((member) => (
-          <li key={member.id} className="flex min-w-0 flex-wrap items-center justify-between gap-2">
-            <span>{member.username}</span>
-            {!locked && (
-              <Button
-                onClick={() => {
-                  invalidateLookup();
-                  setMembers((items) => items.filter((m) => m.id !== member.id));
-                }}
-                aria-label={t("groups.remove", { username: member.username })}
+      {!locked && (
+        <>
+          <h2 className="font-semibold">{t("groups.participants", { count: members.length })}</h2>
+          {!members.length && <p>{t("groups.ownerOnly")}</p>}
+          <ul className="flex min-w-0 flex-col gap-2">
+            {members.map((member) => (
+              <li
+                key={member.id}
+                className="flex min-w-0 flex-wrap items-center justify-between gap-2"
               >
-                {t("groups.remove", { username: member.username })}
-              </Button>
-            )}
-          </li>
-        ))}
-      </ul>
+                <span>{member.username}</span>
+                <Button
+                  onClick={() => {
+                    invalidateLookup();
+                    setMembers((items) => items.filter((m) => m.id !== member.id));
+                  }}
+                  aria-label={t("groups.remove", { username: member.username })}
+                >
+                  {t("groups.remove", { username: member.username })}
+                </Button>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
       <div ref={notice} tabIndex={-1} className="flex min-w-0 flex-col gap-3">
         {unchanged && <InlineNotice tone="warning">{t("groups.changedDraft")}</InlineNotice>}
         {lookup !== "idle" && (
@@ -336,7 +341,20 @@ function GroupForm({
             <p>{server}</p>
             <p>{t("groups.owner", { username: ownerName })}</p>
             <p className="whitespace-pre-wrap">{op.title}</p>
-            <p>{t("groups.participants", { count: op.participantIds.length })}</p>
+            <h3 id="review-participants" className="font-medium">
+              {t("groups.participants", { count: op.participantIds.length })}
+            </h3>
+            {op.participantIds.length === 0 ? (
+              <p>{t("groups.ownerOnly")}</p>
+            ) : (
+              <ul aria-labelledby="review-participants" className="flex min-w-0 flex-col gap-2">
+                {members
+                  .filter((member) => op.participantIds.includes(member.id))
+                  .map((member) => (
+                    <li key={member.id}>{member.username}</li>
+                  ))}
+              </ul>
+            )}
           </div>
         )}
         {phase.kind === "review" && (
