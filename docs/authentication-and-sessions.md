@@ -53,6 +53,15 @@ pages use the read policy, including the existing one qualifying GET replay.
 The Group UI never receives a bearer. A roster 403/404 clears both the protected
 summary and members; ordinary continuation failures may preserve verified partial
 rows. See [Group recovery and pagination](group-conversations.md).
+The six Group lifecycle writes (`PATCH` rename/role, `PUT` add/Owner and
+`DELETE` remove/leave) use that same mutation policy with **no idempotency key**.
+Near-expiry pre-refresh is allowed; no lifecycle request is automatically replayed
+after 401, 429 or an uncertain result. A fresh confirmation is separate from an
+authoritative read check. The UI cannot infer rollback from cancellation or
+attribute a later matching observation to the original request. Confirmed HTTP
+success remains distinguishable from a failed follow-up GET. Permission rejection
+refreshes own role rather than declaring the Group gone; loss of Group access
+clears both summary and roster. The narrow two-row Owner probe uses the read policy.
 
 **Log out** first invalidates the target's UI context, serializes with refresh under
 profile/account ownership, reads only a bound current envelope, deletes/verifies

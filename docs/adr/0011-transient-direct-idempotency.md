@@ -46,3 +46,25 @@ Editing after ambiguity requires an explicit risk acknowledgement; a 409 stops
 the key and a definitive 422 requires a changed draft and fresh review. Keys
 remain intentionally transient through route/account disposal and restart.
 No outbox, global form framework or new ADR-level persistence decision is added.
+
+## Extension: non-keyed Group lifecycle (2026-11-17)
+
+Rename, add, role change, remove, transfer and leave reuse the same ownership and
+single-dispatch boundary, but the released server does not support idempotency
+keys for them. Their page-local immutable intent captures context, Group, source
+role/title and requested target/value. There is no same-operation retry action.
+
+Write outcome and read verification are independent: a confirmed HTTP result
+survives a failed follow-up GET, while an ambiguous result is not resolved into a
+claim of causality by a later matching snapshot. The user can check current
+state or explicitly abandon local recovery, then review a new independent action.
+Target checks use a fresh bounded traversal (at most ten 50-row pages, with a
+30-second read deadline). A partial traversal never establishes target absence.
+This is not a multi-page snapshot or transaction; concurrent changes can supersede
+any observation.
+
+A fresh two-row membership probe gates sole-Owner destructive confirmation.
+The server still decides leave versus transfer-required versus hard deletion at
+execution time. A no-access GET cannot prove physical deletion or its cause.
+These are concrete Group UI policies, not a durable outbox, background worker,
+cross-tab deduplication protocol or new storage architecture.

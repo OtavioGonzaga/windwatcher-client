@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Role-aware Group management: exact-title rename, exact-username member addition,
+  Admin/Member role changes, removal, ownership transfer and confirmed leave,
+  including fresh sole-Owner deletion checks and non-replaying uncertain-write recovery.
+
 - Reviewed Group creation with optional exact-username-selected initial Members,
   Owner-only Groups, explicit uncertain-attempt recovery and paginated read-only
   member/role presentation.

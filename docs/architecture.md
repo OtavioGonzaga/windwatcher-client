@@ -24,8 +24,9 @@ Preferences offers real language/appearance controls. Both share responsive
 navigation. A Home CTA opens manual server inspection with explicit profile save;
 Home lists persisted profiles and the verified selected session; the shared header
 offers account switching, logout and local removal. Saved profiles link to
-sign-in and conditional registration. The inbox and conversation summary are
-read-only and use the selected account's server; there is no message history or composer.
+sign-in and conditional registration. The inbox and conversation summary use the
+selected account's server. The inbox is read-only; Group detail also exposes
+role-aware membership/ownership lifecycle actions. There is no message history or composer.
 
 ## Presentation and localization
 
@@ -102,6 +103,16 @@ independently fetches public member pages under the read policy. It cannot creat
 membership from a draft, and a member-read access denial clears the parent summary
 as well as the roster. See [Groups](group-conversations.md). There is no additional
 credential owner, persistence schema, transport or native permission.
+Group lifecycle management reuses the single-dispatch mutation policy without
+idempotency keys. A Group-scoped hook retains the confirmed/rejected/uncertain
+write outcome independently of summary and roster reconciliation. Every fresh
+read traversal is bounded and fenced; uncertainty is not erased by a matching
+later observation or a failed refresh. Management stays suspended while
+permissions are unverified. The parent summary and independent roster are
+refreshed together after confirmed writes, without optimistic permanent updates.
+Owner-only leave uses fresh summary plus a two-row membership probe, not the
+currently loaded roster. No new backend, permissions engine, global cache or
+session-journal format is introduced.
 Instance advertisements use a derived runtime metadata type with open-ended
 string lists, preserving unknown API/auth capabilities without mutating the
 pinned generated enum types or deciding onboarding support.

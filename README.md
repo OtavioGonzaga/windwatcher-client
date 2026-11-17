@@ -11,7 +11,8 @@ responsive shell, accessible visual tokens, working language/appearance choices,
 manual server inspection with optional Linux-native local suggestions, saved
 server profiles, registration, sign-in, recoverable sessions and multi-account
 switching, exact-username discovery, opening new/existing Directs (including self),
-reviewed Group creation and paginated read-only Group membership/roles.
+reviewed Group creation, paginated membership/roles and confirmed Group management
+(rename, add, role changes, removal, ownership transfer and leave).
 The inbox and conversation summary are independently fetched. Full message history,
 sending, read-state changes and realtime updates are **not implemented yet**.
 There are no published client releases or supported installation packages.
@@ -44,7 +45,9 @@ Choose **New group** to review an exact title and optional initial Members on th
 selected server. The creator is Owner; Owner-only Groups are supported. Unknown
 creation outcomes require an explicit same-operation retry or acknowledged discard,
 because a new operation can create another Group with the same title. Group
-details show paginated roles and join dates, without management actions.
+details show paginated roles and join dates, with role-aware management and
+explicit reconciliation of uncertain writes. A sole Owner can delete a Group
+by leaving only after fresh membership verification and destructive confirmation.
 See [Group conversations](docs/group-conversations.md).
 
 ## Development
