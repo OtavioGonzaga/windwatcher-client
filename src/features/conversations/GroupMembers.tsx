@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { ApiError } from "../../shared/api/error";
 import { Button } from "../../shared/components/Button";
@@ -15,11 +16,21 @@ export function GroupMembers({
   context,
   conversationId,
   onUnavailable,
+  disabled = false,
+  onRefreshRequest,
+  renderActions,
+  onObserved,
+  onCooldown,
 }: {
   owner: Pick<AuthenticationService, "listGroupMembers" | "isCurrent">;
   context: Active;
   conversationId: string;
   onUnavailable: () => void;
+  disabled?: boolean;
+  onRefreshRequest?: () => void;
+  renderActions?: ((member: Member) => ReactNode) | undefined;
+  onObserved?: (members: Member[]) => void;
+  onCooldown?: (until: number) => void;
 }) {
   const { t, i18n } = useTranslation();
   const [items, setItems] = useState<Member[]>([]);
@@ -58,6 +69,7 @@ export function GroupMembers({
             (page.has_more && page.next_cursor != null && cursors.current.has(page.next_cursor))
           )
             throw new ApiError("invalid-response");
+          onObserved?.(page.items);
           if (page.next_cursor != null) cursors.current.add(page.next_cursor);
           setItems((previous) => {
             if (next === undefined) return page.items;
@@ -86,6 +98,7 @@ export function GroupMembers({
             if (error.metadata.status === 429) {
               deadline.current = Date.now() + (error.metadata.retryAfterMs ?? 1000);
               setUntil(deadline.current);
+              onCooldown?.(deadline.current);
               setFailure("rate");
               return;
             }
@@ -103,7 +116,7 @@ export function GroupMembers({
           }
         });
     },
-    [owner, context, conversationId, onUnavailable],
+    [owner, context, conversationId, onUnavailable, onObserved, onCooldown],
   );
   useEffect(() => {
     // oxlint-disable-next-line react/set-state-in-effect -- Begin this scope's independent member fetch.
@@ -121,8 +134,11 @@ export function GroupMembers({
   return (
     <section className="flex min-w-0 flex-col gap-3" aria-label={t("groups.members")}>
       <h2 className="font-semibold">{t("groups.members")}</h2>
-      <p>{t("groups.readOnly")}</p>
-      <Button disabled={waiting} onClick={() => request()}>
+      {!renderActions && <p>{t("groups.readOnly")}</p>}
+      <Button
+        disabled={waiting || disabled}
+        onClick={() => (onRefreshRequest ? onRefreshRequest() : request())}
+      >
         {t("groups.refresh")}
       </Button>
       {pending && <output>{t("conversations.loading")}</output>}
@@ -134,7 +150,7 @@ export function GroupMembers({
               : t(restart ? "groups.invalidMembers" : "groups.memberError")}
           </p>
           <Button
-            disabled={waiting || pending}
+            disabled={waiting || pending || disabled}
             onClick={() => request(restart ? undefined : (cursor ?? undefined))}
           >
             {t(restart ? "groups.restart" : "conversations.retry")}
@@ -158,11 +174,12 @@ export function GroupMembers({
                 }),
               })}
             </p>
+            {renderActions?.(member)}
           </li>
         ))}
       </ul>
       {cursor && !failure && (
-        <Button disabled={pending || waiting} onClick={() => request(cursor)}>
+        <Button disabled={pending || waiting || disabled} onClick={() => request(cursor)}>
           {t("groups.more")}
         </Button>
       )}

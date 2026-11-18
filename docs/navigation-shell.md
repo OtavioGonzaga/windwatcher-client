@@ -55,7 +55,17 @@ this route, not actual IME/Back runtime behavior.
 
 Group detail mounts an independently loaded Members section only after an
 authoritative Group summary. Member refresh starts a new cursor traversal.
-Roles are descriptive; no Group-management actions are exposed.
+Roles drive last-observed Group-management affordances, never local authorization.
+Group lifecycle actions remain within detail, with one native HTML confirmation
+dialog and no additional route or platform permission. Review identifies the
+account/server, Group, target and requested change. Cancel/Escape returns focus
+without dispatch. Android Back closes an open review before route navigation;
+it never confirms a mutation. IME dismissal still precedes native route Back.
+Sending closes review and announces the result separately from subsequent reads.
+Leaving or changing account discards local recovery state without promising
+remote rollback. Confirmed leave clears protected detail and replaces the route
+with Inbox. An uncertain leave's 404 is displayed as unavailable, not physical
+deletion proof.
 
 ## Layout and accessibility
 
@@ -111,7 +121,7 @@ there is a safe internal predecessor.
    secondary routes replace with Home.
 4. At Home, `exit(0)` finishes the Activity with the normal system transition.
 
-There are no overlays requiring additional precedence. Events are coalesced
+Open account or Group-review dialogs close before route handling. Events are coalesced
 while navigation/exit is pending. Async registration and unregistration are
 serialized, including disposal before registration resolves and StrictMode
 remounts. Failure to register/exit is shown through a localized notice.

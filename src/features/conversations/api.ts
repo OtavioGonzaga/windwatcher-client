@@ -4,12 +4,131 @@ import { serverUuid } from "../authentication/validation";
 import { decodeConversation, decodeConversationPage } from "./validation";
 import { decodeDirect, decodeExactUser } from "./direct-validation";
 import type { CreateDirect } from "./direct-validation";
-import { decodeGroup, decodeMemberPage, memberCursor } from "./group-validation";
+import {
+  decodeGroup,
+  decodeMember,
+  decodeMemberPage,
+  groupTitleIssue,
+  memberCursor,
+} from "./group-validation";
 import type { CreateGroup } from "./group-validation";
 
 /** Internal server-bound operations. Credentials are supplied only by the session owner. */
 export class ConversationsApi {
   constructor(private readonly client: ApiClient) {}
+
+  renameGroup(token: string, id: string, title: string, lifetime: RequestLifetime) {
+    if (groupTitleIssue(title)) throw new TypeError("Invalid Group title.");
+    const groupId = serverUuid(id);
+    return this.client.request({
+      method: "PATCH",
+      path: ["conversations", groupId],
+      body: { title },
+      expectedStatuses: [200],
+      accessToken: token,
+      decode: (value) => this.groupResult(value, groupId),
+      maxResponseBytes: 4 * 1024 * 1024,
+      signal: lifetime.signal,
+      timeoutMs: 15000,
+    });
+  }
+  addMember(token: string, id: string, target: string, lifetime: RequestLifetime) {
+    const userId = serverUuid(target);
+    return this.client.request({
+      method: "PUT",
+      path: ["conversations", serverUuid(id), "members", userId],
+      expectedStatuses: [200, 201],
+      accessToken: token,
+      decode: (value) => this.memberResult(value, userId),
+      maxResponseBytes: 4096,
+      signal: lifetime.signal,
+      timeoutMs: 15000,
+    });
+  }
+  changeMemberRole(
+    token: string,
+    id: string,
+    target: string,
+    role: "admin" | "member",
+    lifetime: RequestLifetime,
+  ) {
+    if (role !== "admin" && role !== "member") throw new TypeError("Invalid member role.");
+    const userId = serverUuid(target);
+    return this.client.request({
+      method: "PATCH",
+      path: ["conversations", serverUuid(id), "members", userId],
+      body: { role },
+      expectedStatuses: [200],
+      accessToken: token,
+      decode: (value) => this.memberResult(value, userId),
+      maxResponseBytes: 4096,
+      signal: lifetime.signal,
+      timeoutMs: 15000,
+    });
+  }
+  removeMember(token: string, id: string, target: string, lifetime: RequestLifetime) {
+    return this.client.request({
+      method: "DELETE",
+      path: ["conversations", serverUuid(id), "members", serverUuid(target)],
+      expectedStatuses: [204],
+      response: "empty",
+      accessToken: token,
+      signal: lifetime.signal,
+      timeoutMs: 15000,
+    });
+  }
+  transferOwner(token: string, id: string, target: string, lifetime: RequestLifetime) {
+    const groupId = serverUuid(id);
+    return this.client.request({
+      method: "PUT",
+      path: ["conversations", groupId, "owner"],
+      body: { user_id: serverUuid(target) },
+      expectedStatuses: [200],
+      accessToken: token,
+      decode: (value) => this.groupResult(value, groupId),
+      maxResponseBytes: 4 * 1024 * 1024,
+      signal: lifetime.signal,
+      timeoutMs: 15000,
+    });
+  }
+  leaveGroup(token: string, id: string, lifetime: RequestLifetime) {
+    return this.client.request({
+      method: "DELETE",
+      path: ["conversations", serverUuid(id), "members", "me"],
+      expectedStatuses: [204],
+      response: "empty",
+      accessToken: token,
+      signal: lifetime.signal,
+      timeoutMs: 15000,
+    });
+  }
+  private groupResult(value: unknown, id: string) {
+    const group = decodeGroup(value);
+    if (group.id !== id) throw new Error("Mismatched Group.");
+    return group;
+  }
+  private memberResult(value: unknown, id: string) {
+    const member = decodeMember(value);
+    if (member.user.id !== id) throw new Error("Mismatched member.");
+    return member;
+  }
+  probeGroupMembers(token: string, id: string, lifetime: RequestLifetime) {
+    return this.client.request({
+      method: "GET",
+      path: ["conversations", serverUuid(id), "members"],
+      query: { limit: "2" },
+      expectedStatuses: [200],
+      accessToken: token,
+      decode: (value) => {
+        const page = decodeMemberPage(value);
+        if (page.items.length > 2) throw new Error("Invalid probe.");
+        return page;
+      },
+      maxResponseBytes: 4096,
+      signal: lifetime.signal,
+      timeoutMs: 15000,
+    });
+  }
 
   createGroup(
     token: string,
