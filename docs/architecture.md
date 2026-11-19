@@ -19,13 +19,12 @@ storage commands; the desktop
 executable and Android activity enter the same host. There is no server dependency or embedded
 backend. See [ADR 0001](adr/0001-shared-react-and-tauri-application.md).
 
-The Home route displays supplied artwork and a truthful product description;
-Preferences offers real language/appearance controls. Both share responsive
-navigation. A Home CTA opens manual server inspection with explicit profile save;
-Home lists persisted profiles and the verified selected session; the shared header
-offers account switching, logout and local removal. Saved profiles link to
-sign-in and conditional registration. The inbox and conversation summary use the
-selected account's server. The inbox is read-only; Group detail also exposes
+Home is entry/onboarding without a verified selected session; sign-in and initial
+session restoration lead to the inbox. Settings includes language/appearance and a
+dedicated Accounts and servers screen for maintenance. The header offers account
+switching. Server verification still requires explicit save and then sign-in.
+The inbox and latest-message view use the selected account's server. The inbox
+is read-only; Group detail also exposes
 role-aware membership/ownership lifecycle actions. There is no message history or composer.
 
 ## Presentation and localization
@@ -41,12 +40,12 @@ routes. See [the visual foundation](visual-foundation.md) and
 
 ## Navigation and shell
 
-One declarative HashRouter renders Home, Preferences, inbox, conversation summary and localized not-found
-recovery inside AppShell. Providers remain above page navigation. Relative Vite
-assets support arbitrary static directory prefixes without SPA rewrites. A single
-navigation region adapts to side/bottom placement using CSS, with route focus,
-skip-link and bounded in-memory scroll restoration. Synchronous pages have a
-render error boundary, not artificial loading UI.
+One declarative HashRouter renders all pages and localized not-found recovery
+inside AppShell. Providers remain above page navigation. Relative Vite assets
+support arbitrary static directory prefixes without SPA rewrites. A nested
+conversation workspace keeps the inbox mounted across detail navigation for one
+account context. The shared header, skip link, route focus and bounded in-memory
+scroll restoration serve both layouts. See [ADR 0012](adr/0012-conversation-workspace.md).
 
 Android alone lazily loads the official core app Back API. A session-only router
 ledger distinguishes known internal history from direct entry. A platform-scoped

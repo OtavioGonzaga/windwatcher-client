@@ -217,7 +217,7 @@ async function login(page: Page, host = "one", username = "alice", save = true) 
     await page.getByRole("button", { name: "Check server", exact: true }).click();
     await page.getByRole("button", { name: "Save server", exact: true }).click();
   }
-  await page.goto("/#/");
+  await page.goto("/#/servers");
   await page
     .getByRole("link", { name: `Sign in https://${host}.directs.test/proxy/`, exact: true })
     .click();
@@ -378,6 +378,7 @@ for (const locale of ["en", "pt-BR", "es", "de"] as const) {
       .getByRole("link", { name: resources[locale].common.conversations.inbox, exact: true })
       .click();
     const labels = resources[locale].common.direct;
+    await page.getByText(resources[locale].common.conversations.new, { exact: true }).click();
     await page.getByRole("link", { name: labels.title, exact: true }).click();
     await page.getByLabel(labels.username).fill("bob");
     await page.getByRole("button", { name: labels.find, exact: true }).click();
@@ -534,7 +535,7 @@ for (const action of ["Log out", "Remove saved account", "forget", "reauthentica
     await confirm(writer);
     await f.started();
     if (action === "forget") {
-      await page.goto("/#/");
+      await page.goto("/#/servers");
       await page
         .getByRole("button", { name: "Forget server https://one.directs.test/proxy/", exact: true })
         .click();
@@ -545,7 +546,7 @@ for (const action of ["Log out", "Remove saved account", "forget", "reauthentica
         })
         .click();
     } else if (action === "reauthenticate") {
-      await page.goto("/#/");
+      await page.goto("/#/servers");
       await page
         .getByRole("link", { name: "Sign in https://one.directs.test/proxy/", exact: true })
         .click();
@@ -553,6 +554,7 @@ for (const action of ["Log out", "Remove saved account", "forget", "reauthentica
       await page.getByLabel("Password", { exact: true }).fill("synthetic password");
       await page.getByRole("button", { name: "Sign in and save session" }).click();
     } else {
+      await page.goto("/#/servers");
       await page.getByRole("button", { name: /^Accounts and servers/ }).click();
       await page
         .getByRole("button", {

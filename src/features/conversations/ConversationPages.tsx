@@ -1,6 +1,17 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { MessageCircle, Plus, RefreshCw, Users } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { Link, useParams } from "react-router";
+import {
+  Link,
+  Navigate,
+  NavLink,
+  Outlet,
+  useLocation,
+  useMatch,
+  useNavigate,
+  useOutletContext,
+  useParams,
+} from "react-router";
 import { ApiError } from "../../shared/api/error";
 import { Button } from "../../shared/components/Button";
 import { formatDate } from "../../shared/i18n/format";
@@ -36,24 +47,39 @@ function Gate({ detail }: { detail?: boolean }) {
   const { owner, status } = useSession();
   const { conversationId = "" } = useParams();
   const { t } = useTranslation();
+  const detailRoute = useMatch("/conversations/:conversationId");
+  const activeId = detailRoute?.params.conversationId;
   const context = useMemo(
     () => (status.kind === "ready" ? owner?.activeContext() : null),
     [owner, status],
   );
+  const identity = context ? `${context.profileId}:${context.accountId}` : undefined;
+  const [selectionOwner, setSelectionOwner] = useState(identity);
+  const changedAccount = identity && selectionOwner && identity !== selectionOwner;
+  if (identity && identity !== selectionOwner && (!activeId || !changedAccount))
+    setSelectionOwner(identity);
+  if (!detail && activeId && changedAccount) return <Navigate replace to="/conversations" />;
   if (!owner || !context)
     return (
-      <section>
-        <h1 id="route-heading" tabIndex={-1}>
-          {t(detail ? "conversations.summary" : "conversations.inbox")}
+      <section className="mx-auto flex w-full max-w-lg flex-col items-start gap-4 px-4 py-8">
+        <h1 id="route-heading" tabIndex={-1} className="text-2xl font-semibold">
+          {t(detail || activeId ? "conversations.summary" : "conversations.inbox")}
         </h1>
-        <p>{status.kind === "restoring" ? t("auth.restoring") : t("conversations.signIn")}</p>
+        {status.kind === "signed-out" && (
+          <>
+            <p>{t("conversations.signIn")}</p>
+            <Link to="/" className="action-link">
+              {t("auth.signIn")}
+            </Link>
+          </>
+        )}
       </section>
     );
   const key = `${context.profileId}:${context.accountId}:${context.epoch}`;
   return detail ? (
     <Detail key={`${key}:${conversationId}`} owner={owner} context={context} />
   ) : (
-    <Inbox key={key} owner={owner} context={context} />
+    <Workspace key={key} owner={owner} context={context} activeId={activeId} />
   );
 }
 
@@ -91,22 +117,105 @@ function FailureNotice({ value, retry }: { value: Failure; retry: () => void }) 
   );
 }
 
-function Preview({ conversation }: { conversation: Conversation }) {
+function Preview({
+  conversation,
+  compact = false,
+}: {
+  conversation: Conversation;
+  compact?: boolean;
+}) {
   const { t } = useTranslation();
   const message = conversation.last_message;
-  if (!message) return <p>{t("conversations.noMessages")}</p>;
+  if (!message) return <span>{t("conversations.noMessages")}</span>;
   return (
-    <p className="min-w-0 break-words">
+    <span
+      className={compact ? "block truncate" : "block whitespace-pre-wrap [overflow-wrap:anywhere]"}
+    >
       <span>{message.sender_username}: </span>
-      <span className="line-clamp-3 whitespace-pre-wrap">
-        {message.deleted_at ? t("conversations.deleted") : message.content}
-      </span>
-    </p>
+      {message.deleted_at ? t("conversations.deleted") : message.content}
+    </span>
   );
 }
 
-function Inbox({ owner, context }: Scope) {
+type WorkspaceContext = {
+  previousKey: string | undefined;
+  exclude: (id: string) => void;
+  updateTitle: (id: string, title: string) => void;
+};
+
+function Workspace({ owner, context, activeId }: Scope & { activeId: string | undefined }) {
   const { t } = useTranslation();
+  const location = useLocation();
+  const current = useRef<string | undefined>(undefined);
+  const [previousKey, setPreviousKey] = useState<string>();
+  const [excluded, setExcluded] = useState<ReadonlySet<string>>(() => new Set());
+  const [titles, setTitles] = useState<ReadonlyMap<string, string>>(() => new Map());
+  const exclude = useCallback((id: string) => {
+    setExcluded((previous) => (previous.has(id) ? previous : new Set([...previous, id])));
+  }, []);
+  const updateTitle = useCallback((id: string, title: string) => {
+    setTitles((previous) =>
+      previous.get(id) === title ? previous : new Map(previous).set(id, title),
+    );
+  }, []);
+  const clearCorrections = useCallback(() => {
+    setExcluded(new Set());
+    setTitles(new Map());
+  }, []);
+  useLayoutEffect(() => {
+    // Store only the immediately previous entry, never trust a hash entry on its own.
+    // oxlint-disable-next-line react/set-state-in-effect -- The ref records the last committed entry.
+    setPreviousKey(current.current);
+    current.current = location.key;
+  }, [location.key]);
+  return (
+    <div className="grid min-h-0 min-w-0 flex-1 lg:grid-cols-[minmax(17rem,23rem)_minmax(0,1fr)]">
+      <div
+        className={`conversation-pane min-w-0 bg-surface lg:block lg:border-r lg:border-border ${activeId ? "hidden" : ""}`}
+      >
+        <Inbox
+          owner={owner}
+          context={context}
+          activeId={activeId}
+          excluded={excluded}
+          titles={titles}
+          clearCorrections={clearCorrections}
+        />
+      </div>
+      <div
+        key={activeId ?? "no-selection"}
+        className={`conversation-pane min-w-0 ${activeId ? "" : "hidden lg:grid lg:place-items-center"}`}
+      >
+        {activeId ? (
+          <Outlet context={{ previousKey, exclude, updateTitle } satisfies WorkspaceContext} />
+        ) : (
+          <p className="flex flex-col items-center gap-3 px-6 py-12 text-center text-secondary">
+            <MessageCircle aria-hidden="true" size={28} />
+            {t("conversations.select")}
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function Inbox({
+  owner,
+  context,
+  activeId,
+  excluded,
+  titles,
+  clearCorrections,
+}: Scope & {
+  activeId: string | undefined;
+  excluded: ReadonlySet<string>;
+  titles: ReadonlyMap<string, string>;
+  clearCorrections: () => void;
+}) {
+  const location = useLocation();
+  const { t, i18n } = useTranslation();
+  const language = i18n.resolvedLanguage ?? "";
+  const locale = isLocale(language) ? language : "en";
   const [items, setItems] = useState<Conversation[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -173,58 +282,135 @@ function Inbox({ owner, context }: Scope) {
       activeBusy.current = false;
     };
   }, [request]);
+  const visibleItems = items.filter((item) => !excluded.has(item.id));
   return (
-    <section className="flex min-w-0 flex-col gap-4">
-      <h1 id="route-heading" tabIndex={-1} className="text-lg font-semibold">
-        {t("conversations.inbox")}
-      </h1>
-      <Link className="inline-flex min-h-11 items-center underline" to="/conversations/new">
-        {t("direct.title")}
-      </Link>
-      <Link className="inline-flex min-h-11 items-center underline" to="/conversations/groups/new">
-        {t("groups.new")}
-      </Link>
-      <div>
-        <Button disabled={error?.kind === "rate"} onClick={() => request()}>
-          {t("conversations.refresh")}
-        </Button>
+    <section className="flex min-w-0 flex-col" aria-labelledby="inbox-heading">
+      <div className="flex min-w-0 flex-col gap-3 border-b border-border p-4">
+        {activeId ? (
+          <h2 id="inbox-heading" className="text-xl font-semibold">
+            {t("conversations.inbox")}
+          </h2>
+        ) : (
+          <h1 id="route-heading" tabIndex={-1} className="text-xl font-semibold">
+            <span id="inbox-heading">{t("conversations.inbox")}</span>
+          </h1>
+        )}
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <details className="min-w-0">
+            <summary className="action-link cursor-pointer list-none gap-2">
+              <Plus aria-hidden="true" size={18} className="shrink-0" />
+              {t("conversations.new")}
+            </summary>
+            <div className="flex flex-col items-start">
+              <Link className="inline-flex min-h-11 items-center underline" to="/conversations/new">
+                {t("direct.title")}
+              </Link>
+              <Link
+                className="inline-flex min-h-11 items-center underline"
+                to="/conversations/groups/new"
+              >
+                {t("groups.new")}
+              </Link>
+            </div>
+          </details>
+          <Button
+            aria-label={t("conversations.refresh")}
+            title={t("conversations.refresh")}
+            className="px-2"
+            disabled={error?.kind === "rate"}
+            onClick={() => {
+              clearCorrections();
+              request();
+            }}
+          >
+            <RefreshCw aria-hidden="true" size={18} />
+          </Button>
+        </div>
       </div>
-      <output>
+      <output className="block px-4 text-sm text-secondary not-empty:py-3">
         {pending
           ? t("conversations.loading")
-          : loaded && items.length === 0
+          : loaded && visibleItems.length === 0 && !cursor
             ? t("conversations.empty")
             : ""}
       </output>
       {error && (
-        <FailureNotice
-          value={error}
-          retry={() =>
-            request(error.kind === "cursor" || !loaded ? undefined : (cursor ?? undefined))
-          }
-        />
+        <div className="p-4">
+          <FailureNotice
+            value={error}
+            retry={() =>
+              request(error.kind === "cursor" || !loaded ? undefined : (cursor ?? undefined))
+            }
+          />
+        </div>
       )}
-      <ul className="flex min-w-0 flex-col gap-3">
-        {items.map((item) => (
-          <li key={item.id} className="min-w-0 rounded-md border border-border p-4">
-            <Link
-              id={`conversation-${item.id}`}
-              className="block min-h-11 break-words font-semibold underline"
-              to={`/conversations/${item.id}`}
-            >
-              {item.title}
-            </Link>
-            <p>
-              {t(`conversations.${item.kind}`)} · {t("conversations.role")}:{" "}
-              {t(`conversations.${item.membership.role}`)}
-            </p>
-            <p>{t("conversations.unread", { count: item.unread_count })}</p>
-            <Preview conversation={item} />
+      <ul className="min-w-0" aria-label={t("conversations.inbox")}>
+        {visibleItems.map((item) => (
+          <li
+            key={item.id}
+            className="conversation-row relative grid min-h-16 min-w-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-3 border-b border-s-4 border-border border-s-transparent px-3 py-2 hover:bg-subtle-hover"
+          >
+            <span className="grid size-9 shrink-0 place-items-center rounded-full bg-background text-secondary">
+              {item.kind === "group" ? (
+                <Users aria-hidden="true" size={18} />
+              ) : (
+                <MessageCircle aria-hidden="true" size={18} />
+              )}
+            </span>
+            <span className="min-w-0">
+              <span className="flex min-w-0 flex-wrap items-baseline justify-between gap-x-2">
+                <NavLink
+                  id={`conversation-${item.id}`}
+                  aria-describedby={
+                    item.last_message
+                      ? `conversation-preview-${item.id} conversation-time-${item.id}`
+                      : `conversation-preview-${item.id}`
+                  }
+                  className="min-w-0 font-semibold"
+                  to={`/conversations/${item.id}`}
+                  state={{ inboxKey: activeId ? undefined : location.key }}
+                >
+                  <span className="block truncate">{titles.get(item.id) ?? item.title}</span>
+                </NavLink>
+                {item.last_message && (
+                  <time
+                    id={`conversation-time-${item.id}`}
+                    className="text-xs text-secondary"
+                    dateTime={item.last_message.created_at}
+                  >
+                    {formatDate(new Date(item.last_message.created_at), locale, {
+                      month: "short",
+                      day: "numeric",
+                      hour: "numeric",
+                      minute: "2-digit",
+                    })}
+                  </time>
+                )}
+              </span>
+              <span
+                id={`conversation-preview-${item.id}`}
+                className="flex min-w-0 items-center justify-between gap-2 text-sm text-secondary"
+              >
+                <span className="min-w-0 truncate">
+                  <Preview conversation={item} compact />
+                </span>
+                {item.unread_count > 0 && (
+                  <span className="shrink-0 rounded-full bg-action px-2 text-xs font-semibold text-on-action">
+                    <span className="sr-only">
+                      {t("conversations.unread", { count: item.unread_count })}
+                    </span>
+                    <span aria-hidden="true">
+                      {item.unread_count > 99 ? "99+" : item.unread_count}
+                    </span>
+                  </span>
+                )}
+              </span>
+            </span>
           </li>
         ))}
       </ul>
       {cursor && !error && (
-        <div>
+        <div className="p-4">
           <Button disabled={pending} onClick={() => request(cursor)}>
             {t("conversations.more")}
           </Button>
@@ -237,14 +423,27 @@ function Inbox({ owner, context }: Scope) {
 function Detail({ owner, context }: Scope) {
   const { conversationId = "" } = useParams();
   const { t, i18n } = useTranslation();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const workspace = useOutletContext<WorkspaceContext | null>();
+  const exclude = workspace?.exclude;
+  const updateTitle = workspace?.updateTitle;
   const [item, setItem] = useState<Conversation>();
   const [error, setError] = useState<Failure>();
   const [attempt, setAttempt] = useState(0);
   const [pending, setPending] = useState(true);
+  const reconcileSummary = useCallback(
+    (summary: Conversation) => {
+      updateTitle?.(summary.id, summary.title);
+      setItem(summary);
+    },
+    [updateTitle],
+  );
   const unavailable = useCallback(() => {
+    exclude?.(conversationId);
     setItem(undefined);
     setError({ kind: "unavailable" });
-  }, []);
+  }, [conversationId, exclude]);
   useEffect(() => {
     const lifetime = new AbortController();
     // oxlint-disable-next-line react/set-state-in-effect -- Every explicit retry starts a fresh authoritative detail fetch.
@@ -262,67 +461,87 @@ function Detail({ owner, context }: Scope) {
           setItem(result);
       })
       .catch((cause: unknown) => {
-        if (!lifetime.signal.aborted) setError(failure(cause, true));
+        if (lifetime.signal.aborted) return;
+        const reason = failure(cause, true);
+        if (reason.kind === "unavailable") unavailable();
+        else setError(reason);
       })
       .finally(() => {
         if (!lifetime.signal.aborted) setPending(false);
       });
     return () => lifetime.abort();
     // oxlint-disable-next-line react/exhaustive-effect-dependencies -- attempt intentionally starts an explicit retry.
-  }, [owner, context, conversationId, attempt]);
+  }, [owner, context, conversationId, attempt, unavailable]);
   const language = i18n.resolvedLanguage ?? "";
   const locale = isLocale(language) ? language : "en";
   return (
-    <section className="flex min-w-0 flex-col gap-4 break-words">
-      <h1 id="route-heading" tabIndex={-1} className="text-lg font-semibold">
-        {t("conversations.summary")}
-      </h1>
-      <Link className="underline" to="/conversations">
-        {t("conversations.back")}
-      </Link>
-      {pending && <output>{t("conversations.loading")}</output>}
-      {error && <FailureNotice value={error} retry={() => setAttempt((n) => n + 1)} />}
-      {item && (
-        <>
-          <h2 className="text-lg font-semibold">{item.title}</h2>
-          <p>
-            {t(`conversations.${item.kind}`)} · {t("conversations.role")}:{" "}
-            {t(`conversations.${item.membership.role}`)}
-          </p>
-          <p>{t("conversations.unread", { count: item.unread_count })}</p>
-          <p>
-            {t("conversations.created")}:{" "}
-            {formatDate(new Date(item.created_at), locale, {
-              dateStyle: "medium",
-              timeStyle: "short",
-            })}
-          </p>
-          <p>
-            {t("conversations.updated")}:{" "}
-            {formatDate(new Date(item.updated_at), locale, {
-              dateStyle: "medium",
-              timeStyle: "short",
-            })}
-          </p>
-          {item.membership.last_read_message_id && (
-            <p>
-              {t("conversations.lastRead")}: {item.membership.last_read_message_id}
-            </p>
-          )}
-          <h3 className="font-semibold">{t("conversations.lastMessage")}</h3>
-          <Preview conversation={item} />
-          <p>{t("conversations.notice")}</p>
-          {item.kind === "group" && (
-            <GroupManagement
-              owner={owner}
-              context={context}
-              group={item}
-              onSummary={setItem}
-              onUnavailable={unavailable}
-            />
-          )}
-        </>
-      )}
+    <section className="min-w-0 [overflow-wrap:anywhere]">
+      <header className="flex flex-col items-start border-b border-border bg-surface px-4 pt-2 pb-4 sm:px-6">
+        <Link
+          className="inline-flex min-h-11 items-center text-sm underline"
+          to="/conversations"
+          onClick={(event) => {
+            if (
+              event.button === 0 &&
+              !event.metaKey &&
+              !event.ctrlKey &&
+              !event.shiftKey &&
+              !event.altKey &&
+              workspace?.previousKey &&
+              location.state?.inboxKey === workspace.previousKey
+            ) {
+              event.preventDefault();
+              void navigate(-1);
+            }
+          }}
+        >
+          {t("conversations.back")}
+        </Link>
+        <h1 id="route-heading" tabIndex={-1} className="text-2xl font-semibold">
+          {item?.title ?? t("conversations.summary")}
+        </h1>
+        {item && <p className="text-sm text-secondary">{t(`conversations.${item.kind}`)}</p>}
+      </header>
+      <div className="mx-auto flex w-full max-w-3xl flex-col gap-5 p-4 sm:p-6">
+        {pending && <output className="text-secondary">{t("conversations.loading")}</output>}
+        {error && <FailureNotice value={error} retry={() => setAttempt((n) => n + 1)} />}
+        {item && (
+          <>
+            <section className="flex flex-col gap-2 rounded-md border border-border bg-surface p-4">
+              <h2 className="font-semibold">{t("conversations.lastMessage")}</h2>
+              <Preview conversation={item} />
+              {item.last_message && (
+                <time className="text-sm text-secondary" dateTime={item.last_message.created_at}>
+                  {formatDate(new Date(item.last_message.created_at), locale, {
+                    dateStyle: "medium",
+                    timeStyle: "short",
+                  })}
+                </time>
+              )}
+            </section>
+            <p className="text-sm text-secondary">{t("conversations.notice")}</p>
+            {item.kind === "group" && (
+              <details className="rounded-md border border-border bg-surface">
+                <summary className="min-h-11 cursor-pointer p-3 font-semibold">
+                  {t("groups.info")}
+                </summary>
+                <div className="flex flex-col gap-4 border-t border-border p-4">
+                  <p className="text-sm text-secondary">
+                    {t("conversations.role")}: {t(`conversations.${item.membership.role}`)}
+                  </p>
+                  <GroupManagement
+                    owner={owner}
+                    context={context}
+                    group={item}
+                    onSummary={reconcileSummary}
+                    onUnavailable={unavailable}
+                  />
+                </div>
+              </details>
+            )}
+          </>
+        )}
+      </div>
     </section>
   );
 }

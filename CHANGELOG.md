@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Open the inbox after sign-in or session restoration. Keep the conversation list
+  beside the latest-message view on wide screens and preserve its position when
+  returning from a conversation on narrow screens.
+- Group conversation creation under one action, separate Group management from the
+  latest-message view, and guide first-time users from server verification to sign-in.
+- Keep account switching in the header and move profile maintenance and account
+  removal to Settings.
+
 ### Added
 
 - Role-aware Group management: exact-title rename, exact-username member addition,

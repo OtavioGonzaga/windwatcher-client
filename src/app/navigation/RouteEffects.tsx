@@ -45,8 +45,16 @@ export function RouteEffects() {
     };
   }, [location.key, action]);
   useLayoutEffect(() => {
-    const title = document.getElementById("route-heading")?.textContent ?? "Windwatcher";
-    document.title = title === "Windwatcher" ? title : `${title} — Windwatcher`;
+    const updateTitle = () => {
+      const title = document.getElementById("route-heading")?.textContent ?? "Windwatcher";
+      document.title = title === "Windwatcher" ? title : `${title} — Windwatcher`;
+    };
+    updateTitle();
+    const main = document.getElementById("main-content");
+    if (!main) return undefined;
+    const observer = new MutationObserver(updateTitle);
+    observer.observe(main, { childList: true, characterData: true, subtree: true });
+    return () => observer.disconnect();
     // The heading is read from the committed DOM, which changes with route/locale.
     // oxlint-disable-next-line react/exhaustive-effect-dependencies
   }, [location.key, i18n.resolvedLanguage]);

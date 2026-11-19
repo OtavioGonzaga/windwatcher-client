@@ -86,6 +86,7 @@ function GroupForm({
   const finding = useRef(false);
   const notice = useRef<HTMLDivElement>(null);
   const titleField = useRef<HTMLInputElement>(null);
+  const focusDraft = useRef(false);
 
   useEffect(() => {
     const lifetime = new AbortController();
@@ -237,63 +238,80 @@ function GroupForm({
     setOperation(null);
     setUncertain(false);
     setDiscard(false);
+    focusDraft.current = true;
     setPhase({ kind: "draft" });
-    titleField.current?.focus();
   };
   const locked = phase.kind !== "draft";
   const op = operation;
   return (
     <section className="flex min-w-0 max-w-lg flex-col gap-4 break-words">
-      <h1 id="route-heading" tabIndex={-1} className="text-lg font-semibold">
+      <h1 id="route-heading" tabIndex={-1} className="text-2xl font-semibold">
         {t("groups.new")}
       </h1>
-      <Link to="/conversations" className="underline">
+      <Link to="/conversations" className="inline-flex min-h-11 items-center self-start underline">
         {t("conversations.back")}
       </Link>
-      <p>{t("groups.transient")}</p>
-      {serverFailed && (
-        <InlineNotice tone="warning">
-          <p>{t("direct.errors.network")}</p>
-          <Button onClick={() => setServerAttempt((n) => n + 1)}>{t("conversations.retry")}</Button>
-        </InlineNotice>
+      {!locked && (
+        <>
+          {serverFailed && (
+            <InlineNotice tone="warning">
+              <p>{t("direct.errors.network")}</p>
+              <Button onClick={() => setServerAttempt((n) => n + 1)}>
+                {t("conversations.retry")}
+              </Button>
+            </InlineNotice>
+          )}
+          <TextField
+            ref={(element) => {
+              titleField.current = element;
+              if (element && focusDraft.current) {
+                focusDraft.current = false;
+                element.focus();
+              }
+            }}
+            label={t("groups.title")}
+            value={title}
+            disabled={locked}
+            error={titleError ? t(`groups.titleErrors.${titleError}`) : undefined}
+            onChange={(event) => {
+              setTitle(event.target.value);
+              setTitleError(undefined);
+            }}
+          />
+          <p className="text-sm text-secondary">
+            {t("groups.bytes", { count: new TextEncoder().encode(title).byteLength })}
+          </p>
+          <form
+            className="flex min-w-0 flex-col gap-3"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void find();
+            }}
+          >
+            <TextField
+              label={t("direct.username")}
+              hint={t("direct.hint")}
+              value={username}
+              disabled={locked}
+              autoCapitalize="none"
+              autoCorrect="off"
+              autoComplete="off"
+              spellCheck={false}
+              onChange={(event) => {
+                invalidateLookup();
+                setUsername(event.target.value);
+              }}
+            />
+            <Button
+              type="submit"
+              className="self-start"
+              disabled={lookup === "loading" || waiting || !server}
+            >
+              {t("groups.find")}
+            </Button>
+          </form>
+        </>
       )}
-      <TextField
-        ref={titleField}
-        label={t("groups.title")}
-        value={title}
-        disabled={locked}
-        error={titleError ? t(`groups.titleErrors.${titleError}`) : undefined}
-        onChange={(event) => {
-          setTitle(event.target.value);
-          setTitleError(undefined);
-        }}
-      />
-      <p>{t("groups.bytes", { count: new TextEncoder().encode(title).byteLength })}</p>
-      <form
-        className="flex min-w-0 flex-col gap-3"
-        onSubmit={(event) => {
-          event.preventDefault();
-          void find();
-        }}
-      >
-        <TextField
-          label={t("direct.username")}
-          hint={t("direct.hint")}
-          value={username}
-          disabled={locked}
-          autoCapitalize="none"
-          autoCorrect="off"
-          autoComplete="off"
-          spellCheck={false}
-          onChange={(event) => {
-            invalidateLookup();
-            setUsername(event.target.value);
-          }}
-        />
-        <Button type="submit" disabled={locked || lookup === "loading" || waiting || !server}>
-          {t("groups.find")}
-        </Button>
-      </form>
       {!locked && (
         <>
           <h2 className="font-semibold">{t("groups.participants", { count: members.length })}</h2>
@@ -331,12 +349,17 @@ function GroupForm({
         )}
         {waiting && <output>{t("conversations.rate", { seconds })}</output>}
         {!locked && (
-          <Button disabled={lookup === "loading" || waiting || !server} onClick={review}>
+          <Button
+            variant="primary"
+            className="self-start"
+            disabled={lookup === "loading" || waiting || !server}
+            onClick={review}
+          >
             {t("groups.review")}
           </Button>
         )}
         {locked && op && (
-          <div className="flex min-w-0 flex-col gap-2">
+          <div className="flex min-w-0 flex-col gap-2 rounded-md border border-border bg-surface p-4">
             <h2 className="font-semibold">{t("groups.review")}</h2>
             <p>{server}</p>
             <p>{t("groups.owner", { username: ownerName })}</p>
@@ -355,10 +378,16 @@ function GroupForm({
                   ))}
               </ul>
             )}
+            <p className="text-sm text-secondary">{t("groups.transient")}</p>
           </div>
         )}
         {phase.kind === "review" && (
-          <Button disabled={waiting} onClick={() => void send()}>
+          <Button
+            variant="primary"
+            className="self-start"
+            disabled={waiting}
+            onClick={() => void send()}
+          >
             {t("groups.create")}
           </Button>
         )}
@@ -368,12 +397,14 @@ function GroupForm({
         )}
         {uncertain && <InlineNotice tone="warning">{t("groups.uncertain")}</InlineNotice>}
         {phase.kind === "failure" && !phase.terminal && (
-          <Button disabled={waiting || discard} onClick={() => void send()}>
+          <Button className="self-start" disabled={waiting || discard} onClick={() => void send()}>
             {t("groups.retry")}
           </Button>
         )}
         {locked && phase.kind !== "sending" && !discard && (
-          <Button onClick={edit}>{t(uncertain ? "groups.discard" : "groups.edit")}</Button>
+          <Button className="self-start" onClick={edit}>
+            {t(uncertain ? "groups.discard" : "groups.edit")}
+          </Button>
         )}
         {discard && (
           <InlineNotice tone="warning">

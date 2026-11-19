@@ -38,7 +38,8 @@ export function AndroidBack() {
             busy.current = true;
             const { location: route, navigate: go } = current.current;
             const decision = decideBack(
-              route.pathname === "/",
+              route.pathname === "/" ||
+                (route.pathname === "/conversations" && !history.current.hasPredecessor),
               history.current.hasPredecessor,
               canGoBack,
             );

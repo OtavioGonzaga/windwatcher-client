@@ -389,7 +389,7 @@ async function login(page: Page, host = "one") {
   await page.getByLabel("Server URL").fill(`https://${host}.groups.test/proxy/`);
   await page.getByRole("button", { name: "Check server", exact: true }).click();
   await page.getByRole("button", { name: "Save server", exact: true }).click();
-  await page.goto("/#/");
+  await page.goto("/#/servers");
   await page
     .getByRole("link", { name: `Sign in https://${host}.groups.test/proxy/`, exact: true })
     .click();
@@ -411,6 +411,10 @@ async function create(page: Page) {
   await page.getByRole("button", { name: "Create group", exact: true }).click();
 }
 
+async function openGroupInfo(page: Page, label = "Group information") {
+  await page.getByText(label, { exact: true }).click();
+}
+
 async function managedGroup(page: Page, context: BrowserContext) {
   const f = await fixture(context);
   await login(page);
@@ -418,6 +422,7 @@ async function managedGroup(page: Page, context: BrowserContext) {
   await add(page, "bob");
   await expect(page.getByRole("button", { name: "Remove bob", exact: true })).toBeVisible();
   await create(page);
+  await openGroupInfo(page);
   await expect(page.getByRole("button", { name: "Save title" })).toBeEnabled();
   await expect(
     page.getByRole("region", { name: "Members", exact: true }).getByRole("listitem"),
@@ -539,6 +544,7 @@ test("lifecycle Owner-only deletion preflight handles a concurrent addition", as
   await login(page);
   await draft(page, "Disposable");
   await create(page);
+  await openGroupInfo(page);
   const leave = page.getByRole("button", { name: "Review leaving group" });
   await expect(leave).toBeEnabled();
   await leave.click();
@@ -571,6 +577,7 @@ for (const locale of ["en", "pt-BR", "es", "de"] as const) {
     await page.setViewportSize({ width: 320, height: 800 });
     await page.goto(`/#/conversations/${id(1000)}`);
     const labels = resources[locale].common;
+    await openGroupInfo(page, labels.groups.info);
     const save = page.getByRole("button", { name: labels.groupManagement.rename, exact: true });
     await save.click();
     await expect(page.getByRole("dialog")).toBeVisible();
@@ -610,6 +617,7 @@ test("lifecycle server switch fences a late held write", async ({ page, context 
   await login(page, "two");
   await draft(page, "Other server");
   await create(page);
+  await openGroupInfo(page);
   await expect(page.getByRole("button", { name: "Save title" })).toBeEnabled();
   await page.getByRole("button", { name: "Save title" }).click();
   f.mode("hold-write");
@@ -626,6 +634,7 @@ test("lifecycle server switch fences a late held write", async ({ page, context 
   await expect(page.getByRole("heading", { name: "Other server", exact: true })).toHaveCount(0);
   const first = [...f.groups.values()].find((g) => g.host === "one.groups.test")!;
   await page.goto(`/#/conversations/${first.id}`);
+  await openGroupInfo(page);
   await page.getByRole("button", { name: "Save title" }).click();
   await confirmManagement(page);
   await expect(page.getByText(/The server confirmed this request/)).toBeVisible();
@@ -643,12 +652,13 @@ for (const action of ["Log out", "Remove saved account", "forget", "reauthentica
     const f = await managedGroup(page, context);
     const writer = await context.newPage();
     await writer.goto(page.url());
+    await openGroupInfo(writer);
     await writer.getByRole("button", { name: "Save title" }).click();
     f.mode("hold-write");
     await confirmManagement(writer);
     await f.started();
     if (action === "forget") {
-      await page.goto("/#/");
+      await page.goto("/#/servers");
       await page
         .getByRole("button", { name: "Forget server https://one.groups.test/proxy/", exact: true })
         .click();
@@ -656,7 +666,7 @@ for (const action of ["Log out", "Remove saved account", "forget", "reauthentica
         .getByRole("button", { name: "Confirm forget https://one.groups.test/proxy/", exact: true })
         .click();
     } else if (action === "reauthenticate") {
-      await page.goto("/#/");
+      await page.goto("/#/servers");
       await page
         .getByRole("link", { name: "Sign in https://one.groups.test/proxy/", exact: true })
         .click();
@@ -664,6 +674,7 @@ for (const action of ["Log out", "Remove saved account", "forget", "reauthentica
       await page.getByLabel("Password", { exact: true }).fill("synthetic password");
       await page.getByRole("button", { name: "Sign in and save session" }).click();
     } else {
+      await page.goto("/#/servers");
       await page.getByRole("button", { name: /^Accounts and servers/ }).click();
       await page
         .getByRole("button", {
@@ -711,10 +722,12 @@ test("owner-only and populated Group creation preserve title and fetch authorita
   const f = await fixture(context);
   await login(page);
   await page.getByRole("link", { name: "Inbox", exact: true }).click();
+  await page.getByText("New conversation", { exact: true }).click();
   await page.getByRole("link", { name: "New group", exact: true }).click();
   await page.getByLabel("Group title", { exact: true }).fill("Owner only");
   await expect(page.getByText("Only you will join this Group as Owner.")).toBeVisible();
   await create(page);
+  await openGroupInfo(page);
   await expect(page.getByRole("region", { name: "Members", exact: true })).toContainText("alice");
   expect(f.posts()[0]?.body).toEqual({ kind: "group", title: "Owner only", participant_ids: [] });
   await draft(page);
@@ -729,6 +742,7 @@ test("owner-only and populated Group creation preserve title and fetch authorita
   expect(f.posts()).toHaveLength(1);
   await create(page);
   await expect(page.getByRole("heading", { name: "Engineering 😀", exact: true })).toBeVisible();
+  await openGroupInfo(page);
   const members = page.getByRole("region", { name: "Members", exact: true });
   await expect(members.getByRole("listitem")).toHaveCount(3);
   await expect(members).toContainText("Member");
@@ -771,6 +785,7 @@ for (const mode of ["direct-role", "repeated-cursor"] as const) {
     await login(page);
     await draft(page);
     await create(page);
+    await openGroupInfo(page);
     const panel = page.getByRole("region", { name: "Members", exact: true });
     await expect(panel.getByText("alice", { exact: true })).toBeVisible();
     const g = [...f.groups.values()][0]!;
@@ -823,9 +838,11 @@ test("abandoning uncertainty requires acknowledgement; equal titles are not uniq
   await create(page);
   await expect(page.getByText(/The Group may already exist/)).toBeVisible();
   await page.getByRole("button", { name: "Discard uncertain attempt" }).click();
-  await expect(page.getByLabel("Group title", { exact: true })).toBeDisabled();
+  await expect(page.getByLabel("Group title", { exact: true })).toHaveCount(0);
   await page.getByRole("button", { name: "Acknowledge risk and edit" }).click();
+  await expect(page.getByLabel("Group title", { exact: true })).toBeFocused();
   await create(page);
+  await openGroupInfo(page);
   await expect(
     page.getByRole("region", { name: "Members", exact: true }).getByText("alice", { exact: true }),
   ).toBeVisible();
@@ -866,6 +883,7 @@ for (const mode of [
       await expect(retry).toBeDisabled();
       await expect(retry).toBeEnabled();
       await retry.click();
+      await openGroupInfo(page);
       await expect(page.getByRole("region", { name: "Members", exact: true })).toBeVisible();
       expect(f.posts()[0]).toEqual(f.posts()[1]);
     }
@@ -880,6 +898,7 @@ test("member paging handles 120 rows, role attribution, cursor restart and lost 
   await login(page);
   await draft(page);
   await create(page);
+  await openGroupInfo(page);
   await expect(
     page.getByRole("region", { name: "Members", exact: true }).getByText("alice", { exact: true }),
   ).toBeVisible();
@@ -934,6 +953,7 @@ for (const locale of ["en", "pt-BR", "es", "de"] as const) {
       true,
     );
     await page.getByRole("button", { name: labels.create, exact: true }).click();
+    await openGroupInfo(page, labels.info);
     await expect(page.getByRole("region", { name: labels.members, exact: true })).toContainText(
       "alice",
     );
@@ -955,6 +975,7 @@ for (const mode of ["hold-post", "hold-lookup", "hold-members"] as const) {
     await draft(page);
     if (mode === "hold-members") {
       await create(page);
+      await openGroupInfo(page);
       await expect(
         page
           .getByRole("region", { name: "Members", exact: true })
@@ -981,6 +1002,7 @@ for (const mode of ["hold-post", "hold-lookup", "hold-members"] as const) {
     await add(page, "bob");
     await expect(page.getByText("Participant added as Member.")).toBeVisible();
     await create(page);
+    await openGroupInfo(page);
     await expect(page.getByRole("region", { name: "Members", exact: true })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Engineering 😀", exact: true })).toHaveCount(0);
     await draft(page, "Current server");
@@ -1011,7 +1033,7 @@ for (const action of ["Log out", "Remove saved account", "forget", "reauthentica
     await create(writer);
     await f.started();
     if (action === "forget") {
-      await page.goto("/#/");
+      await page.goto("/#/servers");
       await page
         .getByRole("button", { name: "Forget server https://one.groups.test/proxy/", exact: true })
         .click();
@@ -1019,7 +1041,7 @@ for (const action of ["Log out", "Remove saved account", "forget", "reauthentica
         .getByRole("button", { name: "Confirm forget https://one.groups.test/proxy/", exact: true })
         .click();
     } else if (action === "reauthenticate") {
-      await page.goto("/#/");
+      await page.goto("/#/servers");
       await page
         .getByRole("link", { name: "Sign in https://one.groups.test/proxy/", exact: true })
         .click();
@@ -1027,6 +1049,7 @@ for (const action of ["Log out", "Remove saved account", "forget", "reauthentica
       await page.getByLabel("Password", { exact: true }).fill("synthetic password");
       await page.getByRole("button", { name: "Sign in and save session" }).click();
     } else {
+      await page.goto("/#/servers");
       await page.getByRole("button", { name: /^Accounts and servers/ }).click();
       await page
         .getByRole("button", {
@@ -1088,6 +1111,8 @@ test("two tabs with equal titles create distinct Groups, never a title-based uni
     .toBe(1);
   f.release();
   await f.finished();
+  await openGroupInfo(page);
+  await openGroupInfo(other);
   await expect(page.getByRole("region", { name: "Members", exact: true })).toContainText("alice");
   await expect(other.getByRole("region", { name: "Members", exact: true })).toContainText("alice");
   expect(f.groups.size).toBe(2);

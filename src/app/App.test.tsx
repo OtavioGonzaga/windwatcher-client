@@ -19,7 +19,7 @@ describe("application routes", () => {
     expect(
       screen.getByRole("navigation", { name: i18n.t("navigation.label") }),
     ).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: i18n.t("navigation.preferences") })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: i18n.t("navigation.settings") })).toHaveAttribute(
       "aria-current",
       "page",
     );
@@ -28,7 +28,7 @@ describe("application routes", () => {
   });
   it.each([
     ["/", "Windwatcher"],
-    ["/preferences", "Preferences"],
+    ["/preferences", "Settings"],
     ["/unknown", "Page not found"],
   ])("renders %s", (path, heading) => {
     render(

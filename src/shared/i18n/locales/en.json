@@ -106,6 +106,7 @@
         "session": "Sign in again. The request will not be repeated automatically."
       },
       "members": "Members",
+      "info": "Group information",
       "joined": "Joined: {{date}}",
       "roles": { "owner": "Owner — sole Group owner", "admin": "Admin", "member": "Member" },
       "readOnly": "Roles describe the server's current membership. Group management is not available here.",
@@ -147,6 +148,8 @@
       "loading": "Loading conversations…",
       "empty": "No conversations yet.",
       "signIn": "Select a signed-in account to see its inbox.",
+      "new": "New conversation",
+      "select": "Select a conversation to see its latest message.",
       "back": "Back to inbox",
       "summary": "Conversation summary",
       "unavailable": "This conversation is unavailable.",
@@ -168,9 +171,6 @@
       "noMessages": "No messages yet",
       "deleted": "Deleted message",
       "lastMessage": "Last message",
-      "created": "Created",
-      "updated": "Updated",
-      "lastRead": "Your last-read message ID",
       "notice": "Full message history and actions are not available in this build."
     },
     "accounts": {
@@ -209,7 +209,8 @@
     "navigation": {
       "nativeBackError": "System back navigation is unavailable. Use the navigation links.",
       "home": "Home",
-      "preferences": "Preferences",
+      "settings": "Settings",
+      "manageAccounts": "Manage accounts and servers",
       "label": "Main navigation",
       "skip": "Skip to content",
       "notFound": "Page not found",

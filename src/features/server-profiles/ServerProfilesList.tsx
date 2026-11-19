@@ -15,10 +15,12 @@ function ProfileRow({
   accounts,
   busy,
   change,
+  manage,
 }: {
   profile: ServerProfile;
   accounts: number;
   busy: boolean;
+  manage: boolean;
   change: (action: "rename" | "forget", id: string, label: string) => Promise<void>;
 }) {
   const { t, i18n } = useTranslation();
@@ -43,100 +45,114 @@ function ProfileRow({
       <p id={addressId} className="break-all text-sm">
         {profile.canonicalUrl}
       </p>
-      <p className="text-sm">
-        <time dateTime={profile.discovery.inspectedAt}>
-          {t("profiles.inspected", {
-            time: formatDate(
-              new Date(profile.discovery.inspectedAt),
-              resolveLocale([i18n.resolvedLanguage ?? i18n.language]),
-              { dateStyle: "medium", timeStyle: "short" },
-            ),
-          })}
-        </time>
-      </p>
-      <p>{t(profile.discovery.kind === "legacy" ? "profiles.legacy" : "profiles.supported")}</p>
+      {manage && (
+        <>
+          <p className="text-sm">
+            <time dateTime={profile.discovery.inspectedAt}>
+              {t("profiles.inspected", {
+                time: formatDate(
+                  new Date(profile.discovery.inspectedAt),
+                  resolveLocale([i18n.resolvedLanguage ?? i18n.language]),
+                  { dateStyle: "medium", timeStyle: "short" },
+                ),
+              })}
+            </time>
+          </p>
+          <p>{t(profile.discovery.kind === "legacy" ? "profiles.legacy" : "profiles.supported")}</p>
+        </>
+      )}
       <Link
-        className="inline-flex min-h-11 items-center underline"
+        className="action-link self-start"
         to={`/servers/${profile.id}/login`}
         aria-labelledby={`${prefix}-login ${addressId}`}
       >
         <span id={`${prefix}-login`}>{t("auth.signIn")}</span>
       </Link>
-      <Link
-        className="inline-flex min-h-11 items-center underline"
-        to={`/connect?server=${encodeURIComponent(profile.canonicalUrl)}`}
-        aria-labelledby={`${prefix}-inspect ${addressId}`}
-      >
-        <span id={`${prefix}-inspect`}>{t("profiles.inspect")}</span>
-      </Link>
-      <form
-        className="flex min-w-0 flex-col gap-3"
-        noValidate
-        onSubmit={(event) => {
-          event.preventDefault();
-          void change("rename", profile.id, label);
-        }}
-      >
-        <TextField
-          id={labelId}
-          label={t("profiles.label")}
-          aria-labelledby={`${labelId}-label ${addressId}`}
-          value={label}
-          onChange={(event) => setLabel(event.target.value)}
-          disabled={busy}
-        />
-        <div className="flex flex-wrap gap-3">
-          <Button type="submit" disabled={busy} aria-labelledby={`${prefix}-rename ${addressId}`}>
-            <span id={`${prefix}-rename`}>{t("profiles.rename")}</span>
-          </Button>
-          <Button
-            ref={forget}
-            disabled={busy}
-            onClick={() => setConfirm(true)}
-            aria-labelledby={`${prefix}-forget ${addressId}`}
+      {manage && (
+        <>
+          <Link
+            className="inline-flex min-h-11 items-center underline"
+            to={`/connect?server=${encodeURIComponent(profile.canonicalUrl)}`}
+            aria-labelledby={`${prefix}-inspect ${addressId}`}
           >
-            <span id={`${prefix}-forget`}>{t("profiles.forget")}</span>
-          </Button>
-        </div>
-      </form>
-      {confirm && (
-        <fieldset
-          aria-labelledby={`${prefix}-confirm ${addressId}`}
-          className="flex flex-col gap-3"
-        >
-          <p>{t("accounts.forgetWarning")}</p>
-          <p>
-            {t(accounts > 0 ? "profiles.confirmAccounts" : "profiles.confirm", { count: accounts })}
-          </p>
-          <div className="flex flex-wrap gap-3">
-            <Button
-              ref={confirmButton}
+            <span id={`${prefix}-inspect`}>{t("profiles.inspect")}</span>
+          </Link>
+          <form
+            className="flex min-w-0 flex-col gap-3"
+            noValidate
+            onSubmit={(event) => {
+              event.preventDefault();
+              void change("rename", profile.id, label);
+            }}
+          >
+            <TextField
+              id={labelId}
+              label={t("profiles.label")}
+              aria-labelledby={`${labelId}-label ${addressId}`}
+              value={label}
+              onChange={(event) => setLabel(event.target.value)}
+              disabled={busy}
+            />
+            <div className="flex flex-wrap gap-3">
+              <Button
+                type="submit"
+                disabled={busy}
+                aria-labelledby={`${prefix}-rename ${addressId}`}
+              >
+                <span id={`${prefix}-rename`}>{t("profiles.rename")}</span>
+              </Button>
+              <Button
+                ref={forget}
+                disabled={busy}
+                onClick={() => setConfirm(true)}
+                aria-labelledby={`${prefix}-forget ${addressId}`}
+              >
+                <span id={`${prefix}-forget`}>{t("profiles.forget")}</span>
+              </Button>
+            </div>
+          </form>
+          {confirm && (
+            <fieldset
               aria-labelledby={`${prefix}-confirm ${addressId}`}
-              disabled={busy}
-              onClick={() => {
-                void change("forget", profile.id, label);
-              }}
+              className="flex flex-col gap-3"
             >
-              <span id={`${prefix}-confirm`}>{t("profiles.confirmTitle")}</span>
-            </Button>
-            <Button
-              disabled={busy}
-              aria-labelledby={`${prefix}-cancel ${addressId}`}
-              onClick={() => {
-                setConfirm(false);
-                forget.current?.focus();
-              }}
-            >
-              <span id={`${prefix}-cancel`}>{t("discovery.cancel")}</span>
-            </Button>
-          </div>
-        </fieldset>
+              <p>{t("accounts.forgetWarning")}</p>
+              <p>
+                {t(accounts > 0 ? "profiles.confirmAccounts" : "profiles.confirm", {
+                  count: accounts,
+                })}
+              </p>
+              <div className="flex flex-wrap gap-3">
+                <Button
+                  ref={confirmButton}
+                  aria-labelledby={`${prefix}-confirm ${addressId}`}
+                  disabled={busy}
+                  onClick={() => {
+                    void change("forget", profile.id, label);
+                  }}
+                >
+                  <span id={`${prefix}-confirm`}>{t("profiles.confirmTitle")}</span>
+                </Button>
+                <Button
+                  disabled={busy}
+                  aria-labelledby={`${prefix}-cancel ${addressId}`}
+                  onClick={() => {
+                    setConfirm(false);
+                    forget.current?.focus();
+                  }}
+                >
+                  <span id={`${prefix}-cancel`}>{t("discovery.cancel")}</span>
+                </Button>
+              </div>
+            </fieldset>
+          )}
+        </>
       )}
     </li>
   );
 }
 
-export function ServerProfilesList() {
+export function ServerProfilesList({ manage = true }: { manage?: boolean }) {
   const { t } = useTranslation();
   const [state, setState] = useState<ClientStateV2>();
   const [error, setError] = useState<unknown>();
@@ -198,6 +214,7 @@ export function ServerProfilesList() {
       <ul className="flex min-w-0 flex-col gap-4">
         {state?.serverProfiles.map((profile) => (
           <ProfileRow
+            manage={manage}
             key={profile.id}
             profile={profile}
             accounts={state.accounts.filter((a) => a.serverProfileId === profile.id).length}

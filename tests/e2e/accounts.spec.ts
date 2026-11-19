@@ -73,7 +73,7 @@ async function fixture(context: BrowserContext, page: Page) {
     await expect(page.getByText(/Server saved locally/)).toBeVisible();
   };
   const login = async (server: string, username: string) => {
-    await page.goto("/#/");
+    await page.goto("/#/servers");
     await page
       .getByRole("link", { name: `Sign in https://${server}.accounts.test/`, exact: true })
       .click();
@@ -110,7 +110,7 @@ test("switch accounts, clear selection, persist, log out offline and remove loca
   await expect(dialog.getByText("Active — verified", { exact: true })).toBeVisible();
   await dialog.getByRole("button", { name: "Close", exact: true }).click();
   await expect(page.getByText("Signed in as bob", { exact: true })).toBeVisible();
-  await expect(trigger).toContainText("one.accounts.test");
+  await expect(trigger).toHaveAccessibleDescription("https://one.accounts.test/");
   await page.reload();
   await expect(page.getByText("Signed in as bob", { exact: true })).toBeVisible();
   await trigger.click();
@@ -121,6 +121,9 @@ test("switch accounts, clear selection, persist, log out offline and remove loca
     .click();
   await expect(dialog.getByText("Active — verified", { exact: true })).toBeVisible();
   f.offline();
+  await expect(dialog.getByRole("button", { name: /^Log out/ })).toHaveCount(0);
+  await dialog.getByRole("link", { name: "Manage accounts and servers" }).click();
+  await trigger.click();
   await dialog
     .getByRole("button", { name: "Log out alice on https://one.accounts.test/", exact: true })
     .click();
@@ -159,11 +162,14 @@ test("selection and logout reconcile across two real browser tabs", async ({ pag
   const second = await context.newPage();
   await second.goto("/#/");
   await expect(second.getByText("Signed in as alice", { exact: true })).toBeVisible();
+  await expect(second).toHaveURL(/#\/conversations$/);
   await page.getByRole("button", { name: /^Accounts and servers/ }).click();
   await page
     .getByRole("button", { name: "Switch to bob on https://one.accounts.test/", exact: true })
     .click();
   await expect(second.getByText("Signed in as bob", { exact: true })).toBeVisible();
+  await page.getByRole("link", { name: "Manage accounts and servers" }).click();
+  await page.getByRole("button", { name: /^Accounts and servers/ }).click();
   await page
     .getByRole("button", { name: "Log out bob on https://one.accounts.test/", exact: true })
     .click();
@@ -181,13 +187,14 @@ for (const locale of ["de", "pt-BR"] as const) {
     context,
   }) => {
     await fixture(context, page);
-    await page.getByRole("link", { name: "Preferences", exact: true }).click();
+    await page.getByRole("link", { name: "Settings", exact: true }).click();
     await page.getByLabel("Language").selectOption(locale);
     await page.setViewportSize({ width: 320, height: 640 });
     await page.evaluate(() => {
       document.documentElement.style.fontSize = "200%";
     });
     const copy = resources[locale].common.accounts;
+    await page.getByRole("link", { name: copy.title, exact: true }).click();
     await page.getByRole("button", { name: new RegExp(`^${copy.title}`) }).click();
     const dialog = page.getByRole("dialog");
     await expect(dialog).toBeVisible();

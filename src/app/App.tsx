@@ -1,5 +1,5 @@
 import { Route, Routes } from "react-router";
-import { HomePage } from "./pages/HomePage";
+import { HomePage, ServersPage } from "./pages/HomePage";
 import { PreferencesPage } from "./pages/PreferencesPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
 import { AppShell } from "./AppShell";
@@ -15,10 +15,13 @@ export function App() {
       <Route element={<AppShell />}>
         <Route path="/" element={<HomePage />} />
         <Route path="/preferences" element={<PreferencesPage />} />
-        <Route path="/conversations" element={<InboxPage />} />
+        <Route path="/conversations" element={<InboxPage />}>
+          <Route index element={null} />
+          <Route path=":conversationId" element={<ConversationDetailPage />} />
+        </Route>
         <Route path="/conversations/new" element={<NewDirectPage />} />
         <Route path="/conversations/groups/new" element={<GroupCreationPage />} />
-        <Route path="/conversations/:conversationId" element={<ConversationDetailPage />} />
+        <Route path="/servers" element={<ServersPage />} />
         <Route path="/connect" element={<AddServerPage />} />
         <Route path="/servers/:profileId/login" element={<AuthenticationPage />} />
         <Route path="/servers/:profileId/register" element={<AuthenticationPage registration />} />

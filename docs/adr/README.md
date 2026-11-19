@@ -11,6 +11,9 @@ ADRs record significant architectural decisions implemented in this client repos
 - [0007: Local profiles and account-owned secrets](0007-local-profiles-and-account-owned-secrets.md).
 - [0008: Windows user-scoped DPAPI account records](0008-windows-user-scoped-dpapi-records.md).
 - [0009: Coordinated session commits and nonsecret recovery intents](0009-coordinated-session-commits-and-recovery-intents.md).
+- [0010: Profile gates and local-first logout](0010-profile-gates-and-local-first-logout.md).
+- [0011: Transient Direct idempotency](0011-transient-direct-idempotency.md).
+- [0012: Account-scoped responsive conversation workspace](0012-conversation-workspace.md).
 
 Introduce an ADR in the same PR that implements a material architectural
 boundary or long-lived technical direction. Do not record roadmap intentions

@@ -18,7 +18,10 @@
     @apply not-sr-only fixed top-3 left-3 z-10 rounded-sm border border-border bg-surface p-3 text-foreground;
   }
   .shell-link {
-    @apply flex min-h-11 min-w-0 flex-1 items-center justify-center gap-2 rounded-sm border border-transparent px-3 py-2 text-sm font-medium md:flex-none md:justify-start;
+    @apply flex min-h-11 min-w-0 flex-1 items-center justify-center gap-2 rounded-sm border border-transparent px-3 py-2 text-sm font-medium md:flex-none;
+  }
+  .action-link {
+    @apply inline-flex min-h-11 items-center justify-center rounded-sm bg-action px-4 py-2 text-sm font-medium text-on-action hover:bg-action-hover active:bg-action-pressed;
   }
   .shell-link svg {
     flex-shrink: 0;
@@ -32,10 +35,41 @@
     text-decoration: underline;
     text-underline-offset: 0.25em;
   }
+  .conversation-row:has([aria-current="page"]) {
+    @apply border-s-action bg-subtle-hover;
+  }
+  .conversation-row a::after {
+    @apply absolute inset-0 content-[''];
+  }
+  .conversation-row a:focus-visible::after {
+    outline: 3px solid var(--focus);
+    outline-offset: -3px;
+  }
+  .conversation-pane {
+    scroll-padding-block: 0.5rem;
+  }
+}
+
+/* Short windows and mobile keep document scroll for focused controls and IME. */
+@media (min-width: 64rem) and (min-height: 32rem) {
+  .conversation-shell {
+    height: 100dvh;
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+  .conversation-pane {
+    overflow-y: auto;
+    scrollbar-gutter: stable;
+  }
 }
 
 @media (forced-colors: active) {
   .shell-link[aria-current="page"] {
     border-color: Highlight;
+  }
+  .conversation-row:has([aria-current="page"]) {
+    border-inline-start-color: Highlight;
+  }
+  .conversation-row a:focus-visible::after {
+    outline-color: Highlight;
   }
 }

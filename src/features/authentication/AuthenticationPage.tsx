@@ -130,7 +130,7 @@ function ProfileAuthenticationPage({ registration }: { registration: boolean }) 
           controller.signal,
           search.get("account") ?? undefined,
         );
-        if (!controller.signal.aborted) void navigate("/");
+        if (!controller.signal.aborted) void navigate("/conversations", { replace: true });
       }
     } catch (error) {
       if (active.current !== controller) return;
@@ -152,7 +152,7 @@ function ProfileAuthenticationPage({ registration }: { registration: boolean }) 
   }
   return (
     <div className="flex min-w-0 max-w-lg flex-col gap-5">
-      <h1 id="route-heading" tabIndex={-1} className="text-lg font-semibold">
+      <h1 id="route-heading" tabIndex={-1} className="text-2xl font-semibold">
         {t(registration ? "auth.register" : "auth.signIn")}
       </h1>
       {profile && (
@@ -261,8 +261,8 @@ function ProfileAuthenticationPage({ registration }: { registration: boolean }) 
       >
         {t(registration ? "auth.loginLink" : "auth.registerLink")}
       </Link>
-      <Link className="underline" to="/">
-        {t("navigation.backHome")}
+      <Link className="inline-flex min-h-11 items-center self-start underline" to="/servers">
+        {t("accounts.title")}
       </Link>
     </div>
   );

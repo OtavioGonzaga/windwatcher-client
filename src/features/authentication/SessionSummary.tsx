@@ -4,13 +4,20 @@ import { Button } from "../../shared/components/Button";
 import { useSession } from "./SessionOwner";
 import { errorKey } from "./error-key";
 
-export function SessionSummary() {
+export function SessionSummary({ showReady = true }: { showReady?: boolean }) {
   const { t } = useTranslation();
   const { status, retry } = useSession();
 
   if (!status || status.kind === "signed-out") return null;
   return (
-    <section className="flex flex-col gap-2" aria-live="polite">
+    <section
+      className={
+        !showReady && status.kind === "ready"
+          ? "sr-only"
+          : "mb-4 flex flex-col items-start gap-2 px-4 pt-3 text-sm"
+      }
+      aria-live="polite"
+    >
       {status.kind === "restoring" && <p>{t("auth.restoring")}</p>}
       {status.kind === "ready" && <p>{t("auth.signedIn", { username: status.username })}</p>}
       {status.kind === "needs-login" && (

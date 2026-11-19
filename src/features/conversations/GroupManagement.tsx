@@ -256,8 +256,7 @@ export function GroupManagement({
   return (
     <section className="flex min-w-0 flex-col gap-4" aria-label={t("groupManagement.title")}>
       <h2 className="font-semibold">{t("groupManagement.title")}</h2>
-      <p>{description}</p>
-      <p>{t("groupManagement.transient")}</p>
+      <p className="text-sm text-secondary">{description}</p>
       {metadataError && (
         <InlineNotice tone="warning">
           <p>{t("groupManagement.metadataError")}</p>
@@ -269,7 +268,7 @@ export function GroupManagement({
       {manager && (
         <>
           <form
-            className="flex min-w-0 flex-col gap-3"
+            className="flex min-w-0 flex-col gap-3 border-t border-border pt-4"
             onSubmit={(event) => {
               event.preventDefault();
               const issue = groupTitleIssue(title);
@@ -304,7 +303,7 @@ export function GroupManagement({
             </div>
           </form>
           <form
-            className="flex min-w-0 flex-col gap-3"
+            className="flex min-w-0 flex-col gap-3 border-t border-border pt-4"
             onSubmit={(event) => {
               event.preventDefault();
               void find();
@@ -329,7 +328,7 @@ export function GroupManagement({
                 setMissing(false);
               }}
             />
-            <Button type="submit" disabled={disabled}>
+            <Button type="submit" className="self-start" disabled={disabled}>
               {t("direct.find")}
             </Button>
           </form>
@@ -346,7 +345,7 @@ export function GroupManagement({
           )}
         </>
       )}
-      <Button disabled={disabled} onClick={() => void prepareLeave()}>
+      <Button className="self-start" disabled={disabled} onClick={() => void prepareLeave()}>
         {t("groupManagement.leave")}
       </Button>
       {probing && <output>{t("groupManagement.checking")}</output>}
@@ -458,10 +457,16 @@ export function GroupManagement({
               )}
             </p>
           )}
+          <p className="text-sm text-secondary">{t("groupManagement.transient")}</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Button onClick={cancel}>{t("discovery.cancel")}</Button>
-          <Button onClick={() => void lifecycle.send()}>
+          <Button
+            variant={
+              action?.kind === "leave" || action?.kind === "remove" ? "destructive" : "primary"
+            }
+            onClick={() => void lifecycle.send()}
+          >
             {t(
               action?.kind === "leave" && action.destructive
                 ? "groupManagement.delete"

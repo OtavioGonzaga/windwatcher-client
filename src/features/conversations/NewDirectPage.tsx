@@ -185,10 +185,10 @@ function DirectForm({ owner, active }: { owner: AuthenticationService; active: A
     ["conflict", "resultUnavailable", "unavailable", "expired"].includes(phase.failure);
   return (
     <section className="flex min-w-0 max-w-lg flex-col gap-4 break-words">
-      <h1 id="route-heading" tabIndex={-1} className="text-lg font-semibold">
+      <h1 id="route-heading" tabIndex={-1} className="text-2xl font-semibold">
         {t("direct.title")}
       </h1>
-      <Link to="/conversations" className="underline">
+      <Link to="/conversations" className="inline-flex min-h-11 items-center self-start underline">
         {t("conversations.back")}
       </Link>
       {serverFailed && (
@@ -218,7 +218,12 @@ function DirectForm({ owner, active }: { owner: AuthenticationService; active: A
           spellCheck={false}
           disabled={phase.kind === "creating"}
         />
-        <Button type="submit" disabled={pending || waiting || !server}>
+        <Button
+          type="submit"
+          variant={user ? "secondary" : "primary"}
+          className="self-start"
+          disabled={pending || waiting || !server}
+        >
           {t("direct.find")}
         </Button>
       </form>
@@ -228,9 +233,9 @@ function DirectForm({ owner, active }: { owner: AuthenticationService; active: A
       <div ref={notice} tabIndex={-1} className="flex flex-col gap-3">
         {phase.kind === "empty" && <InlineNotice>{t("direct.empty")}</InlineNotice>}
         {user && (
-          <div className="flex flex-col gap-2">
-            <p>{t("direct.confirm", { username: user.username })}</p>
-            <p>{server}</p>
+          <div className="flex flex-col gap-2 rounded-md border border-border bg-surface p-4">
+            <h2 className="font-semibold">{t("direct.confirm", { username: user.username })}</h2>
+            <p className="text-sm text-secondary">{server}</p>
             {user.id === active.userId && <p>{t("direct.self")}</p>}
           </div>
         )}
@@ -240,15 +245,22 @@ function DirectForm({ owner, active }: { owner: AuthenticationService; active: A
           </InlineNotice>
         )}
         {phase.kind === "matched" && (
-          <Button onClick={() => void create(phase.user)}>{t("direct.start")}</Button>
+          <Button variant="primary" className="self-start" onClick={() => void create(phase.user)}>
+            {t("direct.start")}
+          </Button>
         )}
         {phase.kind === "error" && !terminal && (
-          <Button disabled={waiting} onClick={() => void (user ? create(user) : lookup())}>
+          <Button
+            className="self-start"
+            disabled={waiting}
+            onClick={() => void (user ? create(user) : lookup())}
+          >
             {t("conversations.retry")}
           </Button>
         )}
         {user && !pending && (
           <Button
+            className="self-start"
             onClick={() => {
               change(input);
               field.current?.focus();

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { Link } from "react-router";
 import { useTranslation } from "react-i18next";
 import { Button } from "../../shared/components/Button";
@@ -8,6 +8,7 @@ import type { SessionStatus } from "../authentication/service";
 import { errorKey } from "../authentication/error-key";
 import type { AccountRecord, ClientStateV2 } from "../server-profiles/schema";
 import { StorageNotice } from "../server-profiles/StorageNotice";
+import { ChevronDown, UserRound } from "lucide-react";
 
 function accountStatus(account: AccountRecord, state: ClientStateV2, status: SessionStatus) {
   if (state.selectedAccountId !== account.id)
@@ -31,8 +32,9 @@ function accountStatus(account: AccountRecord, state: ClientStateV2, status: Ses
   return "accounts.status.checking";
 }
 
-export function AccountSwitcher() {
+export function AccountSwitcher({ manage = false }: { manage?: boolean }) {
   const { t } = useTranslation();
+  const activeServerId = useId();
   const { owner, status } = useSession();
   const [state, setState] = useState<ClientStateV2>();
   const [error, setError] = useState<unknown>();
@@ -120,14 +122,32 @@ export function AccountSwitcher() {
         ref={trigger}
         aria-haspopup="dialog"
         aria-expanded={open}
-        className="max-w-full"
+        className="max-w-full text-left"
+        aria-describedby={selected && selectedProfile && !manage ? activeServerId : undefined}
         onClick={() => setOpen(true)}
       >
-        {t("accounts.title")}
-        {selected && selectedProfile && (
-          <span className="min-w-0 break-all">{`: ${selected.username} — ${selectedProfile.label} (${selectedProfile.canonicalUrl})`}</span>
+        <UserRound aria-hidden="true" size={16} className="shrink-0" />
+        {selected && selectedProfile && !manage ? (
+          <span className="min-w-0 max-w-[min(36vw,16rem)] leading-tight">
+            <span className="sr-only">{t("accounts.title")}: </span>
+            <span className="block truncate">{selected.username}</span>{" "}
+            <span
+              title={selectedProfile.canonicalUrl}
+              className="block truncate text-xs text-secondary"
+            >
+              {selectedProfile.canonicalUrl.replace(/^https?:\/\//, "").replace(/\/$/, "")}
+            </span>
+          </span>
+        ) : (
+          <span>{t("accounts.title")}</span>
         )}
+        <ChevronDown aria-hidden="true" size={16} className="shrink-0" />
       </Button>
+      {selectedProfile && !manage && (
+        <span id={activeServerId} hidden>
+          {selectedProfile.canonicalUrl}
+        </span>
+      )}
       <dialog
         ref={dialog}
         aria-labelledby="account-switcher-title"
@@ -173,6 +193,7 @@ export function AccountSwitcher() {
                 </p>
                 <Button
                   ref={confirmButton}
+                  variant="destructive"
                   disabled={busy || !owner}
                   onClick={() => {
                     const { action, account } = confirmation;
@@ -222,7 +243,7 @@ export function AccountSwitcher() {
                   {state?.serverProfiles.map((profile) => (
                     <li key={profile.id} className="min-w-0 rounded-md border border-border p-3">
                       <h3 className="break-words font-semibold">{profile.label}</h3>
-                      <p className="break-all">{profile.canonicalUrl}</p>
+                      <p className="break-all text-secondary">{profile.canonicalUrl}</p>
                       <ul className="my-3 flex flex-col gap-3">
                         {state.accounts
                           .filter((a) => a.serverProfileId === profile.id)
@@ -233,12 +254,7 @@ export function AccountSwitcher() {
                             };
                             return (
                               <li key={account.id} className="min-w-0 border-t border-border pt-3">
-                                <p className="break-all font-medium">
-                                  {account.username}{" "}
-                                  <span className="text-xs font-normal">
-                                    {account.serverUserId.slice(0, 8)}
-                                  </span>
-                                </p>
+                                <p className="break-all font-medium">{account.username} </p>
                                 <p>{t(accountStatus(account, state, status))}</p>
                                 <div className="mt-2 flex flex-wrap gap-2">
                                   <Button
@@ -261,28 +277,32 @@ export function AccountSwitcher() {
                                   >
                                     {t("auth.signIn")}
                                   </Link>
-                                  <Button
-                                    disabled={busy}
-                                    data-account-action={`logout-${account.id}`}
-                                    aria-label={t("accounts.logoutLabel", description)}
-                                    onClick={() => {
-                                      returnFocus.current = `logout-${account.id}`;
-                                      setConfirmation({ action: "logout", account });
-                                    }}
-                                  >
-                                    {t("accounts.logout")}
-                                  </Button>
-                                  <Button
-                                    disabled={busy}
-                                    data-account-action={`remove-${account.id}`}
-                                    aria-label={t("accounts.removeLabel", description)}
-                                    onClick={() => {
-                                      returnFocus.current = `remove-${account.id}`;
-                                      setConfirmation({ action: "remove", account });
-                                    }}
-                                  >
-                                    {t("accounts.remove")}
-                                  </Button>
+                                  {manage && (
+                                    <Button
+                                      disabled={busy}
+                                      data-account-action={`logout-${account.id}`}
+                                      aria-label={t("accounts.logoutLabel", description)}
+                                      onClick={() => {
+                                        returnFocus.current = `logout-${account.id}`;
+                                        setConfirmation({ action: "logout", account });
+                                      }}
+                                    >
+                                      {t("accounts.logout")}
+                                    </Button>
+                                  )}
+                                  {manage && (
+                                    <Button
+                                      disabled={busy}
+                                      data-account-action={`remove-${account.id}`}
+                                      aria-label={t("accounts.removeLabel", description)}
+                                      onClick={() => {
+                                        returnFocus.current = `remove-${account.id}`;
+                                        setConfirmation({ action: "remove", account });
+                                      }}
+                                    >
+                                      {t("accounts.remove")}
+                                    </Button>
+                                  )}
                                 </div>
                               </li>
                             );
@@ -299,13 +319,24 @@ export function AccountSwitcher() {
                     </li>
                   ))}
                 </ul>
-                <Link
-                  className="inline-flex min-h-11 items-center underline"
-                  onClick={close}
-                  to="/connect"
-                >
-                  {t("accounts.addServer")}
-                </Link>
+                {!manage && (
+                  <Link
+                    to="/servers"
+                    onClick={close}
+                    className="inline-flex min-h-11 items-center underline"
+                  >
+                    {t("navigation.manageAccounts")}
+                  </Link>
+                )}
+                {manage && (
+                  <Link
+                    className="inline-flex min-h-11 items-center underline"
+                    onClick={close}
+                    to="/connect"
+                  >
+                    {t("accounts.addServer")}
+                  </Link>
+                )}
               </>
             )}
           </>

@@ -14,11 +14,15 @@ test("shell fixture keeps text focus across resize and restores scroll on histor
   await page.setViewportSize({ width: 320, height: 500 });
   await expect(field).toBeFocused();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-  await page.getByRole("link", { name: "Home", exact: true }).click();
+  await field.scrollIntoViewIfNeeded();
+  expect(await page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
+  // Follow the destination without first scrolling the header link into view.
+  await page.locator("#nav-home").evaluate((link: HTMLAnchorElement) => link.click());
   await expect(page.locator("main img")).toHaveJSProperty("naturalWidth", 543);
   await page.goBack();
-  await expect(page.getByRole("link", { name: "Home", exact: true })).toBeFocused();
-  expect(await page.evaluate(() => scrollY)).toBeGreaterThan(0);
+  await expect(field).toBeFocused();
+  await expect(field).toBeInViewport();
+  expect(await page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
 });
 
 test("short landscape supports touch or mouse navigation without overflow", async ({
@@ -26,10 +30,10 @@ test("short landscape supports touch or mouse navigation without overflow", asyn
 }, info) => {
   await page.setViewportSize({ width: 640, height: 320 });
   await page.goto("/");
-  const preferences = page.getByRole("link", { name: "Preferences", exact: true });
+  const preferences = page.getByRole("link", { name: "Settings", exact: true });
   if (info.project.use.hasTouch) await preferences.tap();
   else await preferences.click();
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Preferences");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Settings");
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
 
@@ -37,9 +41,9 @@ test("browser navigation never loads Android adapter or writes preferences", asy
   const requests: string[] = [];
   page.on("request", (r) => requests.push(r.url()));
   await page.goto("/");
-  await page.getByRole("link", { name: "Preferences", exact: true }).click();
+  await page.getByRole("link", { name: "Settings", exact: true }).click();
   await page.getByLabel("Appearance").selectOption("dark");
-  await page.getByRole("link", { name: "Home", exact: true }).click();
+  await page.locator("#nav-home").click();
   expect(requests.every((url) => new URL(url).origin === "http://127.0.0.1:4173")).toBe(true);
   expect(requests.some((url) => url.includes("android-back"))).toBe(false);
   expect(await page.evaluate(() => [localStorage.length, sessionStorage.length])).toEqual([0, 0]);
@@ -54,14 +58,14 @@ test("skip link, route focus, history and presentation state remain coherent", a
   await page.keyboard.press("Enter");
   await expect(page.getByRole("main")).toBeFocused();
   await expect(page).not.toHaveURL(/main-content/);
-  await page.getByRole("link", { name: "Preferences", exact: true }).click();
+  await page.getByRole("link", { name: "Settings", exact: true }).click();
   await expect(page.getByRole("heading", { level: 1 })).toBeFocused();
   await page.getByLabel("Language").selectOption("es");
   await page.getByLabel("Apariencia").selectOption("dark");
-  await expect(page).toHaveTitle("Preferencias — Windwatcher");
-  await page.getByRole("link", { name: "Inicio", exact: true }).click();
+  await expect(page).toHaveTitle("Configuración — Windwatcher");
+  await page.locator("#nav-home").click();
   await page.goBack();
-  await expect(page.getByRole("link", { name: "Inicio", exact: true })).toBeFocused();
+  await expect(page.locator("#nav-home")).toBeFocused();
   await expect(page.getByLabel("Idioma")).toHaveValue("es");
   await expect(page.getByLabel("Apariencia")).toHaveValue("dark");
   await page.goForward();
@@ -75,11 +79,8 @@ for (const theme of ["light", "dark"] as const) {
       await page.goto(`/#${path}`);
       expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
       await page.emulateMedia({ forcedColors: "active", reducedMotion: "reduce" });
-      await page.getByRole("link", { name: "Home", exact: true }).focus();
-      await expect(page.getByRole("link", { name: "Home", exact: true })).toHaveCSS(
-        "outline-style",
-        "solid",
-      );
+      await page.locator("#nav-home").focus();
+      await expect(page.locator("#nav-home")).toHaveCSS("outline-style", "solid");
     });
   }
 }
@@ -99,7 +100,7 @@ for (const width of [320, 360, 768, 1024, 1280]) {
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
       true,
     );
-    const link = page.getByRole("link", { name: "Startseite", exact: true });
+    const link = page.locator("#nav-home");
     const box = await link.boundingBox();
     expect(box!.height).toBeGreaterThanOrEqual(44);
     await link.click();
@@ -119,10 +120,10 @@ test("nested static hosting supports hash entry, reload and recovery without rew
     if (r.status() >= 400) failures.push(r.url());
   });
   await page.goto("http://127.0.0.1:4176/client/#/preferences");
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Preferences");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Settings");
   await page.reload();
   await expect(page.getByLabel("Language")).toBeVisible();
-  await page.getByRole("link", { name: "Home", exact: true }).click();
+  await page.locator("#nav-home").click();
   await expect(page.locator("main img")).toBeVisible();
   await page.evaluate(() => document.fonts.ready);
   expect(await page.locator("main img").evaluate((img: HTMLImageElement) => img.naturalWidth)).toBe(

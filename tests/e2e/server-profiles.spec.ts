@@ -27,8 +27,12 @@ test("explicit inspect/save/reload/dedupe/rename/reinspect/confirmed-forget has 
   await page.getByLabel("Local display label").fill("My saved server");
   await page.getByRole("button", { name: "Save server", exact: true }).click();
   await expect(page.getByText(/Server saved locally/)).toBeVisible();
+  await expect(page.getByRole("link", { name: "Sign in", exact: true })).toHaveAttribute(
+    "href",
+    /\/servers\/[^/]+\/login$/,
+  );
   await page.reload();
-  await page.getByRole("link", { name: "Home", exact: true }).click();
+  await page.goto("/#/servers");
   await expect(page.getByRole("heading", { name: "My saved server" })).toBeVisible();
   expect(requests).toBe(1);
   const stored = await page.evaluate(() =>
@@ -59,7 +63,7 @@ test("explicit inspect/save/reload/dedupe/rename/reinspect/confirmed-forget has 
   await expect(page.getByText(/already saved as Renamed/)).toBeVisible();
   await page.getByRole("button", { name: "Update existing server" }).click();
   await expect(page.getByText(/Server saved locally/)).toBeVisible();
-  await page.getByRole("link", { name: "Home", exact: true }).click();
+  await page.goto("/#/servers");
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
   await page
     .getByRole("button", { name: "Forget server https://profiles.test/proxy/", exact: true })
@@ -119,10 +123,10 @@ for (const mode of ["light", "dark"] as const) {
       );
     });
     await page.reload();
-    await page.getByRole("link", { name: "Preferences", exact: true }).click();
+    await page.getByRole("link", { name: "Settings", exact: true }).click();
     await page.getByLabel("Appearance", { exact: true }).selectOption(mode);
     await page.getByLabel("Language", { exact: true }).selectOption("de");
-    await page.getByRole("link", { name: "Startseite", exact: true }).click();
+    await page.getByRole("link", { name: "Konten und Server", exact: true }).click();
     await page.setViewportSize({ width: 320, height: 900 });
     await page.evaluate(() => {
       document.documentElement.style.fontSize = "200%";

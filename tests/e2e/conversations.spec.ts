@@ -113,7 +113,7 @@ test("inbox follows cursor, refreshes and fetches detail without read mutations"
   await page.getByLabel("Server URL").fill("https://inbox.test/");
   await page.getByRole("button", { name: "Check server", exact: true }).click();
   await page.getByRole("button", { name: "Save server", exact: true }).click();
-  await page.goto("/#/");
+  await page.goto("/#/servers");
   await page.getByRole("link", { name: /Sign in https:\/\/inbox.test/ }).click();
   await page.getByLabel("Username").fill("alice");
   await page.getByLabel("Password", { exact: true }).fill("synthetic password");
@@ -136,7 +136,7 @@ test("inbox follows cursor, refreshes and fetches detail without read mutations"
   await expect(page.getByText("Deleted message")).toBeVisible();
   await page.getByRole("link", { name: "Back to inbox" }).click();
   await expect(page.getByRole("heading", { name: "Inbox" })).toBeVisible();
-  await page.goto("/#/");
+  await page.goto("/#/servers");
   await page.getByRole("link", { name: /Sign in https:\/\/inbox.test/ }).click();
   await page.getByLabel("Username").fill("bob");
   await page.getByLabel("Password", { exact: true }).fill("synthetic password");
@@ -271,7 +271,7 @@ async function isolatedServers(context: BrowserContext, page: Page) {
                 items: [conversation(first, heldNext ? "Late continuation" : title)],
                 has_more: false,
               }
-            : conversation(first, title),
+            : conversation(url.pathname.split("/").at(-1)!, title),
         });
       } catch {
         // The browser may close a request after cancellation; its late response must not render.
@@ -287,7 +287,7 @@ async function isolatedServers(context: BrowserContext, page: Page) {
     await page.getByLabel("Server URL").fill(`https://${name}.inbox-isolation.test/`);
     await page.getByRole("button", { name: "Check server", exact: true }).click();
     await page.getByRole("button", { name: "Save server", exact: true }).click();
-    await page.goto("/#/");
+    await page.goto("/#/servers");
     await page
       .getByRole("link", { name: `Sign in https://${name}.inbox-isolation.test/`, exact: true })
       .click();
@@ -321,8 +321,8 @@ test("50-item first page, next cursor and direct detail link preserve server ord
   context,
 }) => {
   const f = await isolatedServers(context, page);
-  await f.add("one");
   f.setMode("large");
+  await f.add("one");
   await page.goto(`/#/conversations/${first}`);
   await expect(page.getByRole("heading", { name: "Server one private" })).toBeVisible();
   await page.getByRole("link", { name: "Back to inbox" }).click();
@@ -335,13 +335,47 @@ test("50-item first page, next cursor and direct detail link preserve server ord
   await expect(page.getByRole("button", { name: "Load more" })).toHaveCount(0);
 });
 
+test("wide detail keeps the inbox mounted; narrow back restores the loaded list and focus", async ({
+  page,
+  context,
+}) => {
+  const f = await isolatedServers(context, page);
+  f.setMode("large");
+  await f.add("one");
+  await expect(page).toHaveURL(/#\/conversations$/);
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.getByRole("button", { name: "Load more" }).click();
+  const row = page.getByRole("link", { name: "Conversation 53", exact: true });
+  const rowSurface = page.getByRole("listitem").filter({ has: row });
+  await rowSurface.click({ position: { x: 20, y: 25 } });
+  await expect(page.getByRole("heading", { level: 1, name: "Server one private" })).toBeVisible();
+  await expect(row).toHaveAttribute("aria-current", "page");
+  await expect(row).toBeInViewport();
+  expect(f.calls.filter((call) => call.path === "/v1/conversations")).toHaveLength(2);
+
+  await page.getByRole("link", { name: "Back to inbox" }).click();
+  await page.setViewportSize({ width: 360, height: 720 });
+  await row.focus();
+  await row.scrollIntoViewIfNeeded();
+  const before = await page.evaluate(() => window.scrollY);
+  expect(before).toBeGreaterThan(0);
+  await row.press("Enter");
+  await expect(row).toBeHidden();
+  await expect(page.getByRole("heading", { level: 1 })).toBeFocused();
+  await page.getByRole("link", { name: "Back to inbox" }).click();
+  await expect(row).toBeFocused();
+  await expect(row).toBeInViewport();
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(before);
+  expect(f.calls.filter((call) => call.path === "/v1/conversations")).toHaveLength(2);
+});
+
 test("refresh replaces a pending continuation and ignores its late response", async ({
   page,
   context,
 }) => {
   const f = await isolatedServers(context, page);
-  await f.add("one");
   f.setMode("large");
+  await f.add("one");
   await page.getByRole("link", { name: "Inbox", exact: true }).click();
   await expect(page.getByRole("listitem")).toHaveCount(50);
   f.setMode("hold-next");
@@ -361,8 +395,8 @@ test("invalid cursor offers an explicit restart instead of retrying the cursor",
   context,
 }) => {
   const f = await isolatedServers(context, page);
-  await f.add("one");
   f.setMode("large");
+  await f.add("one");
   await page.getByRole("link", { name: "Inbox", exact: true }).click();
   await expect(page.getByRole("listitem")).toHaveCount(50);
   f.setMode("invalid-cursor");
@@ -378,14 +412,14 @@ for (const locale of ["en", "pt-BR", "es", "de"] as const) {
     const f = await isolatedServers(context, page);
     await f.add("one");
     await page.setViewportSize({ width: 320, height: 800 });
-    await page.getByRole("link", { name: "Preferences", exact: true }).click();
+    await page.getByRole("link", { name: "Settings", exact: true }).click();
     await page.locator("select").first().selectOption(locale);
     const strings = resources[locale].common.conversations;
     await page.getByRole("link", { name: strings.inbox, exact: true }).click();
     await expect(page.getByRole("heading", { name: strings.inbox })).toBeVisible();
     await expect(page.getByText(strings.noMessages)).toBeVisible();
     await page.getByRole("link", { name: "Server one private" }).click();
-    await expect(page.getByRole("heading", { name: strings.summary })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "Server one private" })).toBeVisible();
     await expect(page.getByText(strings.notice)).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
       true,
@@ -396,8 +430,9 @@ for (const locale of ["en", "pt-BR", "es", "de"] as const) {
 test("inbox and detail recover safely from 429 and inaccessible 404", async ({ page, context }) => {
   const f = await isolatedServers(context, page);
   await f.add("one");
+  await expect(page.getByRole("link", { name: "Server one private" })).toBeVisible();
   f.setMode("rate");
-  await page.getByRole("link", { name: "Inbox", exact: true }).click();
+  await page.getByRole("button", { name: "Refresh" }).click();
   await expect(page.getByText(/Too many requests/)).toBeVisible();
   const retry = page.getByRole("button", { name: "Try again" });
   await expect(retry).toBeDisabled();
@@ -409,6 +444,8 @@ test("inbox and detail recover safely from 429 and inaccessible 404", async ({ p
   await expect(page.getByText("This conversation is unavailable.")).toBeVisible();
   await expect(page.getByText("Server one private")).toHaveCount(0);
   await page.getByRole("link", { name: "Back to inbox" }).click();
+  await expect(page.getByRole("link", { name: "Server one private" })).toHaveCount(0);
+  await page.getByRole("button", { name: "Refresh" }).click();
   await expect(page.getByRole("link", { name: "Server one private" })).toBeVisible();
 });
 
@@ -418,15 +455,16 @@ test("inbox and detail recover from transport failure without displaying stale d
 }) => {
   const f = await isolatedServers(context, page);
   await f.add("one");
+  await expect(page.getByRole("link", { name: "Server one private" })).toBeVisible();
   f.setMode("offline");
-  await page.getByRole("link", { name: "Inbox", exact: true }).click();
+  await page.getByRole("button", { name: "Refresh" }).click();
   await expect(page.getByText(/Could not load conversations/)).toBeVisible();
   await page.getByRole("button", { name: "Try again" }).click();
   await expect(page.getByRole("link", { name: "Server one private" })).toBeVisible();
   f.setMode("offline");
   await page.getByRole("link", { name: "Server one private" }).click();
   await expect(page.getByText(/Could not load conversations/)).toBeVisible();
-  await expect(page.getByText("Server one private")).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Server one private" })).toHaveCount(0);
   await page.getByRole("button", { name: "Try again" }).click();
   await expect(page.getByRole("heading", { name: "Server one private" })).toBeVisible();
 });
@@ -443,7 +481,7 @@ for (const action of ["reauthenticate", "forget-server"] as const) {
     f.setMode("hold");
     await page.getByRole("link", { name: "Server one private" }).click();
     await f.started();
-    await page.getByRole("link", { name: "Home", exact: true }).click();
+    await page.goto("/#/servers");
     if (action === "reauthenticate") {
       await page
         .getByRole("link", { name: "Sign in https://one.inbox-isolation.test/", exact: true })
@@ -484,7 +522,7 @@ for (const action of ["reauthenticate", "forget-server"] as const) {
   }) => {
     const f = await isolatedServers(context, page);
     await f.add("one");
-    await page.goto("/#/");
+    await page.goto("/#/servers");
     await expect(page.getByText("Signed in as alice", { exact: true })).toBeVisible();
     const reader = await context.newPage();
     await reader.goto("/#/conversations");
@@ -596,14 +634,16 @@ for (const action of ["Log out", "Remove saved account"] as const) {
     f.setMode("hold");
     await page.getByRole("button", { name: "Refresh" }).click();
     await f.started();
-    await page.getByRole("button", { name: /^Accounts and servers/ }).click();
-    await page
+    const management = await context.newPage();
+    await management.goto("/#/servers");
+    await management.getByRole("button", { name: /^Accounts and servers/ }).click();
+    await management
       .getByRole("button", {
         name: `${action} alice on https://one.inbox-isolation.test/`,
         exact: true,
       })
       .click();
-    await page.getByRole("button", { name: "Confirm", exact: true }).click();
+    await management.getByRole("button", { name: "Confirm", exact: true }).click();
     await expect(page.getByText("Server one private")).toHaveCount(0);
     f.release();
     await f.finished();
@@ -611,6 +651,7 @@ for (const action of ["Log out", "Remove saved account"] as const) {
     await expect(other.getByText("Server one private")).toHaveCount(0);
     await expect(page.getByText("Select a signed-in account to see its inbox.")).toBeVisible();
     await expect(other.getByText("Select a signed-in account to see its inbox.")).toBeVisible();
+    await management.close();
     await other.close();
   });
 }

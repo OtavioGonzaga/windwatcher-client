@@ -4,10 +4,16 @@ import { useTranslation } from "react-i18next";
 import { Link } from "react-router";
 
 class Boundary extends Component<
-  { children: ReactNode; fallback: ReactNode },
-  { failed: boolean }
+  { children: ReactNode; fallback: ReactNode; resetKey: string | undefined },
+  { failed: boolean; resetKey: string | undefined }
 > {
-  state = { failed: false };
+  state = { failed: false, resetKey: this.props.resetKey };
+  static getDerivedStateFromProps(
+    props: { resetKey: string | undefined },
+    state: { resetKey: string | undefined },
+  ) {
+    return props.resetKey === state.resetKey ? null : { failed: false, resetKey: props.resetKey };
+  }
   static getDerivedStateFromError() {
     return { failed: true };
   }
@@ -16,10 +22,17 @@ class Boundary extends Component<
   }
 }
 
-export function RouteErrorBoundary({ children }: { children: ReactNode }) {
+export function RouteErrorBoundary({
+  children,
+  resetKey,
+}: {
+  children: ReactNode;
+  resetKey?: string;
+}) {
   const { t } = useTranslation();
   return (
     <Boundary
+      resetKey={resetKey}
       fallback={
         <div className="flex flex-col gap-6">
           <h1 id="route-heading" tabIndex={-1} className="text-lg font-semibold">

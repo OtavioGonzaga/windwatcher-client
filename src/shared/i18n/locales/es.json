@@ -106,6 +106,7 @@
         "session": "Inicia sesión de nuevo. La solicitud no se repetirá automáticamente."
       },
       "members": "Miembros",
+      "info": "Información del grupo",
       "joined": "Entrada: {{date}}",
       "roles": {
         "owner": "Propietario — único dueño del grupo",
@@ -151,6 +152,8 @@
       "loading": "Cargando conversaciones…",
       "empty": "Todavía no hay conversaciones.",
       "signIn": "Selecciona una cuenta conectada para ver su bandeja de entrada.",
+      "new": "Nueva conversación",
+      "select": "Selecciona una conversación para ver su último mensaje.",
       "back": "Volver a la bandeja",
       "summary": "Resumen de la conversación",
       "unavailable": "Esta conversación no está disponible.",
@@ -172,9 +175,6 @@
       "noMessages": "Todavía no hay mensajes",
       "deleted": "Mensaje eliminado",
       "lastMessage": "Último mensaje",
-      "created": "Creada",
-      "updated": "Actualizada",
-      "lastRead": "ID de tu último mensaje leído",
       "notice": "El historial completo y las acciones aún no están disponibles en esta versión."
     },
     "accounts": {
@@ -213,7 +213,8 @@
     "navigation": {
       "nativeBackError": "La navegación atrás del sistema no está disponible. Usa los enlaces de navegación.",
       "home": "Inicio",
-      "preferences": "Preferencias",
+      "settings": "Configuración",
+      "manageAccounts": "Gestionar cuentas y servidores",
       "label": "Navegación principal",
       "skip": "Saltar al contenido",
       "notFound": "Página no encontrada",

@@ -147,7 +147,7 @@ describe("Group creation and review", () => {
     fireEvent.click(screen.getByRole("button", { name: "Create group" }));
     await screen.findByText(/The Group may already exist/);
     expect(f.send).toHaveBeenCalledTimes(1);
-    expect(screen.getByLabelText("Group title")).toBeDisabled();
+    expect(screen.queryByLabelText("Group title")).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Retry same operation" }));
     await screen.findByText("Authoritative Group detail");
     expect(f.send.mock.calls[0]).toEqual(f.send.mock.calls[1]);
@@ -159,7 +159,7 @@ describe("Group creation and review", () => {
     fireEvent.click(screen.getByRole("button", { name: "Create group" }));
     await screen.findByText(/The Group may already exist/);
     fireEvent.click(screen.getByRole("button", { name: "Discard uncertain attempt" }));
-    expect(screen.getByLabelText("Group title")).toBeDisabled();
+    expect(screen.queryByLabelText("Group title")).not.toBeInTheDocument();
     expect(f.send).toHaveBeenCalledTimes(1);
     fireEvent.click(screen.getByRole("button", { name: "Acknowledge risk and edit" }));
     expect(screen.getByLabelText("Group title")).toBeEnabled();

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Link } from "react-router";
 import { Button } from "../../shared/components/Button";
 import { TextField } from "../../shared/components/TextField";
 import { profileRepository } from "../../shared/storage/platform-storage";
@@ -89,7 +90,12 @@ export function SaveServerProfile({
           }}
           disabled={busy}
         />
-        <Button type="submit" disabled={busy || !state}>
+        <Button
+          type="submit"
+          variant="primary"
+          className="self-start"
+          disabled={busy || !state || saved}
+        >
           {t(existing ? "profiles.update" : "profiles.save")}
         </Button>
       </form>
@@ -97,6 +103,11 @@ export function SaveServerProfile({
         {saved && <p>{t("profiles.saved")}</p>}
         {error !== undefined && <StorageNotice error={error} />}
       </div>
+      {saved && existing && (
+        <Link to={`/servers/${existing.id}/login`} className="action-link self-start">
+          {t("auth.signIn")}
+        </Link>
+      )}
       {error !== undefined && (
         <Button
           disabled={busy}

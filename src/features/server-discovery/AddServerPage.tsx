@@ -102,7 +102,7 @@ export function AddServerPage() {
                   : "invalidResponse";
   return (
     <div className="flex min-w-0 max-w-lg flex-col gap-6">
-      <h1 id="route-heading" tabIndex={-1} className="text-lg font-semibold">
+      <h1 id="route-heading" tabIndex={-1} className="text-2xl font-semibold">
         {t("discovery.title")}
       </h1>
       <p>{t("discovery.intro")}</p>
@@ -181,7 +181,7 @@ export function AddServerPage() {
           </div>
         )}
         {result && (
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-3 rounded-md border border-border bg-surface p-4">
             <p className="break-all">{result.root}</p>
             {result.kind === "supported" && (
               <>

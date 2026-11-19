@@ -65,6 +65,8 @@ function mount() {
   );
 }
 async function ready() {
+  const summary = await screen.findByText("Group information", { selector: "summary" });
+  summary.parentElement!.setAttribute("open", "");
   await waitFor(() => expect(screen.getByRole("button", { name: "Save title" })).toBeEnabled());
 }
 async function confirm() {

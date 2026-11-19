@@ -106,6 +106,7 @@
         "session": "Entre novamente. A solicitação não será repetida automaticamente."
       },
       "members": "Membros",
+      "info": "Informações do grupo",
       "joined": "Entrada: {{date}}",
       "roles": {
         "owner": "Proprietário — único dono do grupo",
@@ -151,6 +152,8 @@
       "loading": "Carregando conversas…",
       "empty": "Nenhuma conversa ainda.",
       "signIn": "Selecione uma conta conectada para ver sua caixa de entrada.",
+      "new": "Nova conversa",
+      "select": "Selecione uma conversa para ver a última mensagem.",
       "back": "Voltar à caixa de entrada",
       "summary": "Resumo da conversa",
       "unavailable": "Esta conversa está indisponível.",
@@ -172,9 +175,6 @@
       "noMessages": "Nenhuma mensagem ainda",
       "deleted": "Mensagem apagada",
       "lastMessage": "Última mensagem",
-      "created": "Criada",
-      "updated": "Atualizada",
-      "lastRead": "ID da sua última mensagem lida",
       "notice": "O histórico completo e as ações ainda não estão disponíveis nesta versão."
     },
     "accounts": {
@@ -213,7 +213,8 @@
     "navigation": {
       "nativeBackError": "A navegação de voltar do sistema está indisponível. Use os links de navegação.",
       "home": "Início",
-      "preferences": "Preferências",
+      "settings": "Configurações",
+      "manageAccounts": "Gerenciar contas e servidores",
       "label": "Navegação principal",
       "skip": "Ir para o conteúdo",
       "notFound": "Página não encontrada",

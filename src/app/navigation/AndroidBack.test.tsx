@@ -8,7 +8,10 @@ import { AndroidBack } from "./AndroidBack";
 const adapter = vi.hoisted(() => ({ subscribeBack: vi.fn(), finishActivity: vi.fn() }));
 vi.mock("@tauri-apps/api/core", () => ({ isTauri: () => true }));
 vi.mock("../../shared/platform/android-back", () => adapter);
-afterEach(() => vi.restoreAllMocks());
+afterEach(() => {
+  vi.clearAllMocks();
+  vi.restoreAllMocks();
+});
 it("direct Group creation entry uses the existing inbox Back fallback", async () => {
   vi.spyOn(navigator, "userAgent", "get").mockReturnValue("Android");
   let back!: (canGoBack: boolean) => void;
@@ -73,4 +76,24 @@ it("Back closes an open Group action review without confirming or leaving the de
   expect(screen.getByText("Group detail")).toBeInTheDocument();
   expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   expect(send).not.toHaveBeenCalled();
+});
+
+it("exits from direct inbox entry instead of bouncing through the Home redirect", async () => {
+  vi.spyOn(navigator, "userAgent", "get").mockReturnValue("Android");
+  let back!: (canGoBack: boolean) => void;
+  adapter.finishActivity.mockResolvedValue(undefined);
+  adapter.subscribeBack.mockImplementation((handler: (canGoBack: boolean) => void) => {
+    back = handler;
+    return () => {};
+  });
+  render(
+    <I18nextProvider i18n={createI18n("en")}>
+      <MemoryRouter initialEntries={["/conversations"]}>
+        <AndroidBack />
+      </MemoryRouter>
+    </I18nextProvider>,
+  );
+  await waitFor(() => expect(back).toBeDefined());
+  act(() => back(true));
+  expect(adapter.finishActivity).toHaveBeenCalledOnce();
 });

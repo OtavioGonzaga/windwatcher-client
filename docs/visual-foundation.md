@@ -1,10 +1,10 @@
 # Visual and localization foundation
 
 Windwatcher uses one presentation foundation on web, Linux, Windows and Android.
-The production Home page displays the supplied banner; Preferences has working
-appearance/language controls within the [responsive shell](navigation-shell.md).
-Neither page connects to a server or simulates accounts, presence, channels or
-conversations.
+First access displays the supplied banner; Settings has working appearance and
+language controls. The [responsive shell](navigation-shell.md) opens the inbox for
+verified accounts. None of these screens simulates presence, channels or message
+history.
 
 ## Identity and tokens
 
@@ -60,6 +60,21 @@ exempt; the logo is decorative with an independent accessible product heading.
 Browser axe checks cover actual rendered root/fixture content in both themes.
 Forced colors use system colors and visible borders, never color alone for
 meaning. Focus is a three-pixel outline; reduced motion removes transitions.
+
+### Product layouts
+
+- **Conversation workspace:** use one clickable row per conversation, with
+  selection distinguished by a leading border, surface change and `aria-current`.
+  Scan by title, short preview and unread count; move roles and group actions
+  into the detail disclosure. Use orange for the primary action, not for every
+  clickable element.
+- **Task pages:** keep forms in a constrained reading column with a clear title
+  and one primary action per step. Show review instead of disabled draft fields
+  during confirmation. Keep validation next to its input and mutation results
+  next to their follow-up action.
+- **Settings and onboarding:** keep maintenance out of daily conversation
+  navigation; preserve explicit save, sign-in and destructive confirmation
+  boundaries. Use the existing paired semantic colors for warnings and errors.
 
 ### Typography and density
 

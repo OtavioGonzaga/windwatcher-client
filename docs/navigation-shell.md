@@ -2,15 +2,15 @@
 
 Windwatcher has one React root, one declarative React Router HashRouter and the
 same shell on web, Linux, Windows and Android. Manual server inspection is public
-and in-memory until explicitly saved. Home lists local profiles; account UI is
-deferred and presentation choices remain in memory.
+and in-memory until explicitly saved. Presentation choices remain in memory.
 
 ## Routes and deployment
 
 | Fragment                     | Contents                                              |
 | ---------------------------- | ----------------------------------------------------- |
-| `#/`                         | Artwork, product description and saved profiles       |
-| `#/preferences`              | Working language and appearance controls              |
+| `#/`                         | First access or verified-session redirect to inbox    |
+| `#/preferences`              | Settings: language, appearance and account access     |
+| `#/servers`                  | Saved server and account maintenance                  |
 | `#/conversations`            | Account-scoped read-only inbox                        |
 | `#/conversations/new`        | Exact username lookup and confirmed Direct creation   |
 | `#/conversations/groups/new` | Reviewed Group creation with optional initial Members |
@@ -33,8 +33,9 @@ relative to their emitted files. CSP is unchanged and permits no remote scripts
 or fonts. Tests serve the production output under `/client/` without rewrites.
 
 The Home CTA opens manual inspection. An explicit Save server action persists a
-successful inspection; no authentication is performed. Saved profiles can be
-renamed, forgotten with confirmation or opened for an explicit fresh inspection.
+successful inspection and offers sign-in without performing it. In Settings,
+saved profiles can be renamed, forgotten with confirmation or opened for an
+explicit fresh inspection.
 No network check runs from the server-profile listing alone. Inbox navigation
 requires a verified selected account, and switching or restoring an account clears
 the previous context's conversation views. Pagination uses the server's opaque
@@ -43,9 +44,10 @@ The static `new` route is registered before conversation IDs. Its inbox action
 opens a two-step lookup/confirmation form; direct Android entry escapes to the
 inbox using the existing conversation-child fallback. Disposing the form discards
 its transient operation without claiming rollback of a dispatched POST.
-The fully static Group creation route also precedes the ID route. Inbox exposes
-both creation actions. Group draft/review/recovery stay on the same route; the
-review confirms server URL, current Owner, exact title and additional Members.
+The fully static Group creation route also precedes the ID route. The inbox's New
+conversation disclosure exposes both creation actions. Group draft/review/recovery
+stay on the same route; the review confirms server URL, current Owner, exact title
+and additional Members.
 Uncertain attempts require acknowledged discard before editing; route exit,
 account switch and app termination still discard the transient key. The page
 explains that a sent request may commit and another attempt may create a duplicate.
@@ -53,8 +55,9 @@ The existing Android conversation-child Back fallback leads to Inbox without a
 new native permission or navigation adapter. A mocked-adapter regression checks
 this route, not actual IME/Back runtime behavior.
 
-Group detail mounts an independently loaded Members section only after an
-authoritative Group summary. Member refresh starts a new cursor traversal.
+Group detail places Members and administrative actions under the Group information
+disclosure, mounted only after an authoritative Group summary.
+Member refresh starts a new cursor traversal.
 Roles drive last-observed Group-management affordances, never local authorization.
 Group lifecycle actions remain within detail, with one native HTML confirmation
 dialog and no additional route or platform permission. Review identifies the
@@ -69,11 +72,11 @@ deletion proof.
 
 ## Layout and accessibility
 
-One set of navigation links is reorganized by CSS: a side region at 768px and
-wider, or bottom navigation with a compact header below that breakpoint. The
-navigation remains in normal flow and scrolls on short viewports rather than
-covering fields. Breakpoint changes do not remount page content or clear focus.
-There are no fixed-height nested scroll containers or empty messaging panels.
+One flexible header serves all routes. Conversation pages use a list and detail
+side by side from 64rem wide; otherwise only the active pane is visible. At
+32rem tall and above in the wide layout, the panes can scroll independently.
+Narrow/short viewports use document scroll rather than putting forms in nested
+scroll containers. Changing width does not remount the list or reread data.
 
 Each route has one H1 inside the shell's only main landmark. The localized skip
 link focuses `main-content` without replacing the router's hash. Navigation
@@ -88,8 +91,11 @@ Focus policy:
 - Back/Forward restores a known entry's scroll and focused element by stable ID,
   falling back to its H1 if the element is absent. The record is bounded to 50
   visited entries and lives only in memory.
-- Language/theme/viewport changes do not move focus. No duplicate live route
-  announcement is added on top of the heading focus.
+- Back to inbox uses history when the detail came directly from the current
+  mounted inbox; on direct entry it links to the inbox. Switching accounts while
+  viewing detail clears the selection and discards the previous account's panes.
+- Language/theme changes do not move focus, and resizing does not remount the
+  active pane. No duplicate live route announcement is added on top of heading focus.
 
 While mounted, the shell uses manual browser scroll restoration so native
 history restoration does not compete with the route policy. It restores the
@@ -119,7 +125,8 @@ there is a safe internal predecessor.
    back exactly once.
 3. On direct/unknown conversation detail history, replace with the inbox; other
    secondary routes replace with Home.
-4. At Home, `exit(0)` finishes the Activity with the normal system transition.
+4. At Home or an inbox with no known predecessor, `exit(0)` finishes the Activity
+   with the normal system transition.
 
 Open account or Group-review dialogs close before route handling. Events are coalesced
 while navigation/exit is pending. Async registration and unregistration are

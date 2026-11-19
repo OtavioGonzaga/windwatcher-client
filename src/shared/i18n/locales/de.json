@@ -106,6 +106,7 @@
         "session": "Melde dich erneut an. Die Anfrage wird nicht automatisch wiederholt."
       },
       "members": "Mitglieder",
+      "info": "Gruppeninformationen",
       "joined": "Beitritt: {{date}}",
       "roles": {
         "owner": "Eigentümer — einziger Gruppeneigentümer",
@@ -151,6 +152,8 @@
       "loading": "Unterhaltungen werden geladen…",
       "empty": "Noch keine Unterhaltungen.",
       "signIn": "Wähle ein angemeldetes Konto für den Posteingang aus.",
+      "new": "Neue Unterhaltung",
+      "select": "Wähle eine Unterhaltung aus, um ihre letzte Nachricht zu sehen.",
       "back": "Zurück zum Posteingang",
       "summary": "Unterhaltungsübersicht",
       "unavailable": "Diese Unterhaltung ist nicht verfügbar.",
@@ -172,9 +175,6 @@
       "noMessages": "Noch keine Nachrichten",
       "deleted": "Gelöschte Nachricht",
       "lastMessage": "Letzte Nachricht",
-      "created": "Erstellt",
-      "updated": "Aktualisiert",
-      "lastRead": "ID deiner zuletzt gelesenen Nachricht",
       "notice": "Der vollständige Nachrichtenverlauf und Aktionen sind in dieser Version noch nicht verfügbar."
     },
     "accounts": {
@@ -213,7 +213,8 @@
     "navigation": {
       "nativeBackError": "Die Zurück-Navigation des Systems ist nicht verfügbar. Verwende die Navigationslinks.",
       "home": "Startseite",
-      "preferences": "Einstellungen",
+      "settings": "Einstellungen",
+      "manageAccounts": "Konten und Server verwalten",
       "label": "Hauptnavigation",
       "skip": "Zum Inhalt springen",
       "notFound": "Seite nicht gefunden",
